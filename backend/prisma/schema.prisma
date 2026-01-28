@@ -1,0 +1,248 @@
+generator client {
+  provider   = "prisma-client"
+  output     = "../generated/prisma"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+//#region DTO Generators ####################################################################################################
+
+// -------------------------------------------------
+// DTO Generator for NestJS Backend
+// Generates: Entity classes, CreateDto, UpdateDto
+// with class-validator decorators + Swagger annotations
+// Install first: npm install prisma-generator-nestjs-dto
+// -------------------------------------------------
+// generator nestjsDto {
+//   provider                        = "prisma-generator-nestjs-dto"
+//   output                          = "../src/generated/dto"
+//   prismaClientImportPath          = "../../generated/prisma"
+//   outputToNestJsResourceStructure = "true"
+//   flatResourceStructure           = "true"
+//   exportRelationModifierClasses   = "true"
+//   reExport                        = "true"
+//   generateFileTypes               = "all"
+//   createDtoPrefix                 = "Create"
+//   updateDtoPrefix                 = "Update"
+//   dtoSuffix                       = "Dto"
+//   entityPrefix                    = ""
+//   entitySuffix                    = ""
+//   classValidation                 = "true"
+//   fileNamingStyle                 = "kebab"
+//   noDependencies                  = "false"
+//   outputType                      = "class"
+//   definiteAssignmentAssertion     = "false"
+//   requiredResponseApiProperty     = "true"
+//   prettier                        = "true"
+//   wrapRelationsAsType             = "false"
+//   showDefaultValues               = "true"
+// }
+
+// -------------------------------------------------
+// Type Generator for React Frontend
+// Generates: Plain TypeScript interfaces (no decorators)
+// Zero backend dependencies — safe for browser bundle
+// Install first: npm install prisma-generator-nestjs-dto
+// -------------------------------------------------
+// generator reactTypes {
+//   provider                        = "prisma-generator-nestjs-dto"
+//   output                          = "../../frontend/src/types/generated"
+//   prismaClientImportPath          = "@prisma/client"
+//   outputToNestJsResourceStructure = "false"
+//   flatResourceStructure           = "true"
+//   exportRelationModifierClasses   = "false"
+//   reExport                        = "true"
+//   generateFileTypes               = "all"
+//   createDtoPrefix                 = "Create"
+//   updateDtoPrefix                 = "Update"
+//   dtoSuffix                       = "Dto"
+//   entityPrefix                    = ""
+//   entitySuffix                    = ""
+//   classValidation                 = "false"
+//   fileNamingStyle                 = "kebab"
+//   noDependencies                  = "true"
+//   outputType                      = "interface"
+//   definiteAssignmentAssertion     = "false"
+//   requiredResponseApiProperty     = "false"
+//   prettier                        = "true"
+//   wrapRelationsAsType             = "false"
+//   showDefaultValues               = "false"
+// }
+
+//#endregion ####################################################################################################
+
+//#region Enums ####################################################################################################
+
+enum HouseholdRole {
+  OWNER
+  MEMBER
+}
+
+enum ExpenseType {
+  PERSONAL
+  SHARED
+}
+
+enum ExpenseCategory {
+  RECURRING
+  ONE_TIME
+}
+
+enum ExpenseFrequency {
+  MONTHLY
+  YEARLY
+}
+
+enum YearlyPaymentStrategy {
+  FULL
+  INSTALLMENTS
+}
+
+enum InstallmentFrequency {
+  MONTHLY       // 12 payments per year
+  QUARTERLY     // 4 payments: Jan, Apr, Jul, Oct
+  SEMI_ANNUAL   // 2 payments: Jan & Jul
+}
+
+enum ApprovalAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum ApprovalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+//#endregion ####################################################################################################
+
+//#region Models ####################################################################################################
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  firstName String
+  lastName  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  householdMember    HouseholdMember?
+  salaries           Salary[]
+  createdExpenses    Expense[]         @relation("ExpenseCreator")
+  paidExpenses       Expense[]         @relation("ExpensePayer")
+  requestedApprovals ExpenseApproval[] @relation("ApprovalRequester")
+  reviewedApprovals  ExpenseApproval[] @relation("ApprovalReviewer")
+
+  @@map("users")
+}
+
+model Household {
+  id         String   @id @default(uuid())
+  name       String
+  inviteCode String   @unique
+  maxMembers Int      @default(2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members   HouseholdMember[]
+  salaries  Salary[]
+  expenses  Expense[]
+  approvals ExpenseApproval[]
+
+  @@map("households")
+}
+
+model HouseholdMember {
+  id          String        @id @default(uuid())
+  userId      String        @unique
+  householdId String
+  role        HouseholdRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  household Household @relation(fields: [householdId], references: [id])
+
+  @@unique([userId, householdId])
+  @@index([householdId])
+  @@map("household_members")
+}
+
+model Salary {
+  id            String   @id @default(uuid())
+  userId        String
+  householdId   String
+  defaultAmount Decimal  @db.Decimal(12, 2)
+  currentAmount Decimal  @db.Decimal(12, 2)
+  month         Int
+  year          Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id])
+  household Household @relation(fields: [householdId], references: [id])
+
+  @@unique([userId, month, year])
+  @@index([householdId])
+  @@map("salaries")
+}
+
+model Expense {
+  id                    String                 @id @default(uuid())
+  householdId           String
+  createdById           String
+  name                  String                 @db.VarChar(100)
+  amount                Decimal                @db.Decimal(12, 2)
+  type                  ExpenseType
+  category              ExpenseCategory
+  frequency             ExpenseFrequency
+  yearlyPaymentStrategy  YearlyPaymentStrategy?
+  installmentFrequency   InstallmentFrequency?
+  paymentMonth          Int?
+  paidByUserId          String?
+  month                 Int?
+  year                  Int?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+
+  household Household         @relation(fields: [householdId], references: [id])
+  createdBy User              @relation("ExpenseCreator", fields: [createdById], references: [id])
+  paidBy    User?             @relation("ExpensePayer", fields: [paidByUserId], references: [id])
+  approvals ExpenseApproval[]
+
+  @@index([householdId, type])
+  @@index([createdById])
+  @@map("expenses")
+}
+
+model ExpenseApproval {
+  id            String         @id @default(uuid())
+  expenseId     String?
+  householdId   String
+  action        ApprovalAction
+  status        ApprovalStatus @default(PENDING)
+  requestedById String
+  reviewedById  String?
+  message       String?
+  proposedData  Json?
+  createdAt     DateTime       @default(now())
+  reviewedAt    DateTime?
+
+  expense     Expense?  @relation(fields: [expenseId], references: [id])
+  household   Household @relation(fields: [householdId], references: [id])
+  requestedBy User      @relation("ApprovalRequester", fields: [requestedById], references: [id])
+  reviewedBy  User?     @relation("ApprovalReviewer", fields: [reviewedById], references: [id])
+
+  @@index([householdId, status])
+  @@index([requestedById])
+  @@map("expense_approvals")
+}
+
+//#endregion ####################################################################################################
