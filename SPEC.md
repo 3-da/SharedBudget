@@ -216,77 +216,70 @@ The system automatically calculates who owes whom based on shared expenses. Each
 - **Profile:** User can view and update their name (not email)
 - **Password Change:** Requires current password + new password
 
-### 1.1 Email Verification Flow
-When a user registers, their account is created but marked as **unverified**. They must verify their email before they can log in.
+### 1.1 Email Verification Flow (6-Digit Code)
+When a user registers, their account is created but marked as **unverified**. They must verify via a 6-digit code before accessing the app.
 
 **Registration Response:**
-- Always returns: "We've sent a verification link to your email address."
+- Always returns: `{ message: "We've sent a verification code to your email." }`
 - Never reveals whether the email already exists (security best practice)
-- Same response whether registration succeeds or email is already taken
+- No tokens returned until email is verified
 
 **Verification Process:**
 1. User submits registration form (email, password, firstName, lastName)
-2. Backend creates user with `emailVerified: false` and generates a verification token
-3. Verification token: cryptographically secure random 32-byte hex string
-4. Token stored in `emailVerificationToken` field, expires after 24 hours (`emailVerificationExpires`)
-5. Backend sends email containing verification link: `{FRONTEND_URL}/auth/verify-email?token={token}`
-6. User clicks link → frontend displays "Verifying..." and calls `POST /api/v1/auth/verify-email` with token
-7. Backend validates token:
-   - Token exists in database
-   - Token has not expired (< 24 hours old)
-   - Token has not been used already
-8. On success:
-   - Set `emailVerified: true`
-   - Clear `emailVerificationToken` and `emailVerificationExpires` fields
-   - Return success message
-   - Frontend redirects to login page with success toast: "Email verified! You can now log in."
-9. On failure:
-   - Return appropriate error (expired, invalid, already used)
-   - Frontend shows error with option to request new verification email
+2. Backend creates user with `emailVerified: false`
+3. Backend generates 6-digit numeric code (e.g., "847293")
+4. Code stored in Redis with key `verify:{email}`, TTL 10 minutes
+5. Backend sends email: "Your verification code is: 847293"
+6. Frontend shows code input screen: "Enter the 6-digit code we sent to {email}"
+7. User enters code → Frontend calls `POST /api/v1/auth/verify-code`
+8. Backend validates:
+   - Code exists in Redis for this email
+   - Code matches
+   - Code not expired
+9. On success:
+   - Set `emailVerified: true` in database
+   - Delete code from Redis
+   - Generate and return access + refresh tokens (auto-login)
+   - Frontend redirects to dashboard
+10. On failure:
+    - Return error: "Invalid or expired code"
+    - User can request new code
 
-**Resend Verification Email:**
-- Endpoint: `POST /api/v1/auth/resend-verification`
+**Resend Code:**
+- Endpoint: `POST /api/v1/auth/resend-code`
 - Input: `{ email: string }`
-- Always returns: "If an account exists with this email, we've sent a new verification link."
-- Never reveals whether email exists in system
-- Rate limited: maximum 3 requests per email per hour (prevents spam)
-- Generates new token and invalidates the old one
-- Only works for unverified accounts (silently succeeds for verified/non-existent)
+- Always returns: `{ message: "If an account exists, we've sent a new code." }`
+- Rate limited: max 3 requests per email per 10 minutes
+- Generates new code, invalidates old one
+- Only works for unverified accounts
 
 **Login Restriction:**
-- Login endpoint checks `emailVerified` field before allowing authentication
-- If `emailVerified: false`: returns 403 Forbidden with message:
-  "Please verify your email before logging in. Check your inbox or request a new verification email."
-- Frontend shows this message with a "Resend verification email" button
+- Login checks `emailVerified` field
+- If `false`: returns 403 with message:
+  `"Please verify your email first. Check your inbox for the verification code."`
 
-**Database Changes (User model additions):**
+**Code Specifications:**
+- Length: 6 digits (000000-999999)
+- TTL: 10 minutes
+- Storage: Redis (key: `verify:{email}`)
+- Rate limit: Max 5 verification attempts per code
+
+**Database Changes (User model):**
 | Field | Type | Notes |
 |-------|------|-------|
 | emailVerified | Boolean | Default `false`, set to `true` after successful verification |
-| emailVerificationToken | String? | Random 32-byte hex string, `null` after verification |
-| emailVerificationExpires | DateTime? | Token expiry timestamp (24h from creation), `null` after verification |
 
-**New API Endpoints:**
+**API Endpoints:**
 ```
-POST   /api/v1/auth/verify-email        - Verify email with token → { token: string }
-POST   /api/v1/auth/resend-verification - Resend verification email → { email: string }
+POST /api/v1/auth/verify-code   - Verify email with code → { email, code } → Returns tokens
+POST /api/v1/auth/resend-code   - Resend verification code → { email }
 ```
-
-**Email Template (Verification Email):**
-- Subject: "Verify your email for SharedBudget"
-- Body includes:
-  - Greeting with user's first name
-  - Clear call-to-action button: "Verify Email Address"
-  - Link expiration notice (24 hours)
-  - Note that they can ignore if they didn't register
-  - Support contact information
 
 **Security Considerations:**
-- Tokens are single-use (cleared after verification)
-- Tokens expire after 24 hours
-- Rate limiting prevents enumeration attacks via resend endpoint
+- Codes expire after 10 minutes
+- Rate limiting prevents brute force (5 attempts per code, 3 resends per 10 min)
 - Same response message regardless of email existence
-- HTTPS required for all verification links
+- Code is deleted after successful verification (single-use)
 
 ### 2. Household Management
 - **Create Household:** During registration or post-registration
@@ -585,12 +578,12 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 
 ### Authentication Endpoints (6)
 ```
-POST   /api/v1/auth/register            - Register new user → sends verification email
-POST   /api/v1/auth/verify-email        - Verify email with token
-POST   /api/v1/auth/resend-verification - Resend verification email (rate limited)
-POST   /api/v1/auth/login               - Login with email + password → JWT tokens (requires verified email)
-POST   /api/v1/auth/refresh             - Refresh access token using refresh token
-POST   /api/v1/auth/logout              - Logout (invalidate refresh token)
+POST   /api/v1/auth/register      - Register new user → sends 6-digit verification code
+POST   /api/v1/auth/verify-code   - Verify email with 6-digit code → returns tokens (auto-login)
+POST   /api/v1/auth/resend-code   - Resend verification code (rate limited: 3 per 10 min)
+POST   /api/v1/auth/login         - Login with email + password → JWT tokens (requires verified email)
+POST   /api/v1/auth/refresh       - Refresh access token using refresh token
+POST   /api/v1/auth/logout        - Logout (invalidate refresh token)
 ```
 
 ### User Endpoints (3)

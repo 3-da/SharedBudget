@@ -1,7 +1,5 @@
 generator client {
-  provider   = "prisma-client"
-  output     = "../generated/prisma"
-  engineType = "client"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -16,30 +14,31 @@ datasource db {
 // with class-validator decorators + Swagger annotations
 // Install first: npm install prisma-generator-nestjs-dto
 // -------------------------------------------------
-// generator nestjsDto {
-//   provider                        = "prisma-generator-nestjs-dto"
-//   output                          = "../src/generated/dto"
-//   prismaClientImportPath          = "../../generated/prisma"
-//   outputToNestJsResourceStructure = "true"
-//   flatResourceStructure           = "true"
-//   exportRelationModifierClasses   = "true"
-//   reExport                        = "true"
-//   generateFileTypes               = "all"
-//   createDtoPrefix                 = "Create"
-//   updateDtoPrefix                 = "Update"
-//   dtoSuffix                       = "Dto"
-//   entityPrefix                    = ""
-//   entitySuffix                    = ""
-//   classValidation                 = "true"
-//   fileNamingStyle                 = "kebab"
-//   noDependencies                  = "false"
-//   outputType                      = "class"
-//   definiteAssignmentAssertion     = "false"
-//   requiredResponseApiProperty     = "true"
-//   prettier                        = "true"
-//   wrapRelationsAsType             = "false"
-//   showDefaultValues               = "true"
-// }
+
+generator nestjsDto {
+  provider                        = "prisma-generator-nestjs-dto"
+  output                          = "./generated/dto"
+  prismaClientImportPath          = "./client"
+  outputToNestJsResourceStructure = "true"
+  flatResourceStructure           = "true"
+  exportRelationModifierClasses   = "true"
+  reExport                        = "true"
+  generateFileTypes               = "all"
+  createDtoPrefix                 = "Create"
+  updateDtoPrefix                 = "Update"
+  dtoSuffix                       = "Dto"
+  entityPrefix                    = ""
+  entitySuffix                    = ""
+  classValidation                 = "true"
+  fileNamingStyle                 = "kebab"
+  noDependencies                  = "false"
+  outputType                      = "class"
+  definiteAssignmentAssertion     = "false"
+  requiredResponseApiProperty     = "true"
+  prettier                        = "true"
+  wrapRelationsAsType             = "false"
+  showDefaultValues               = "true"
+}
 
 // -------------------------------------------------
 // Type Generator for React Frontend
@@ -102,9 +101,9 @@ enum YearlyPaymentStrategy {
 }
 
 enum InstallmentFrequency {
-  MONTHLY       // 12 payments per year
-  QUARTERLY     // 4 payments: Jan, Apr, Jul, Oct
-  SEMI_ANNUAL   // 2 payments: Jan & Jul
+  MONTHLY // 12 payments per year
+  QUARTERLY // 4 payments: Jan, Apr, Jul, Oct
+  SEMI_ANNUAL // 2 payments: Jan & Jul
 }
 
 enum ApprovalAction {
@@ -124,14 +123,15 @@ enum ApprovalStatus {
 //#region Models ####################################################################################################
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  firstName String
-  lastName  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   householdMember    HouseholdMember?
   salaries           Salary[]
@@ -202,8 +202,8 @@ model Expense {
   type                  ExpenseType
   category              ExpenseCategory
   frequency             ExpenseFrequency
-  yearlyPaymentStrategy  YearlyPaymentStrategy?
-  installmentFrequency   InstallmentFrequency?
+  yearlyPaymentStrategy YearlyPaymentStrategy?
+  installmentFrequency  InstallmentFrequency?
   paymentMonth          Int?
   paidByUserId          String?
   month                 Int?
