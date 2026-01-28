@@ -1,3 +1,4 @@
+import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {Test, TestingModule} from '@nestjs/testing';
 import {AuthController} from './auth.controller';
 import {AuthService} from './auth.service';
@@ -24,12 +25,12 @@ describe('AuthController', () => {
     };
 
     const mockAuthService = {
-        register: jest.fn(() => Promise.resolve({message: "We've sent a verification code to your email."})),
-        verifyCode: jest.fn(() => Promise.resolve(mockAuthResponse)),
-        resendCode: jest.fn(() => Promise.resolve({message: "If an account exists, we've sent a new code."})),
-        login: jest.fn(() => Promise.resolve(mockAuthResponse)),
-        refresh: jest.fn(() => Promise.resolve(mockAuthResponse)),
-        logout: jest.fn(() => Promise.resolve()),
+        register: vi.fn(() => Promise.resolve({message: "We've sent a verification code to your email."})),
+        verifyCode: vi.fn(() => Promise.resolve(mockAuthResponse)),
+        resendCode: vi.fn(() => Promise.resolve({message: "If an account exists, we've sent a new code."})),
+        login: vi.fn(() => Promise.resolve(mockAuthResponse)),
+        refresh: vi.fn(() => Promise.resolve(mockAuthResponse)),
+        logout: vi.fn(() => Promise.resolve()),
     };
 
     const refreshDto: RefreshDto = {refreshToken: 'mock-refresh-token'};
@@ -43,7 +44,7 @@ describe('AuthController', () => {
         controller = module.get<AuthController>(AuthController);
         authService = module.get<AuthService>(AuthService);
 
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('register', () => {
