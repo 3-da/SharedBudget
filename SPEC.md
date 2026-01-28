@@ -216,6 +216,78 @@ The system automatically calculates who owes whom based on shared expenses. Each
 - **Profile:** User can view and update their name (not email)
 - **Password Change:** Requires current password + new password
 
+### 1.1 Email Verification Flow
+When a user registers, their account is created but marked as **unverified**. They must verify their email before they can log in.
+
+**Registration Response:**
+- Always returns: "We've sent a verification link to your email address."
+- Never reveals whether the email already exists (security best practice)
+- Same response whether registration succeeds or email is already taken
+
+**Verification Process:**
+1. User submits registration form (email, password, firstName, lastName)
+2. Backend creates user with `emailVerified: false` and generates a verification token
+3. Verification token: cryptographically secure random 32-byte hex string
+4. Token stored in `emailVerificationToken` field, expires after 24 hours (`emailVerificationExpires`)
+5. Backend sends email containing verification link: `{FRONTEND_URL}/auth/verify-email?token={token}`
+6. User clicks link → frontend displays "Verifying..." and calls `POST /api/v1/auth/verify-email` with token
+7. Backend validates token:
+   - Token exists in database
+   - Token has not expired (< 24 hours old)
+   - Token has not been used already
+8. On success:
+   - Set `emailVerified: true`
+   - Clear `emailVerificationToken` and `emailVerificationExpires` fields
+   - Return success message
+   - Frontend redirects to login page with success toast: "Email verified! You can now log in."
+9. On failure:
+   - Return appropriate error (expired, invalid, already used)
+   - Frontend shows error with option to request new verification email
+
+**Resend Verification Email:**
+- Endpoint: `POST /api/v1/auth/resend-verification`
+- Input: `{ email: string }`
+- Always returns: "If an account exists with this email, we've sent a new verification link."
+- Never reveals whether email exists in system
+- Rate limited: maximum 3 requests per email per hour (prevents spam)
+- Generates new token and invalidates the old one
+- Only works for unverified accounts (silently succeeds for verified/non-existent)
+
+**Login Restriction:**
+- Login endpoint checks `emailVerified` field before allowing authentication
+- If `emailVerified: false`: returns 403 Forbidden with message:
+  "Please verify your email before logging in. Check your inbox or request a new verification email."
+- Frontend shows this message with a "Resend verification email" button
+
+**Database Changes (User model additions):**
+| Field | Type | Notes |
+|-------|------|-------|
+| emailVerified | Boolean | Default `false`, set to `true` after successful verification |
+| emailVerificationToken | String? | Random 32-byte hex string, `null` after verification |
+| emailVerificationExpires | DateTime? | Token expiry timestamp (24h from creation), `null` after verification |
+
+**New API Endpoints:**
+```
+POST   /api/v1/auth/verify-email        - Verify email with token → { token: string }
+POST   /api/v1/auth/resend-verification - Resend verification email → { email: string }
+```
+
+**Email Template (Verification Email):**
+- Subject: "Verify your email for SharedBudget"
+- Body includes:
+  - Greeting with user's first name
+  - Clear call-to-action button: "Verify Email Address"
+  - Link expiration notice (24 hours)
+  - Note that they can ignore if they didn't register
+  - Support contact information
+
+**Security Considerations:**
+- Tokens are single-use (cleared after verification)
+- Tokens expire after 24 hours
+- Rate limiting prevents enumeration attacks via resend endpoint
+- Same response message regardless of email existence
+- HTTPS required for all verification links
+
 ### 2. Household Management
 - **Create Household:** During registration or post-registration
   - Generates unique 8-character invite code
@@ -509,14 +581,16 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 
 ---
 
-## 🔌 API Endpoints (32 Total)
+## 🔌 API Endpoints (34 Total)
 
-### Authentication Endpoints (4)
+### Authentication Endpoints (6)
 ```
-POST   /api/v1/auth/register          - Register new user (+ create or join household)
-POST   /api/v1/auth/login             - Login with email + password → JWT tokens
-POST   /api/v1/auth/refresh           - Refresh access token using refresh token
-POST   /api/v1/auth/logout            - Logout (invalidate refresh token)
+POST   /api/v1/auth/register            - Register new user → sends verification email
+POST   /api/v1/auth/verify-email        - Verify email with token
+POST   /api/v1/auth/resend-verification - Resend verification email (rate limited)
+POST   /api/v1/auth/login               - Login with email + password → JWT tokens (requires verified email)
+POST   /api/v1/auth/refresh             - Refresh access token using refresh token
+POST   /api/v1/auth/logout              - Logout (invalidate refresh token)
 ```
 
 ### User Endpoints (3)
