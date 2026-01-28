@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+
+# Claude Code (local preferences only)
+.claude/settings.local.json
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Docker
+.docker/
+
+# Misc
+.DS_Store
+*.tsbuildinfo
