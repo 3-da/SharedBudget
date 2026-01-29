@@ -67,12 +67,12 @@ When implementing new functionality, follow this exact order:
 ## Logging Standards
 
 ### Log Levels
-| Level | When to use | Example |
-|-------|-------------|---------|
-| `log` | Successful operations | `this.logger.log(\`User logged in: ${userId}\`)` |
-| `warn` | Failed attempts, suspicious activity | `this.logger.warn(\`Failed login attempt: ${email}\`)` |
-| `debug` | Detailed info for debugging | `this.logger.debug(\`Token refreshed for user: ${userId}\`)` |
-| `error` | Exceptions, unexpected failures | `this.logger.error(\`Database error: ${error.message}\`)` |
+| Level   | When to use                          | Example                                                      |
+|---------|--------------------------------------|--------------------------------------------------------------|
+| `log`   | Successful operations                | `this.logger.log(\`User logged in: ${userId}\`)`             |
+| `warn`  | Failed attempts, suspicious activity | `this.logger.warn(\`Failed login attempt: ${email}\`)`       |
+| `debug` | Detailed info for debugging          | `this.logger.debug(\`Token refreshed for user: ${userId}\`)` |
+| `error` | Exceptions, unexpected failures      | `this.logger.error(\`Database error: ${error.message}\`)`    |
 
 ### What NOT to log
 - Passwords, tokens, or secrets — **never**
@@ -174,11 +174,11 @@ describe('ServiceName', () => {
 ## Quick Reference
 
 ### Redis Key Patterns
-| Pattern | Purpose | TTL |
-|---------|---------|-----|
-| `verify:{email}` | Email verification code | 10 min |
-| `reset:{token}` | Password reset token | 1 hour |
-| `refresh:{token}` | Refresh token → userId | 7 days |
+| Pattern                  | Purpose                      | TTL    |
+|--------------------------|------------------------------|--------|
+| `verify:{email}`         | Email verification code      | 10 min |
+| `reset:{token}`          | Password reset token         | 1 hour |
+| `refresh:{token}`        | Refresh token → userId       | 7 days |
 | `user_sessions:{userId}` | Set of user's refresh tokens | No TTL |
 
 ### Environment Variables
