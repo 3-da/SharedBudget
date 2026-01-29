@@ -12,22 +12,22 @@ import { MailModule } from './mail/mail.module';
 import Redis from 'ioredis';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot(),
-    RedisModule,
-    MailModule,
-    ThrottlerModule.forRootAsync({
-      imports: [RedisModule],
-      inject: [REDIS_CLIENT],
-      useFactory: (redis: Redis) => ({
-        throttlers: [{ ttl: 60000, limit: 10 }],
-        storage: new ThrottlerRedisStorage(redis),
-      }),
-    }),
-    PrismaModule,
-    AuthModule,
-  ],
-  controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+    imports: [
+        ConfigModule.forRoot(),
+        RedisModule,
+        MailModule,
+        ThrottlerModule.forRootAsync({
+            imports: [RedisModule],
+            inject: [REDIS_CLIENT],
+            useFactory: (redis: Redis) => ({
+                throttlers: [{ ttl: 60000, limit: 10 }],
+                storage: new ThrottlerRedisStorage(redis),
+            }),
+        }),
+        PrismaModule,
+        AuthModule,
+    ],
+    controllers: [AppController],
+    providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

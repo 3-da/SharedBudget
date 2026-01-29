@@ -1,14 +1,14 @@
-import {ForbiddenException, Inject, Injectable, UnauthorizedException} from '@nestjs/common';
-import {ConfigService} from '@nestjs/config';
-import {JwtService} from '@nestjs/jwt';
-import {PrismaService} from '../prisma/prisma.service';
-import {RegisterDto} from './dto/register.dto';
-import {LoginDto} from './dto/login.dto';
-import {AuthResponseDto} from './dto/auth-response.dto';
-import {MailService} from '../mail/mail.service';
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma/prisma.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { AuthResponseDto } from './dto/auth-response.dto';
+import { MailService } from '../mail/mail.service';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
-import {REDIS_CLIENT} from '../redis/redis.module';
+import { REDIS_CLIENT } from '../redis/redis.module';
 import Redis from 'ioredis';
 
 export interface MessageResponse {
@@ -32,10 +32,8 @@ export class AuthService {
     }
 
     async register(registerDto: RegisterDto): Promise<MessageResponse> {
-        const existingUser = await this.prismaService.user.findUnique({where: {email: registerDto.email}});
-
-        // Always return same message (don't reveal if email exists)
-        if (existingUser) return {message: "We've sent a verification code to your email."};
+        const existingUser = await this.prismaService.user.findUnique({ where: { email: registerDto.email } });
+        if (existingUser) return { message: "We've sent a verification code to your email." }; // Always return same message (don't reveal if email exists)
 
         const hashedPassword = await argon2.hash(registerDto.password);
 
@@ -50,33 +48,33 @@ export class AuthService {
         });
 
         await this.sendVerificationCode(registerDto.email);
-        return {message: "We've sent a verification code to your email."};
+        return { message: "We've sent a verification code to your email." };
     }
 
     async verifyCode(email: string, code: string): Promise<AuthResponseDto> {
         const storedCode = await this.redis.get(`verify:${email}`);
         if (!storedCode || storedCode !== code) throw new UnauthorizedException('Invalid or expired verification code.');
 
-        const user = await this.prismaService.user.findUnique({where: {email}});
+        const user = await this.prismaService.user.findUnique({ where: { email } });
         if (!user) throw new UnauthorizedException('Invalid or expired verification code.');
 
-        await this.prismaService.user.update({where: {id: user.id}, data: {emailVerified: true}});    // Mark as verified
-        await this.redis.del(`verify:${email}`);    // Delete the code
+        await this.prismaService.user.update({ where: { id: user.id }, data: { emailVerified: true } }); // Mark as verified
+        await this.redis.del(`verify:${email}`); // Delete the code
 
-        return this.generateTokens(user);   // Auto-login: return tokens
+        return this.generateTokens(user); // Auto-login: return tokens
     }
 
     async resendCode(email: string): Promise<MessageResponse> {
-        const user = await this.prismaService.user.findUnique({where: {email}});
-        if (!user || user.emailVerified) return {message: "If an account exists, we've sent a new code."}; // Always return same message (don't reveal if account exists)
+        const user = await this.prismaService.user.findUnique({ where: { email } });
+        if (!user || user.emailVerified) return { message: "If an account exists, we've sent a new code." }; // Always return same message (don't reveal if account exists)
 
         await this.sendVerificationCode(email);
 
-        return {message: "If an account exists, we've sent a new code."};
+        return { message: "If an account exists, we've sent a new code." };
     }
 
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-        const user = await this.prismaService.user.findUnique({where: {email: loginDto.email}});
+        const user = await this.prismaService.user.findUnique({ where: { email: loginDto.email } });
         if (!user) throw new UnauthorizedException('Incorrect email or password.');
 
         const isPasswordValid = await argon2.verify(user.password, loginDto.password);
@@ -92,12 +90,12 @@ export class AuthService {
 
         if (!userId) throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
 
-        const user = await this.prismaService.user.findUnique({where: {id: userId}});
+        const user = await this.prismaService.user.findUnique({ where: { id: userId } });
         if (!user) throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
 
-        await this.redis.del(`refresh:${refreshToken}`);    // Delete old refresh token
+        await this.redis.del(`refresh:${refreshToken}`); // Delete old refresh token
 
-        return this.generateTokens(user);   // Generate new tokens
+        return this.generateTokens(user); // Generate new tokens
     }
 
     async logout(refreshToken: string): Promise<void> {
@@ -108,17 +106,11 @@ export class AuthService {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
 
         await this.redis.set(`verify:${email}`, code, 'EX', this.verificationCodeTTL);
-
         await this.mailService.sendVerificationCode(email, code);
     }
 
-    private async generateTokens(user: {
-        id: string;
-        email: string;
-        firstName: string;
-        lastName: string;
-    }): Promise<AuthResponseDto> {
-        const accessToken = this.jwtService.sign({sub: user.id, email: user.email});
+    private async generateTokens(user: { id: string; email: string; firstName: string; lastName: string }): Promise<AuthResponseDto> {
+        const accessToken = this.jwtService.sign({ sub: user.id, email: user.email });
         const refreshToken = crypto.randomBytes(32).toString('hex');
 
         // Store refresh token in Redis with user ID

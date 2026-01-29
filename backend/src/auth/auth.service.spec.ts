@@ -1,15 +1,15 @@
-import {beforeEach, describe, expect, it, Mock, vi} from 'vitest';
-import {Test, TestingModule} from '@nestjs/testing';
-import {ForbiddenException, UnauthorizedException} from '@nestjs/common';
-import {JwtService} from '@nestjs/jwt';
-import {ConfigService} from '@nestjs/config';
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
+import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
-import {AuthService} from './auth.service';
-import {PrismaService} from '../prisma/prisma.service';
-import {MailService} from '../mail/mail.service';
-import {RegisterDto} from './dto/register.dto';
-import {LoginDto} from './dto/login.dto';
-import {REDIS_CLIENT} from '../redis/redis.module';
+import { AuthService } from './auth.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { REDIS_CLIENT } from '../redis/redis.module';
 
 vi.mock('argon2', () => ({
     hash: vi.fn(),

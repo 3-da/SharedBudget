@@ -1,4 +1,4 @@
-import {ThrottlerStorage} from '@nestjs/throttler';
+import { ThrottlerStorage } from '@nestjs/throttler';
 import Redis from 'ioredis';
 
 interface ThrottlerResponse {
@@ -9,8 +9,7 @@ interface ThrottlerResponse {
 }
 
 export class ThrottlerRedisStorage implements ThrottlerStorage {
-    constructor(private readonly redis: Redis) {
-    }
+    constructor(private readonly redis: Redis) {}
 
     async increment(key: string, ttl: number, limit: number, blockDuration: number, _throttlerName: string): Promise<ThrottlerResponse> {
         const blockKey = `${key}:blocked`;

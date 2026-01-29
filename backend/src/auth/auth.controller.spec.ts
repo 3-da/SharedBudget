@@ -1,13 +1,13 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {Test, TestingModule} from '@nestjs/testing';
-import {AuthController} from './auth.controller';
-import {AuthService} from './auth.service';
-import {RegisterDto} from './dto/register.dto';
-import {LoginDto} from './dto/login.dto';
-import {RefreshDto} from './dto/refresh.dto';
-import {VerifyCodeDto} from './dto/verify-code.dto';
-import {ResendCodeDto} from './dto/resend-code.dto';
-import {AuthResponseDto} from './dto/auth-response.dto';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
+import { VerifyCodeDto } from './dto/verify-code.dto';
+import { ResendCodeDto } from './dto/resend-code.dto';
+import { AuthResponseDto } from './dto/auth-response.dto';
 
 describe('AuthController', () => {
     let controller: AuthController;
@@ -25,20 +25,20 @@ describe('AuthController', () => {
     };
 
     const mockAuthService = {
-        register: vi.fn(() => Promise.resolve({message: "We've sent a verification code to your email."})),
+        register: vi.fn(() => Promise.resolve({ message: "We've sent a verification code to your email." })),
         verifyCode: vi.fn(() => Promise.resolve(mockAuthResponse)),
-        resendCode: vi.fn(() => Promise.resolve({message: "If an account exists, we've sent a new code."})),
+        resendCode: vi.fn(() => Promise.resolve({ message: "If an account exists, we've sent a new code." })),
         login: vi.fn(() => Promise.resolve(mockAuthResponse)),
         refresh: vi.fn(() => Promise.resolve(mockAuthResponse)),
         logout: vi.fn(() => Promise.resolve()),
     };
 
-    const refreshDto: RefreshDto = {refreshToken: 'mock-refresh-token'};
+    const refreshDto: RefreshDto = { refreshToken: 'mock-refresh-token' };
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             controllers: [AuthController],
-            providers: [{provide: AuthService, useValue: mockAuthService}],
+            providers: [{ provide: AuthService, useValue: mockAuthService }],
         }).compile();
 
         controller = module.get<AuthController>(AuthController);
@@ -65,7 +65,7 @@ describe('AuthController', () => {
     });
 
     describe('verifyCode', () => {
-        const verifyCodeDto: VerifyCodeDto = {email: 'test@example.com', code: '123456'};
+        const verifyCodeDto: VerifyCodeDto = { email: 'test@example.com', code: '123456' };
 
         it('should call authService.verifyCode and return tokens', async () => {
             const result = await controller.verifyCode(verifyCodeDto);
@@ -77,7 +77,7 @@ describe('AuthController', () => {
     });
 
     describe('resendCode', () => {
-        const resendCodeDto: ResendCodeDto = {email: 'test@example.com'};
+        const resendCodeDto: ResendCodeDto = { email: 'test@example.com' };
 
         it('should call authService.resendCode and return message', async () => {
             const result = await controller.resendCode(resendCodeDto);
@@ -89,7 +89,7 @@ describe('AuthController', () => {
     });
 
     describe('login', () => {
-        const loginDto: LoginDto = {email: 'test@example.com', password: 'password123'};
+        const loginDto: LoginDto = { email: 'test@example.com', password: 'password123' };
 
         it('should call authService.login and return tokens', async () => {
             const result = await controller.login(loginDto);
@@ -116,7 +116,7 @@ describe('AuthController', () => {
 
             expect(authService.logout).toHaveBeenCalledWith(refreshDto.refreshToken);
             expect(authService.logout).toHaveBeenCalledTimes(1);
-            expect(result).toEqual({message: 'Logged out successfully.'});
+            expect(result).toEqual({ message: 'Logged out successfully.' });
         });
     });
 });
