@@ -14,12 +14,14 @@ datasource db {
 // Generates: Entity classes, CreateDto, UpdateDto
 // with class-validator decorators + Swagger annotations
 // Install first: npm install prisma-generator-nestjs-dto
+// Prisma generators are great at creating DTOs that mirror your data model (CRUD shapes).
+// But your API often needs custom action DTOs and response DTOs
 // -------------------------------------------------
 
 generator nestjsDto {
   provider                        = "prisma-generator-nestjs-dto"
   output                          = "./generated/dto"
-  prismaClientImportPath          = "./client"
+  prismaClientImportPath          = "@prisma/client"
   outputToNestJsResourceStructure = "true"
   flatResourceStructure           = "true"
   exportRelationModifierClasses   = "true"
@@ -45,7 +47,6 @@ generator nestjsDto {
 // Type Generator for React Frontend
 // Generates: Plain TypeScript interfaces (no decorators)
 // Zero backend dependencies — safe for browser bundle
-// Install first: npm install prisma-generator-nestjs-dto
 // -------------------------------------------------
 // generator reactTypes {
 //   provider                        = "prisma-generator-nestjs-dto"
