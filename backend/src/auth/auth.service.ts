@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,8 +17,11 @@ export interface MessageResponse {
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     private readonly refreshTokenTTL: number;
     private readonly verificationCodeTTL: number;
+    private readonly resetTokenTTL: number;
 
     constructor(
         private prismaService: PrismaService,
@@ -29,11 +32,17 @@ export class AuthService {
     ) {
         this.verificationCodeTTL = this.configService.get<number>('AUTH_VERIFICATION_CODE_TTL', 600);
         this.refreshTokenTTL = this.configService.get<number>('AUTH_REFRESH_TOKEN_TTL', 604800);
+        this.resetTokenTTL = this.configService.get<number>('AUTH_RESET_TOKEN_TTL', 3600);
     }
 
     async register(registerDto: RegisterDto): Promise<MessageResponse> {
+        this.logger.log(`Registration attempt: ${registerDto.email}`);
+
         const existingUser = await this.prismaService.user.findUnique({ where: { email: registerDto.email } });
-        if (existingUser) return { message: "We've sent a verification code to your email." }; // Always return same message (don't reveal if email exists)
+        if (existingUser) {
+            this.logger.warn(`Registration attempt for existing email: ${registerDto.email}`);
+            return { message: "We've sent a verification code to your email." };
+        }
 
         const hashedPassword = await argon2.hash(registerDto.password);
 
@@ -48,58 +57,150 @@ export class AuthService {
         });
 
         await this.sendVerificationCode(registerDto.email);
+        this.logger.log(`User registered successfully: ${registerDto.email}`);
         return { message: "We've sent a verification code to your email." };
     }
 
+    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+        this.logger.log(`Login attempt for email: ${loginDto.email}`);
+
+        const user = await this.prismaService.user.findUnique({ where: { email: loginDto.email } });
+        if (!user) {
+            this.logger.warn(`Failed login attempt for email: ${loginDto.email}`);
+            throw new UnauthorizedException('Incorrect email or password.');
+        }
+
+        const isPasswordValid = await argon2.verify(user.password, loginDto.password);
+        if (!isPasswordValid) {
+            this.logger.warn(`Failed login attempt for email: ${loginDto.email}`);
+            throw new UnauthorizedException('Incorrect email or password.');
+        }
+
+        // Check if email is verified
+        if (!user.emailVerified) {
+            this.logger.warn(`Failed login attempt for email: ${loginDto.email}`);
+            throw new ForbiddenException('Please verify your email first. Check your inbox for the verification code.');
+        }
+
+        this.logger.log(`User logged in successfully: ${user.id}`);
+        return this.generateTokens(user);
+    }
+
     async verifyCode(email: string, code: string): Promise<AuthResponseDto> {
+        this.logger.log(`Email verification attempt: ${email}`);
+
         const storedCode = await this.redis.get(`verify:${email}`);
-        if (!storedCode || storedCode !== code) throw new UnauthorizedException('Invalid or expired verification code.');
+        if (!storedCode || storedCode !== code) {
+            this.logger.warn(`Invalid verification code for: ${email}`);
+            throw new UnauthorizedException('Invalid or expired verification code.');
+        }
 
         const user = await this.prismaService.user.findUnique({ where: { email } });
-        if (!user) throw new UnauthorizedException('Invalid or expired verification code.');
+        if (!user) {
+            this.logger.warn(`Invalid verification code for: ${email}`);
+            throw new UnauthorizedException('Invalid or expired verification code.');
+        }
 
-        await this.prismaService.user.update({ where: { id: user.id }, data: { emailVerified: true } }); // Mark as verified
+        // Mark as verified
+        await this.prismaService.user.update({ where: { id: user.id }, data: { emailVerified: true } });
         await this.redis.del(`verify:${email}`); // Delete the code
 
+        this.logger.log(`Email verified successfully: ${email}`);
         return this.generateTokens(user); // Auto-login: return tokens
     }
 
     async resendCode(email: string): Promise<MessageResponse> {
+        this.logger.log(`Resend verification code requested: ${email}`);
+
         const user = await this.prismaService.user.findUnique({ where: { email } });
-        if (!user || user.emailVerified) return { message: "If an account exists, we've sent a new code." }; // Always return same message (don't reveal if account exists)
+        if (!user || user.emailVerified) {
+            this.logger.debug(`Resend code skipped (user not found or already verified): ${email}`);
+            return { message: "If an account exists, we've sent a new code." };
+        }
 
         await this.sendVerificationCode(email);
 
+        this.logger.log(`Verification code resent: ${email}`);
         return { message: "If an account exists, we've sent a new code." };
-    }
-
-    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-        const user = await this.prismaService.user.findUnique({ where: { email: loginDto.email } });
-        if (!user) throw new UnauthorizedException('Incorrect email or password.');
-
-        const isPasswordValid = await argon2.verify(user.password, loginDto.password);
-        if (!isPasswordValid) throw new UnauthorizedException('Incorrect email or password.');
-
-        if (!user.emailVerified) throw new ForbiddenException('Please verify your email first. Check your inbox for the verification code.'); // Check if email is verified
-
-        return this.generateTokens(user);
     }
 
     async refresh(refreshToken: string): Promise<AuthResponseDto> {
         const userId = await this.redis.get(`refresh:${refreshToken}`);
 
-        if (!userId) throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
+        if (!userId) {
+            this.logger.warn(`Invalid refresh token attempt`);
+            throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
+        }
 
         const user = await this.prismaService.user.findUnique({ where: { id: userId } });
-        if (!user) throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
+        if (!user) {
+            this.logger.warn(`Invalid refresh token attempt`);
+            throw new UnauthorizedException('Invalid or expired session. Please sign in again.');
+        }
 
-        await this.redis.del(`refresh:${refreshToken}`); // Delete old refresh token
+        // Delete old refresh token and remove from session set
+        await this.redis.del(`refresh:${refreshToken}`);
+        await this.redis.srem(`user_sessions:${userId}`, refreshToken);
 
-        return this.generateTokens(user); // Generate new tokens
+        this.logger.debug(`Token refreshed for user: ${userId}`);
+        return this.generateTokens(user);
     }
 
     async logout(refreshToken: string): Promise<void> {
+        const userId = await this.redis.get(`refresh:${refreshToken}`);
+
         await this.redis.del(`refresh:${refreshToken}`);
+
+        if (userId) {
+            await this.redis.srem(`user_sessions:${userId}`, refreshToken);
+            this.logger.log(`User logged out: ${userId}`);
+        }
+    }
+
+    async forgotPassword(email: string): Promise<MessageResponse> {
+        this.logger.log(`Password reset requested for email: ${email}`);
+        const user = await this.prismaService.user.findUnique({ where: { email } });
+
+        // Always return same message (don't reveal if email exists)
+        if (!user) {
+            this.logger.debug(`Password reset for non-existent email: ${email}`);
+            return { message: "If an account exists, we've sent a password reset link." };
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+
+        // Store token in Redis: reset:{token} -> userId
+        await this.redis.set(`reset:${token}`, user.id, 'EX', this.resetTokenTTL);
+
+        await this.mailService.sendPasswordResetLink(email, token);
+        this.logger.log(`Password reset email sent: ${email}`);
+        return { message: "If an account exists, we've sent a password reset link." };
+    }
+
+    async resetPassword(token: string, newPassword: string): Promise<MessageResponse> {
+        const userId = await this.redis.get(`reset:${token}`);
+
+        if (!userId) {
+            this.logger.warn(`Invalid password reset attempt with token`);
+            throw new UnauthorizedException('Invalid or expired reset token.');
+        }
+
+        const hashedPassword = await argon2.hash(newPassword);
+
+        await this.prismaService.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword },
+        });
+
+        // Delete the used reset token
+        await this.redis.del(`reset:${token}`);
+
+        // Invalidate all existing sessions for security
+        const invalidatedCount = await this.invalidateAllSessions(userId);
+
+        this.logger.log(`Password reset for user: ${userId}, invalidated ${invalidatedCount} sessions`);
+
+        return { message: 'Password reset successfully. You can now log in with your new password.' };
     }
 
     private async sendVerificationCode(email: string): Promise<void> {
@@ -116,6 +217,11 @@ export class AuthService {
         // Store refresh token in Redis with user ID
         await this.redis.set(`refresh:${refreshToken}`, user.id, 'EX', this.refreshTokenTTL);
 
+        // Track token in user's session set (for "logout all devices")
+        await this.redis.sadd(`user_sessions:${user.id}`, refreshToken);
+
+        this.logger.debug(`Token generated for user: ${user.id}`);
+
         return {
             accessToken,
             refreshToken,
@@ -126,5 +232,24 @@ export class AuthService {
                 lastName: user.lastName,
             },
         };
+    }
+
+    private async invalidateAllSessions(userId: string): Promise<number> {
+        const tokens = await this.redis.smembers(`user_sessions:${userId}`);
+
+        if (tokens.length === 0) return 0;
+
+        // Delete all refresh tokens
+        const pipeline = this.redis.pipeline();
+        for (const token of tokens) {
+            pipeline.del(`refresh:${token}`);
+        }
+        // Delete the session set itself
+        pipeline.del(`user_sessions:${userId}`);
+
+        await pipeline.exec();
+
+        this.logger.log(`Invalidated ${tokens.length} sessions for user: ${userId}`);
+        return tokens.length;
     }
 }

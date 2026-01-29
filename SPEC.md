@@ -1,75 +1,17 @@
-# Household Budget Tracker - Comprehensive Specification
+# Household Budget Tracker — Feature Specification
 
-**Document Version:** 2.0
+**Document Version:** 2.1
 **Created:** January 28, 2026
-**Updated:** January 28, 2026 (Complete redesign with user auth, households & approval workflows)
+**Updated:** January 29, 2026 (Split from original spec — architecture moved to ARCHITECTURE.md)
 **Project Status:** Ready for Development
-**Target Audience:** Claude Coder / Development Team
+
+> **Related docs:**
+> - `ARCHITECTURE.md` — Tech stack, data model, infrastructure, caching, Docker, CI/CD
+> - `CLAUDE.md` — Development process rules for Claude Code
 
 ---
 
-## 🎯 Technology Stack (Verified Latest Versions - January 28, 2026)
-
-### Frontend
-- **Framework:** React 19.2.4 ✅ (latest stable, released January 26, 2026)
-- **Build Tool:** Vite 7.x (7.3.1 latest stable)
-- **Language:** TypeScript 5.9.x (strict mode)
-- **Styling:** TailwindCSS 4.1.x ✅ (4.1.18 latest stable)
-- **UI Components:** Shadcn/UI (latest, with Base UI support - January 2026)
-- **State Management:** React Hooks + Context API (simple, no Redux needed)
-- **HTTP Client:** axios 1.7.x with interceptors (JWT token handling)
-- **Form Handling:** React Hook Form 7.x + Zod validation
-- **Date Handling:** date-fns 4.x (monthly/yearly expense tracking)
-- **Development:** Vite 7 dev server with HMR
-
-### Backend
-- **Runtime:** Node.js 24.13.0 LTS (latest LTS, released October 2025, support until April 2028)
-- **Framework:** NestJS 11.1.x ✅ (11.1.12 latest stable)
-- **Language:** TypeScript 5.9.x (strict mode)
-- **Database ORM:** Prisma 7.2.x ✅ (7.2.0 latest stable - **RUST-FREE, rewritten in TypeScript, FASTER!**)
-- **API Documentation:** Swagger/OpenAPI (@nestjs/swagger)
-- **Validation:** class-validator + class-transformer
-- **Caching:** Redis 7.2.x with ioredis client
-- **Authentication:** JWT with @nestjs/jwt + @nestjs/passport + argon2 for password hashing
-- **Environment Variables:** dotenv for configuration
-- **Logging:** @nestjs/common built-in logger (expandable to Winston)
-- **Testing:** Jest 30.x (unit + integration tests)
-
-### Database
-- **Primary:** PostgreSQL 18.1 ✅ (latest stable, released November 13, 2025)
-- **ORM:** Prisma 7.2.x with Prisma Client
-- **Migrations:** Prisma migrations (version controlled)
-- **Connection Pooling:** Prisma connection management (or PgBouncer for production)
-- **Seeding:** Prisma seed script for dev data
-
-### Caching
-- **Cache Layer:** Redis 7.2.x (latest stable)
-- **Client Library:** ioredis 5.x (connection pooling, retry logic)
-- **TTL Strategy:**
-  - User sessions: 7 days (refresh tokens)
-  - Salaries: 5 minutes
-  - Summary calculations: 2 minutes
-  - Expense lists: 1 minute
-  - Settlement data: 2 minutes
-
-### DevOps & Deployment
-- **Containerization:** Docker 27.x + Docker Compose
-- **Container Registry:** Docker Hub / GitHub Container Registry
-- **CI/CD:** GitHub Actions
-- **Code Quality:** ESLint + Prettier
-- **Testing Coverage:** Jest with coverage reports
-- **Database Migrations:** Automated via Prisma in CI/CD
-
-### Development Tools
-- **IDE:** WebStorm 2024.x or IntelliJ IDEA Ultimate 2024.x
-- **Version Control:** Git + GitHub
-- **Package Manager:** npm 11.x (or yarn/pnpm)
-- **API Testing:** REST Client extension / Thunder Client
-- **Database Client:** DataGrip or pgAdmin
-
----
-
-## 💡 Core Concepts
+## Core Concepts
 
 ### Users
 Every person using the app has their own account with email/password authentication. Each user has their own salary and personal expenses that only they can manage.
@@ -101,107 +43,7 @@ The system automatically calculates who owes whom based on shared expenses. Each
 
 ---
 
-## 🗄️ Data Model (Prisma Schema Overview)
-
-### User
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| email | String | Unique, used for login |
-| password | String | Argon2id hashed |
-| firstName | String | Display name |
-| lastName | String | Display name |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
-| deletedAt | DateTime? | Null = active. Non-null = soft-deleted (account deactivation) |
-
-### Household
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| name | String | e.g., "The Smiths" |
-| inviteCode | String | Unique 8-char code for joining |
-| maxMembers | Int | Default 2 (Phase 1) |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
-
-### HouseholdMember
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| userId | UUID | FK → User |
-| householdId | UUID | FK → Household |
-| role | Enum | OWNER or MEMBER |
-| joinedAt | DateTime | When user joined |
-
-**Constraints:** Unique on (userId, householdId). A user can belong to only one household.
-
-### Salary
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| userId | UUID | FK → User |
-| householdId | UUID | FK → Household |
-| defaultAmount | Decimal | Baseline monthly salary |
-| currentAmount | Decimal | Actual salary this month |
-| month | Int | 1-12 |
-| year | Int | e.g., 2026 |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
-
-**Constraints:** Unique on (userId, month, year). Each user has one salary record per month.
-
-### Expense
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| householdId | UUID | FK → Household |
-| createdById | UUID | FK → User (who created it) |
-| name | String | Max 100 chars |
-| amount | Decimal | Total amount in EUR |
-| type | Enum | PERSONAL or SHARED |
-| category | Enum | RECURRING or ONE_TIME |
-| frequency | Enum | MONTHLY or YEARLY |
-| yearlyPaymentStrategy | Enum? | FULL or INSTALLMENTS (null if monthly) |
-| installmentCount | Int? | 1, 2, 4, or 12 (null if monthly or FULL) |
-| paymentMonth | Int? | 1-12, which month to pay in full (null if not FULL) |
-| paidByUserId | UUID? | FK → User. Null = split among members |
-| deletedAt | DateTime? | Null = active. Non-null = soft-deleted (with timestamp) |
-| month | Int? | For ONE_TIME expenses: which month |
-| year | Int? | For ONE_TIME expenses: which year |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
-
-**Notes:**
-- Personal expenses: `createdById` is the owner, only they can manage it
-- Shared expenses: any household member can propose changes (goes through approval)
-- ONE_TIME expenses have month/year to scope them; RECURRING expenses repeat every month
-- `paidByUserId = null` means the cost is split equally among household members
-- `paidByUserId = <userId>` means that specific person pays the full amount
-
-### ExpenseApproval
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| expenseId | UUID? | FK → Expense (null for CREATE actions before expense exists) |
-| householdId | UUID | FK → Household |
-| action | Enum | CREATE, UPDATE, or DELETE |
-| status | Enum | PENDING, ACCEPTED, or REJECTED |
-| requestedById | UUID | FK → User (who proposed the change) |
-| reviewedById | UUID? | FK → User (who reviewed) |
-| message | String? | Reviewer's comment (e.g., "Too expensive this month") |
-| proposedData | JSON? | For CREATE/UPDATE: the full proposed expense data |
-| createdAt | DateTime | Auto-generated |
-| reviewedAt | DateTime? | When review happened |
-
-**Workflow:**
-- CREATE: `proposedData` holds the full new expense. On accept → expense is created (with `deletedAt = null`).
-- UPDATE: `proposedData` holds the changed fields. On accept → expense is updated.
-- DELETE: No `proposedData` needed. On accept → expense is soft-deleted (`deletedAt` set to current timestamp).
-
----
-
-## 🏗️ Complete Feature Specification
+## Feature Specification
 
 ### 1. Authentication & User Management
 - **Registration:** Email + password + first name + last name
@@ -232,18 +74,9 @@ When a user registers, their account is created but marked as **unverified**. Th
 5. Backend sends email: "Your verification code is: 847293"
 6. Frontend shows code input screen: "Enter the 6-digit code we sent to {email}"
 7. User enters code → Frontend calls `POST /api/v1/auth/verify-code`
-8. Backend validates:
-   - Code exists in Redis for this email
-   - Code matches
-   - Code not expired
-9. On success:
-   - Set `emailVerified: true` in database
-   - Delete code from Redis
-   - Generate and return access + refresh tokens (auto-login)
-   - Frontend redirects to dashboard
-10. On failure:
-    - Return error: "Invalid or expired code"
-    - User can request new code
+8. Backend validates: code exists in Redis, code matches, code not expired
+9. On success: Set `emailVerified: true`, delete code from Redis, return tokens (auto-login)
+10. On failure: Return error "Invalid or expired code", user can request new code
 
 **Resend Code:**
 - Endpoint: `POST /api/v1/auth/resend-code`
@@ -255,31 +88,13 @@ When a user registers, their account is created but marked as **unverified**. Th
 
 **Login Restriction:**
 - Login checks `emailVerified` field
-- If `false`: returns 403 with message:
-  `"Please verify your email first. Check your inbox for the verification code."`
+- If `false`: returns 403 with message: `"Please verify your email first. Check your inbox for the verification code."`
 
 **Code Specifications:**
 - Length: 6 digits (000000-999999)
 - TTL: 10 minutes
 - Storage: Redis (key: `verify:{email}`)
 - Rate limit: Max 5 verification attempts per code
-
-**Database Changes (User model):**
-| Field | Type | Notes |
-|-------|------|-------|
-| emailVerified | Boolean | Default `false`, set to `true` after successful verification |
-
-**API Endpoints:**
-```
-POST /api/v1/auth/verify-code   - Verify email with code → { email, code } → Returns tokens
-POST /api/v1/auth/resend-code   - Resend verification code → { email }
-```
-
-**Security Considerations:**
-- Codes expire after 10 minutes
-- Rate limiting prevents brute force (5 attempts per code, 3 resends per 10 min)
-- Same response message regardless of email existence
-- Code is deleted after successful verification (single-use)
 
 ### 2. Household Management
 - **Create Household:** During registration or post-registration
@@ -313,7 +128,7 @@ POST /api/v1/auth/resend-code   - Resend verification code → { email }
   - Amount (decimal €, non-negative)
   - Category: RECURRING or ONE_TIME
   - Frequency: MONTHLY or YEARLY
-  - If YEARLY: payment strategy (FULL or INSTALLMENTS) + details (see below)
+  - If YEARLY: payment strategy (FULL or INSTALLMENTS) + details
 - **Examples:** Gym membership, hairstyling, personal subscriptions, car expenses
 
 ### 5. Shared Expense Management (with Approval Workflow)
@@ -402,7 +217,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 
 ---
 
-## 👥 User Stories (12 Total)
+## User Stories (12 Total)
 
 ### User Story 1: Registration & Household Setup
 **As a** new user
@@ -574,7 +389,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 
 ---
 
-## 🔌 API Endpoints (34 Total)
+## API Endpoints (34 Total)
 
 ### Authentication Endpoints (6)
 ```
@@ -646,166 +461,7 @@ POST   /api/v1/dashboard/settlement/mark-paid - Mark current month's settlement 
 
 ---
 
-## 🐳 Docker & Containerization
-
-### Services in docker-compose.yml
-1. **PostgreSQL 18.1** (port 5432, alpine)
-2. **Redis 7.2** (port 6379, alpine)
-3. **Backend API - NestJS 11** (port 3000)
-4. **Frontend - React 19 + Vite 7** (port 5173 dev, 3001 prod)
-
-### Docker Images
-- Frontend: node:24-alpine → build → nginx (production)
-- Backend: node:24-alpine
-- Database: postgres:18-alpine
-- Cache: redis:7-alpine
-
----
-
-## 🚀 CI/CD with GitHub Actions
-
-### Workflows (5 Total)
-1. **test.yml** - Lint, format, type-check, unit/integration tests on every PR
-2. **docker-build.yml** - Build and push Docker images
-3. **database-migration.yml** - Validate Prisma migrations
-4. **deploy.yml** - Deploy to staging (future)
-5. **code-quality.yml** - SonarQube, security scanning, dependency checks
-
-### Test Execution
-- Backend tests: Jest 30.x with PostgreSQL 18 + Redis 7
-- Frontend tests: Jest 30.x with React 19.2
-- Coverage targets: Backend >80%, Frontend >75%
-
----
-
-## 🧪 Testing Strategy
-
-### Unit Tests
-- Backend: Auth logic, expense calculations, salary validation, settlement logic, approval workflow state machine
-- Frontend: Component rendering, form validation, currency formatting, auth context
-
-### Integration Tests
-- API endpoints with real PostgreSQL 18 database
-- Auth flow: register → login → refresh → access protected endpoint
-- Approval workflow: propose → accept/reject → verify expense state
-- Prisma 7 migrations
-- Redis cache invalidation
-- Multi-expense settlement calculations
-
-### Test Coverage Targets
-- Backend: >80% coverage
-- Frontend: >75% coverage
-- Critical paths (auth, approvals, settlement): 100% coverage
-
----
-
-## 📈 Performance Targets
-
-### Frontend (React 19 + Vite 7 + TailwindCSS 4.1)
-- Lighthouse Score: >90
-- First Contentful Paint (FCP): <1.5s
-- Largest Contentful Paint (LCP): <2.5s
-- Time to Interactive: <2s
-- Bundle Size: <250KB (gzipped)
-
-### Backend (NestJS 11 + Prisma 7)
-- API response time (cached): <50ms
-- API response time (uncached): <200ms
-- Database query time: <100ms (Prisma 7 is 3x faster with Rust-free architecture)
-- 99th percentile latency: <500ms
-
-### Database (PostgreSQL 18.1)
-- Query execution: <100ms for all operations
-- Connection pooling: 20-30 connections
-- Indexes on: userId, householdId, (userId + month + year), (householdId + type), (householdId + status)
-
----
-
-## 📋 Development Phases
-
-### Phase 1: Core MVP (Current Focus)
-- ✅ Max 2 users per household (couple)
-- ✅ User registration + login with JWT
-- ✅ Household create/join with invite code
-- ✅ Personal + shared expenses with full CRUD
-- ✅ Approval workflow for shared expenses
-- ✅ Monthly + yearly expense support with payment options
-- ✅ Settlement calculation (50/50 or assigned)
-- ✅ Financial dashboard with savings overview
-- ✅ Redis caching
-- ✅ Docker setup for all services
-
-### Phase 2: Multi-Member Households (Future)
-- 🔮 Support N members per household (roommates, family)
-- 🔮 Custom split ratios (e.g., 60/40, proportional to income)
-- 🔮 Role-based permissions (admin, member, viewer)
-- 🔮 Expense categories and tags
-- 🔮 Monthly/yearly reports and charts
-- 🔮 Export to CSV/PDF
-- 🔮 Push notifications for approvals
-- 🔮 Multi-household support (user in multiple households)
-
----
-
-## ✅ Checklist for Development Completion
-
-### Backend Setup
-- [ ] NestJS 11.1.x project initialized
-- [ ] PostgreSQL 18.1 configured with docker-compose
-- [ ] Prisma 7.2.x schema created with all 6 models
-- [ ] Prisma migrations run and seed data created
-- [ ] Redis 7.2 configured for caching + session storage
-- [ ] JWT authentication module (register, login, refresh, logout)
-- [ ] Auth guards on all protected endpoints
-- [ ] User module (profile, password change)
-- [ ] Household module (create, join, view members, regenerate code)
-- [ ] Salary module (CRUD per user, household view)
-- [ ] Personal expense module (CRUD with ownership enforcement)
-- [ ] Shared expense module (proposals → approval workflow)
-- [ ] Approval module (list, accept, reject, history)
-- [ ] Dashboard module (summary, savings, settlement)
-- [ ] 32 API endpoints implemented
-- [ ] Input validation with class-validator
-- [ ] Error handling standardized
-- [ ] Unit tests written (>80% coverage with Jest 30)
-- [ ] Integration tests written (auth flow, approval flow)
-- [ ] Swagger/OpenAPI documentation generated
-
-### Frontend Setup
-- [ ] React 19.2.4 + Vite 7 project initialized
-- [ ] TypeScript 5.9.x configured (strict mode)
-- [ ] TailwindCSS 4.1.x configured
-- [ ] Shadcn/UI components set up
-- [ ] Auth pages: Login, Register (with create/join household flow)
-- [ ] Dashboard page with summary cards
-- [ ] My Expenses page (personal expense management)
-- [ ] Shared Expenses page (proposals + active shared expenses)
-- [ ] Approvals page (pending + history)
-- [ ] Salary page (my salary + household view)
-- [ ] Settings page (profile, household info, invite code)
-- [ ] Auth context with JWT token management
-- [ ] Axios interceptor for auto-refresh
-- [ ] Protected route wrapper
-- [ ] Form validation with React Hook Form + Zod
-- [ ] Responsive design (mobile-first)
-- [ ] Unit tests written (>75% coverage)
-- [ ] Performance optimized (Lighthouse >90)
-
-### DevOps & Deployment
-- [ ] Docker 27 images for frontend and backend
-- [ ] docker-compose.yml for local development (all 4 services)
-- [ ] GitHub Actions workflows (5 total)
-- [ ] Database migrations automated (Prisma 7)
-- [ ] Code quality checks in CI/CD
-- [ ] Security scanning (npm audit, Snyk)
-
----
-
-**Document Status:** ✅ COMPLETE REDESIGN v2.0
-**Ready for Development:** YES
-**Stack:** React 19.2.4 + Vite 7.3.1 + NestJS 11.1.12 + Prisma 7.2.0 + PostgreSQL 18.1 + Redis 7.2 + Node.js 24 LTS + TypeScript 5.9.x
+**Document Status:** ✅ Feature Specification v2.1
 **Phase 1 Focus:** 2-person household (couple), full auth, expenses with approval workflow
 
----
-
-*Document redesigned January 28, 2026. Previous v1.3 spec had no user system, no households, no approval workflow — completely replaced.*
+*Split from original spec on January 29, 2026. Technical architecture moved to ARCHITECTURE.md.*

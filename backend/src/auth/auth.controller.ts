@@ -7,7 +7,18 @@ import { RefreshDto } from './dto/refresh.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResendCodeDto } from './dto/resend-code.dto';
 import { AuthResponseDto, MessageResponseDto } from './dto/auth-response.dto';
-import { RegisterEndpoint, VerifyCodeEndpoint, ResendCodeEndpoint, LoginEndpoint, RefreshEndpoint, LogoutEndpoint } from './decorators/api-auth.decorators';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import {
+    ForgotPasswordEndpoint,
+    LoginEndpoint,
+    LogoutEndpoint,
+    RefreshEndpoint,
+    RegisterEndpoint,
+    ResendCodeEndpoint,
+    ResetPasswordEndpoint,
+    VerifyCodeEndpoint,
+} from './decorators/api-auth.decorators';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -43,5 +54,15 @@ export class AuthController {
     async logout(@Body() refreshDto: RefreshDto): Promise<MessageResponseDto> {
         await this.authService.logout(refreshDto.refreshToken);
         return { message: 'Logged out successfully.' };
+    }
+
+    @ForgotPasswordEndpoint()
+    async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto): Promise<MessageResponseDto> {
+        return this.authService.forgotPassword(forgotPasswordDto.email);
+    }
+
+    @ResetPasswordEndpoint()
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<MessageResponseDto> {
+        return this.authService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
     }
 }

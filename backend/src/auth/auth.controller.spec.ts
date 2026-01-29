@@ -8,6 +8,8 @@ import { RefreshDto } from './dto/refresh.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResendCodeDto } from './dto/resend-code.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 describe('AuthController', () => {
     let controller: AuthController;
@@ -31,6 +33,8 @@ describe('AuthController', () => {
         login: vi.fn(() => Promise.resolve(mockAuthResponse)),
         refresh: vi.fn(() => Promise.resolve(mockAuthResponse)),
         logout: vi.fn(() => Promise.resolve()),
+        forgotPassword: vi.fn(() => Promise.resolve({ message: "If an account exists, we've sent a password reset link." })),
+        resetPassword: vi.fn(() => Promise.resolve({ message: 'Password reset successfully. You can now log in with your new password.' })),
     };
 
     const refreshDto: RefreshDto = { refreshToken: 'mock-refresh-token' };
@@ -117,6 +121,30 @@ describe('AuthController', () => {
             expect(authService.logout).toHaveBeenCalledWith(refreshDto.refreshToken);
             expect(authService.logout).toHaveBeenCalledTimes(1);
             expect(result).toEqual({ message: 'Logged out successfully.' });
+        });
+    });
+
+    describe('forgotPassword', () => {
+        const forgotPasswordDto: ForgotPasswordDto = { email: 'test@example.com' };
+
+        it('should call authService.forgotPassword and return message', async () => {
+            const result = await controller.forgotPassword(forgotPasswordDto);
+
+            expect(authService.forgotPassword).toHaveBeenCalledWith(forgotPasswordDto.email);
+            expect(authService.forgotPassword).toHaveBeenCalledTimes(1);
+            expect(result.message).toBe("If an account exists, we've sent a password reset link.");
+        });
+    });
+
+    describe('resetPassword', () => {
+        const resetPasswordDto: ResetPasswordDto = { token: 'valid-reset-token', newPassword: 'newPassword123' };
+
+        it('should call authService.resetPassword and return message', async () => {
+            const result = await controller.resetPassword(resetPasswordDto);
+
+            expect(authService.resetPassword).toHaveBeenCalledWith(resetPasswordDto.token, resetPasswordDto.newPassword);
+            expect(authService.resetPassword).toHaveBeenCalledTimes(1);
+            expect(result.message).toBe('Password reset successfully. You can now log in with your new password.');
         });
     });
 });

@@ -90,3 +90,32 @@ export function LogoutEndpoint() {
         HttpCode(HttpStatus.OK),
     );
 }
+
+export function ForgotPasswordEndpoint() {
+    return applyDecorators(
+        Post('forgot-password'),
+        ApiOperation({
+            summary: 'Request password reset',
+            description: 'Sends a password reset link to the email address if an account exists.',
+        }),
+        ApiResponse({ status: 200, description: 'Reset link sent (if account exists).', type: MessageResponseDto }),
+        ApiResponse({ status: 429, description: 'Too many requests.' }),
+        Throttle({ default: { limit: 3, ttl: 600000 } }), // 3 requests per 10 minutes
+        HttpCode(HttpStatus.OK),
+    );
+}
+
+export function ResetPasswordEndpoint() {
+    return applyDecorators(
+        Post('reset-password'),
+        ApiOperation({
+            summary: 'Reset password with token',
+            description: 'Resets the password using a valid reset token from email.',
+        }),
+        ApiResponse({ status: 200, description: 'Password reset successfully.', type: MessageResponseDto }),
+        ApiResponse({ status: 401, description: 'Invalid or expired reset token.' }),
+        ApiResponse({ status: 429, description: 'Too many requests.' }),
+        Throttle({ default: { limit: 5, ttl: 60000, blockDuration: 300000 } }),
+        HttpCode(HttpStatus.OK),
+    );
+}
