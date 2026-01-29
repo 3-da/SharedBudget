@@ -38,7 +38,7 @@ generator nestjsDto {
   requiredResponseApiProperty     = "true"
   prettier                        = "true"
   wrapRelationsAsType             = "false"
-  showDefaultValues               = "true"
+  showDefaultValues               = "false"
 }
 
 // -------------------------------------------------
@@ -125,11 +125,27 @@ enum ApprovalStatus {
 
 model User {
   id            String    @id @default(uuid())
+  /// User email address
+  /// @example user@example.com
+  /// @IsEmail()
   email         String    @unique
   /// @DtoEntityHidden
   password      String
+  /// User's first name
+  /// @example John
+  /// @minLength 1
+  /// @maxLength 50
+  /// @MinLength(1)
+  /// @MaxLength(50)
   firstName     String
+  /// User's last name
+  /// @example Doe
+  /// @minLength 1
+  /// @maxLength 50
+  /// @MinLength(1)
+  /// @MaxLength(50)
   lastName      String
+  /// Whether the user's email has been verified
   /// @DtoReadOnly
   emailVerified Boolean   @default(false)
   createdAt     DateTime  @default(now())
@@ -150,9 +166,19 @@ model User {
 
 model Household {
   id         String   @id @default(uuid())
+  /// Name of the household
+  /// @example My Home
+  /// @minLength 1
+  /// @maxLength 50
+  /// @MinLength(1)
+  /// @MaxLength(50)
   name       String
+  /// Unique invite code for joining the household
+  /// @example a1b2c3d4
   /// @DtoReadOnly
   inviteCode String   @unique
+  /// Maximum number of members allowed
+  /// @example 2
   /// @DtoReadOnly
   maxMembers Int      @default(2)
   createdAt  DateTime @default(now())
@@ -168,10 +194,16 @@ model Household {
 
 model HouseholdMember {
   id          String        @id @default(uuid())
+  /// ID of the member user
+  /// @example 550e8400-e29b-41d4-a716-446655440000
   userId      String        @unique
+  /// ID of the household
+  /// @example 660e8400-e29b-41d4-a716-446655440000
   householdId String
+  /// Role of the member in the household
   /// @DtoReadOnly
   role        HouseholdRole @default(MEMBER)
+  /// When the member joined
   joinedAt    DateTime      @default(now())
 
   user      User      @relation(fields: [userId], references: [id])
@@ -184,11 +216,27 @@ model HouseholdMember {
 
 model Salary {
   id            String   @id @default(uuid())
+  /// @DtoReadOnly
   userId        String
+  /// @DtoReadOnly
   householdId   String
+  /// Baseline monthly salary
+  /// @example 3500.00
+  /// @minimum 0
   defaultAmount Decimal  @db.Decimal(12, 2)
+  /// Actual salary this month
+  /// @example 3500.00
+  /// @minimum 0
   currentAmount Decimal  @db.Decimal(12, 2)
+  /// Month (1-12)
+  /// @example 6
+  /// @minimum 1
+  /// @maximum 12
+  /// @Min(1)
+  /// @Max(12)
   month         Int
+  /// Year (validated to current year in service)
+  /// @example 2026
   year          Int
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -203,18 +251,43 @@ model Salary {
 
 model Expense {
   id                    String                 @id @default(uuid())
+  /// @DtoReadOnly
   householdId           String
+  /// @DtoReadOnly
   createdById           String
+  /// Expense name
+  /// @example Monthly Rent
+  /// @minLength 1
+  /// @maxLength 100
+  /// @MinLength(1)
+  /// @MaxLength(100)
   name                  String                 @db.VarChar(100)
+  /// Total amount in EUR
+  /// @example 500.00
+  /// @minimum 0
   amount                Decimal                @db.Decimal(12, 2)
+  /// PERSONAL or SHARED
   type                  ExpenseType
+  /// RECURRING or ONE_TIME
   category              ExpenseCategory
+  /// MONTHLY or YEARLY
   frequency             ExpenseFrequency
+  /// FULL or INSTALLMENTS (null if monthly)
   yearlyPaymentStrategy YearlyPaymentStrategy?
+  /// Installment payment frequency
   installmentFrequency  InstallmentFrequency?
+  /// Month to pay in full (1-12, null if not FULL strategy)
+  /// @minimum 1
+  /// @maximum 12
   paymentMonth          Int?
+  /// User who pays. Null means split equally among members
   paidByUserId          String?
+  /// For ONE_TIME expenses: which month (1-12)
+  /// @minimum 1
+  /// @maximum 12
   month                 Int?
+  /// For ONE_TIME expenses: which year (validated in service)
+  /// @example 2026
   year                  Int?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -234,15 +307,30 @@ model Expense {
 
 model ExpenseApproval {
   id            String         @id @default(uuid())
+  /// Associated expense (null for CREATE actions)
   expenseId     String?
+  /// @DtoReadOnly
   householdId   String
+  /// Action type: CREATE, UPDATE, or DELETE
   action        ApprovalAction
+  /// Approval status
+  /// @DtoReadOnly
   status        ApprovalStatus @default(PENDING)
+  /// User who proposed the change
+  /// @DtoReadOnly
   requestedById String
+  /// User who reviewed the approval
+  /// @DtoReadOnly
   reviewedById  String?
+  /// Reviewer's comment
+  /// @example Approved, looks good
+  /// @maxLength 500
+  /// @MaxLength(500)
   message       String?
+  /// For CREATE/UPDATE: the proposed expense data
   proposedData  Json?
   createdAt     DateTime       @default(now())
+  /// When the review happened
   /// @DtoCreateHidden
   reviewedAt    DateTime?
 

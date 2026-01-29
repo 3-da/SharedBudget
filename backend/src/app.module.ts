@@ -11,6 +11,7 @@ import { ThrottlerRedisStorage } from './redis/throttler-redis.storage';
 import { MailModule } from './mail/mail.module';
 import Redis from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
+import { HouseholdModule } from './household/household.module';
 
 @Module({
     imports: [
@@ -28,6 +29,7 @@ import { LoggerModule } from 'nestjs-pino';
         }),
         PrismaModule,
         AuthModule,
+        HouseholdModule,
     ],
     controllers: [AppController],
     providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
