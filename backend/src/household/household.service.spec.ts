@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { HouseholdService } from './household.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { HouseholdRole } from '@prisma/client';
+import { HouseholdRole } from '../generated/prisma/enums';
 
 describe('HouseholdService', () => {
     let service: HouseholdService;
@@ -46,10 +46,7 @@ describe('HouseholdService', () => {
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                HouseholdService,
-                { provide: PrismaService, useValue: mockPrismaService },
-            ],
+            providers: [HouseholdService, { provide: PrismaService, useValue: mockPrismaService }],
         }).compile();
 
         service = module.get<HouseholdService>(HouseholdService);

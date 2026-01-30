@@ -10,7 +10,7 @@ import { REDIS_CLIENT, RedisModule } from './redis/redis.module';
 import { ThrottlerRedisStorage } from './redis/throttler-redis.storage';
 import { MailModule } from './mail/mail.module';
 import Redis from 'ioredis';
-import { LoggerModule } from 'nestjs-pino';
+import { LoggerModule } from './common/logger/logger.module';
 import { HouseholdModule } from './household/household.module';
 
 @Module({

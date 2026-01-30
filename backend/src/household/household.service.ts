@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundExce
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { HouseholdResponseDto } from './dto/household-response.dto';
-import { HouseholdRole } from '@prisma/client';
+import { HouseholdRole } from '../generated/prisma/enums';
 
 @Injectable()
 export class HouseholdService {

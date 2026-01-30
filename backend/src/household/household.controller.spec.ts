@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { HouseholdController } from './household.controller';
 import { HouseholdService } from './household.service';
-import { HouseholdRole } from '@prisma/client';
+import { HouseholdRole } from '../generated/prisma/enums';
 import { HouseholdResponseDto } from './dto/household-response.dto';
 
 describe('HouseholdController', () => {

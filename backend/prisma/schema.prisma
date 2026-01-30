@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "./generated/client"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -20,8 +21,8 @@ datasource db {
 
 generator nestjsDto {
   provider                        = "prisma-generator-nestjs-dto"
-  output                          = "./generated/dto"
-  prismaClientImportPath          = "@prisma/client"
+  output                          = "../src/generated/dto"
+  prismaClientImportPath          = "../../prisma/client.js"
   outputToNestJsResourceStructure = "true"
   flatResourceStructure           = "true"
   exportRelationModifierClasses   = "true"

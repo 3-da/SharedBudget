@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { HouseholdRole } from '@prisma/client';
+import { HouseholdRole } from '../../generated/prisma/enums';
 
 class HouseholdMemberResponseDto {
     @ApiProperty({ type: 'string' })

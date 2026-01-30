@@ -4,9 +4,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { HouseholdService } from './household.service';
 import { CreateHouseholdEndpoint, GetMyHouseholdEndpoint, JoinHouseholdEndpoint, RegenerateCodeEndpoint } from './decorators/api-household.decorators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { CreateHouseholdDto } from '../../prisma/generated/dto';
 import { HouseholdResponseDto } from './dto/household-response.dto';
 import { JoinHouseholdDto } from './dto/join-household.dto';
+import { CreateHouseholdDto } from '../generated/dto';
 
 @ApiTags('Household')
 @ApiBearerAuth()
