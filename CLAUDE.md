@@ -96,19 +96,23 @@ email: string;
 ### Endpoint Decorators — Use composite decorators
 Create composite decorators in `decorators/api-*.decorators.ts`:
 ```typescript
+import { ErrorResponseDto } from '../../common/dto/error-response.dto';
+
 export function MyEndpoint() {
     return applyDecorators(
         Post('route'),
         ApiOperation({ summary: 'Short description', description: 'Detailed description' }),
         ApiResponse({ status: 200, description: 'Success case', type: ResponseDto }),
-        ApiResponse({ status: 400, description: 'Validation error' }),
-        ApiResponse({ status: 401, description: 'Unauthorized' }),
-        ApiResponse({ status: 429, description: 'Too many requests' }),
+        ApiResponse({ status: 400, description: 'Validation error', type: ErrorResponseDto }),
+        ApiResponse({ status: 401, description: 'Unauthorized', type: ErrorResponseDto }),
+        ApiResponse({ status: 429, description: 'Too many requests', type: ErrorResponseDto }),
         Throttle({ default: { limit: 5, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
 ```
+> **Rule:** Every error `ApiResponse` (4xx, 5xx) **must** include `type: ErrorResponseDto`.
+> Success responses use their own DTO. This ensures Swagger shows the full error shape.
 
 ---
 
@@ -145,6 +149,40 @@ describe('ServiceName', () => {
 3. **Not found** — resource doesn't exist
 4. **Unauthorized** — invalid credentials/tokens
 5. **Security** — enumeration prevention (same response for exists/not exists)
+6. **Boundary values (Grenzwert)** — test at the exact edges of valid ranges
+   - DTO fields with `@MinLength`/`@MaxLength`: test at min, at max, and one beyond each
+   - Numeric boundaries: test `members.length === maxMembers` (at-limit) and `maxMembers - 1` (one-below)
+   - Include: empty strings, whitespace-only, extremely long inputs
+7. **Error message assertions** — always assert the exact message string, not just exception type
+   - Every `rejects.toThrow(ExceptionType)` MUST also verify the message text
+   - Pattern: `rejects.toThrow('Exact user-facing message')`
+   - This prevents regressions in user-facing error text
+8. **Edge cases** — unusual but valid states
+   - Self-referential actions (user targeting themselves)
+   - Empty collections (no members, no invitations)
+   - Race-condition guards (user already joined between check and action)
+
+### DTO Validation Tests
+Test `class-validator` rules directly by transforming and validating plain objects:
+```typescript
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+
+describe('MyDto', () => {
+    it('should reject when name is too short', async () => {
+        const dto = plainToInstance(MyDto, { name: '' });
+        const errors = await validate(dto);
+        expect(errors.length).toBeGreaterThan(0);
+        expect(errors[0].constraints).toHaveProperty('minLength');
+    });
+
+    it('should accept when name is at minimum length', async () => {
+        const dto = plainToInstance(MyDto, { name: 'AB' }); // @MinLength(2)
+        const errors = await validate(dto);
+        expect(errors.length).toBe(0);
+    });
+});
+```
 
 ---
 
@@ -156,10 +194,57 @@ describe('ServiceName', () => {
 - Private helper methods for reusable logic
 - Return typed responses (DTOs or interfaces)
 
+### Method Comments — Required for Non-Obvious Methods
+If a service method's purpose is **not immediately clear** from its name alone, add a full JSDoc comment with these sections:
+
+1. **What it does** — One-liner describing the action and who can perform it
+2. **Use case** — When and why this method is called (the flow it belongs to)
+3. **Scenario** — A concrete story using the **recurring cast** (see below), so flows are easy to follow across the entire codebase
+4. **`@param`** — Every parameter with a short description
+5. **`@returns`** — What the method returns on success
+6. **`@throws`** — Every exception the method can throw, **in the same order as the validation checks** in the code
+
+Skip comments for self-explanatory CRUD (e.g., `create`, `getById`, `delete`).
+
+#### Recurring Cast
+Use these names **consistently** in all JSDoc scenarios throughout the app:
+
+| Name       | Role      | Description                                                       |
+|------------|-----------|-------------------------------------------------------------------|
+| **Alex**   | OWNER     | The household creator and administrator                           |
+| **Sam**    | MEMBER    | A household member (joined via code or invitation)                |
+| **Jordan** | OUTSIDER  | A registered user not yet in any household (invitee, applicant)   |
+
+```typescript
+/**
+ * Transfers the OWNER role from the current owner to another member.
+ * The current owner becomes a regular MEMBER. Both users must belong
+ * to the same household.
+ *
+ * Use case: Required before the owner can leave a non-empty household.
+ * Allows the household to change hands without disbanding.
+ *
+ * Scenario: Alex no longer manages finances and wants to hand off
+ * control. Alex transfers ownership to Sam — Sam becomes the new
+ * OWNER and Alex becomes a MEMBER who can now leave freely.
+ *
+ * @param ownerId - The ID of the authenticated user (must be current OWNER)
+ * @param targetUserId - The ID of the member receiving ownership
+ * @returns The updated household with new roles reflected in the member list
+ * @throws {NotFoundException} If the owner is not a member of any household
+ * @throws {ForbiddenException} If the caller is not the household OWNER
+ * @throws {ForbiddenException} If the owner tries to transfer to themselves
+ * @throws {NotFoundException} If the target user is not in the same household
+ */
+```
+
 ### Error Handling
 - Use NestJS built-in exceptions (`UnauthorizedException`, `ForbiddenException`, etc.)
 - Don't expose internal errors to clients
 - Log errors before throwing
+- A global `HttpExceptionFilter` (registered via `APP_FILTER` in `app.module.ts`) catches **all** exceptions and returns a consistent shape with `timestamp` and `requestId` — services do NOT need to handle this themselves
+- Services should still throw specific `HttpException` subclasses with clear messages — the filter passes them through as-is
+- Prisma errors that slip through uncaught are mapped automatically (P2002 → 409, P2025 → 404)
 
 ### Security Checklist
 - [ ] Hash passwords with argon2
@@ -183,9 +268,24 @@ describe('ServiceName', () => {
 
 ### Environment Variables
 ```env
-AUTH_VERIFICATION_CODE_TTL=600
-AUTH_REFRESH_TOKEN_TTL=604800
-AUTH_RESET_TOKEN_TTL=3600
+# Auth TTLs (seconds)
+AUTH_VERIFICATION_CODE_TTL=600      # 10 min
+AUTH_REFRESH_TOKEN_TTL=604800       # 7 days
+AUTH_RESET_TOKEN_TTL=3600           # 1 hour
+
+# JWT
+JWT_ACCESS_SECRET=<secret>
+JWT_ACCESS_EXPIRATION=15m
+JWT_REFRESH_SECRET=<secret>
+
+# Argon2
+ARGON2_MEMORY_COST=65536
+ARGON2_TIME_COST=3
+ARGON2_PARALLELISM=1
+
+# Household
+HOUSEHOLD_MAX_MEMBERS=2
+INVITE_CODE_LENGTH=8
 ```
 
 ### Project Structure
@@ -193,15 +293,30 @@ AUTH_RESET_TOKEN_TTL=3600
 backend/src/
 ├── auth/
 │   ├── decorators/     # Custom decorators (endpoint, param)
-│   ├── dto/            # Request/Response DTOs
-│   ├── guards/         # Auth guards
-│   ├── strategies/     # Passport strategies
+│   ├── dto/            # Request/Response DTOs (8 DTOs)
+│   ├── guards/         # Auth guards (JWT)
+│   ├── strategies/     # Passport strategies (JWT)
 │   ├── auth.controller.ts
+│   ├── auth.controller.spec.ts
 │   ├── auth.service.ts
+│   ├── auth.service.spec.ts
 │   └── auth.module.ts
-├── mail/
-├── prisma/
-├── redis/
+├── household/
+│   ├── decorators/     # Composite endpoint decorators (10 decorators)
+│   ├── dto/            # Request/Response DTOs (7 DTOs)
+│   ├── household.controller.ts
+│   ├── household.controller.spec.ts
+│   ├── household.service.ts               # CRUD + membership (join by code, leave, remove, transfer)
+│   ├── household.service.spec.ts
+│   ├── household-invitation.service.ts    # Email invitation lifecycle (invite, respond, cancel)
+│   ├── household-invitation.service.spec.ts
+│   └── household.module.ts
+├── mail/               # Email service (placeholder — logs in dev)
+├── prisma/             # PrismaService with @prisma/adapter-pg
+├── redis/              # Redis module + throttler storage
+├── generated/          # Auto-generated Prisma client + DTOs (DO NOT EDIT)
 └── common/
-    └── logger/         # Pino logger config
+    ├── dto/            # Shared DTOs (ErrorResponseDto)
+    ├── filters/        # Global exception filter (HttpExceptionFilter)
+    └── logger/         # Pino logger config with sensitive data redaction
 ```
