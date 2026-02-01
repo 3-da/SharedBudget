@@ -163,6 +163,11 @@ describe('ServiceName', () => {
    - Race-condition guards (user already joined between check and action)
 
 ### DTO Validation Tests
+Only test DTOs that contain **validation** (`class-validator` decorators) or **transformation** (`class-transformer` decorators) logic. Skip tests for data-only DTOs (response DTOs with only `@ApiProperty()`).
+
+**When to test:** DTO imports from `class-validator` or `class-transformer`
+**When to skip:** DTO only imports from `@nestjs/swagger` (pure data shape)
+
 Test `class-validator` rules directly by transforming and validating plain objects:
 ```typescript
 import { validate } from 'class-validator';

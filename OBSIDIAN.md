@@ -2,6 +2,8 @@
 
 Your task is to generate a **single, safe-to-share daily developer log** for my Obsidian vault.
 
+D:\Obsidian\SoftwareEngineering
+
 The output must always be:
 
 - clean
@@ -43,7 +45,7 @@ All logs must use Obsidian-compatible Markdown:
 
 ### No H1 Heading
 
-**Do NOT add a `#` heading inside the file.** The filename is the title — Obsidian renders it at the top automatically. Adding `# 28-01-2026 — Project Bootstrap & Auth System` inside the file creates a duplicate title. Every log starts directly with `## 1. What I Worked On`.
+**Do NOT add a `#` heading inside the file.** The filename is the title — Obsidian renders it at the top automatically. Adding `# 2026-01-28 — Project Bootstrap & Auth System` inside the file creates a duplicate title. Every log starts directly with `## 1. What I Worked On`.
 
 ### List Spacing
 
@@ -67,20 +69,20 @@ All logs must use Obsidian-compatible Markdown:
 
 ### Date Format
 
-**Always use DD-MM-YYYY** (European format). Never use YYYY-MM-DD or MM-DD-YYYY.
+**Always use YYYY-MM-DD** (ISO 8601 format). Never use DD-MM-YYYY or MM-DD-YYYY.
 
 ### File Naming Convention
 
 Every daily log file must be named:
 
-`DD-MM-YYYY — Main Topic.md`
+`YYYY-MM-DD — Main Topic.md`
 
 The filename must be **descriptive** — the "Main Topic" (2–6 words) summarizes the day's primary engineering theme so it's recognizable at a glance.
 
 Examples:
-- `28-01-2026 — Project Bootstrap & Auth System.md`
-- `29-01-2026 — Swagger & Household Module.md`
-- `31-01-2026 — Invitation System & Ownership Transfer.md`
+- `2026-01-28 — Project Bootstrap & Auth System.md`
+- `2026-01-29 — Swagger & Household Module.md`
+- `2026-01-31 — Invitation System & Ownership Transfer.md`
 
 ### Cross-Linking and Tag-Based Discovery (CRITICAL)
 
@@ -98,8 +100,8 @@ This builds a **connected knowledge graph** in Obsidian. The graph should let yo
 
 ```
 ## 8. Related Logs
-- [[28-01-2026 — Project Bootstrap & Auth System]] — reused the same AAA test pattern and JWT strategy
-- [[29-01-2026 — Swagger & Household Module]] — extended the composite decorator (Facade) pattern established here
+- [[2026-01-28 — Project Bootstrap & Auth System]] — reused the same AAA test pattern and JWT strategy
+- [[2026-01-29 — Swagger & Household Module]] — extended the composite decorator (Facade) pattern established here
 ```
 
 ---
@@ -295,7 +297,7 @@ One open question or uncertainty.
 One actionable learning or next-step.
 
 ## 8. Related Logs
-- [[DD-MM-YYYY — Other Topic]] — how this connects (matched by shared tags/patterns/domain)
+- [[YYYY-MM-DD — Other Topic]] — how this connects (matched by shared tags/patterns/domain)
 
 ## 9. Tags
 #specific-tags-here
