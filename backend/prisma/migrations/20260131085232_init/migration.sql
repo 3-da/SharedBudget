@@ -22,6 +22,9 @@ CREATE TYPE "ApprovalAction" AS ENUM ('CREATE', 'UPDATE', 'DELETE');
 -- CreateEnum
 CREATE TYPE "ApprovalStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED');
 
+-- CreateEnum
+CREATE TYPE "InvitationStatus" AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -58,6 +61,19 @@ CREATE TABLE "household_members" (
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "household_members_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "household_invitations" (
+    "id" TEXT NOT NULL,
+    "status" "InvitationStatus" NOT NULL DEFAULT 'PENDING',
+    "householdId" TEXT NOT NULL,
+    "senderId" TEXT NOT NULL,
+    "targetUserId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "respondedAt" TIMESTAMP(3),
+
+    CONSTRAINT "household_invitations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -131,6 +147,15 @@ CREATE INDEX "household_members_householdId_idx" ON "household_members"("househo
 CREATE UNIQUE INDEX "household_members_userId_householdId_key" ON "household_members"("userId", "householdId");
 
 -- CreateIndex
+CREATE INDEX "household_invitations_targetUserId_status_idx" ON "household_invitations"("targetUserId", "status");
+
+-- CreateIndex
+CREATE INDEX "household_invitations_householdId_status_idx" ON "household_invitations"("householdId", "status");
+
+-- CreateIndex
+CREATE INDEX "household_invitations_senderId_idx" ON "household_invitations"("senderId");
+
+-- CreateIndex
 CREATE INDEX "salaries_householdId_idx" ON "salaries"("householdId");
 
 -- CreateIndex
@@ -153,6 +178,15 @@ ALTER TABLE "household_members" ADD CONSTRAINT "household_members_userId_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "household_members" ADD CONSTRAINT "household_members_householdId_fkey" FOREIGN KEY ("householdId") REFERENCES "households"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "household_invitations" ADD CONSTRAINT "household_invitations_householdId_fkey" FOREIGN KEY ("householdId") REFERENCES "households"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "household_invitations" ADD CONSTRAINT "household_invitations_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "household_invitations" ADD CONSTRAINT "household_invitations_targetUserId_fkey" FOREIGN KEY ("targetUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "salaries" ADD CONSTRAINT "salaries_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
