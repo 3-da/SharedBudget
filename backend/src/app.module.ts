@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -12,6 +13,7 @@ import { MailModule } from './mail/mail.module';
 import Redis from 'ioredis';
 import { LoggerModule } from './common/logger/logger.module';
 import { HouseholdModule } from './household/household.module';
+import { SalaryModule } from './salary/salary.module';
 
 @Module({
     imports: [
@@ -30,8 +32,13 @@ import { HouseholdModule } from './household/household.module';
         PrismaModule,
         AuthModule,
         HouseholdModule,
+        SalaryModule,
     ],
     controllers: [AppController],
-    providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+    providers: [
+        AppService,
+        { provide: APP_GUARD, useClass: ThrottlerGuard },
+        { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    ],
 })
 export class AppModule {}

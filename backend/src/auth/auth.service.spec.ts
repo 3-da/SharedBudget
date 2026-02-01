@@ -144,19 +144,39 @@ describe('AuthService', () => {
 
         it('should throw UnauthorizedException if code is invalid', async () => {
             mockRedis.get.mockResolvedValue('654321');
-            await expect(authService.verifyCode(email, code)).rejects.toThrow(UnauthorizedException);
+
+            try {
+                await authService.verifyCode(email, code);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Invalid or expired verification code.');
+            }
         });
 
         it('should throw UnauthorizedException if code is expired', async () => {
             mockRedis.get.mockResolvedValue(null);
-            await expect(authService.verifyCode(email, code)).rejects.toThrow(UnauthorizedException);
+
+            try {
+                await authService.verifyCode(email, code);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Invalid or expired verification code.');
+            }
         });
 
         it('should throw UnauthorizedException if user not found', async () => {
             mockRedis.get.mockResolvedValue(code);
             mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-            await expect(authService.verifyCode(email, code)).rejects.toThrow(UnauthorizedException);
+            try {
+                await authService.verifyCode(email, code);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Invalid or expired verification code.');
+            }
         });
     });
 
@@ -217,7 +237,13 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException if user not found', async () => {
             mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-            await expect(authService.login(loginDto)).rejects.toThrow(UnauthorizedException);
+            try {
+                await authService.login(loginDto);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Incorrect email or password.');
+            }
             expect(argon2.verify).not.toHaveBeenCalled();
         });
 
@@ -225,14 +251,52 @@ describe('AuthService', () => {
             mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
             (argon2.verify as Mock).mockResolvedValue(false);
 
-            await expect(authService.login(loginDto)).rejects.toThrow(UnauthorizedException);
+            try {
+                await authService.login(loginDto);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Incorrect email or password.');
+            }
         });
 
         it('should throw ForbiddenException if email not verified', async () => {
             mockPrismaService.user.findUnique.mockResolvedValue(mockUnverifiedUser);
             (argon2.verify as Mock).mockResolvedValue(true);
 
-            await expect(authService.login(loginDto)).rejects.toThrow(ForbiddenException);
+            try {
+                await authService.login(loginDto);
+                expect.unreachable('Should have thrown ForbiddenException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(ForbiddenException);
+                expect(error.message).toBe('Please verify your email first. Check your inbox for the verification code.');
+            }
+        });
+
+        it('should return the same error message for user-not-found and bad-password (enumeration prevention)', async () => {
+            // Security: an attacker must not be able to distinguish "email doesn't exist" from "wrong password"
+            mockPrismaService.user.findUnique.mockResolvedValue(null);
+            let notFoundMessage: string;
+            try {
+                await authService.login(loginDto);
+                expect.unreachable('Should have thrown');
+            } catch (error) {
+                notFoundMessage = error.message;
+            }
+
+            vi.clearAllMocks();
+            mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+            (argon2.verify as Mock).mockResolvedValue(false);
+            let badPasswordMessage: string;
+            try {
+                await authService.login(loginDto);
+                expect.unreachable('Should have thrown');
+            } catch (error) {
+                badPasswordMessage = error.message;
+            }
+
+            expect(notFoundMessage).toBe(badPasswordMessage);
+            expect(notFoundMessage).toBe('Incorrect email or password.');
         });
     });
 
@@ -263,7 +327,13 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException if refresh token is invalid', async () => {
             mockRedis.get.mockResolvedValue(null);
 
-            await expect(authService.refresh(refreshToken)).rejects.toThrow(UnauthorizedException);
+            try {
+                await authService.refresh(refreshToken);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Invalid or expired session. Please sign in again.');
+            }
             expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled();
         });
 
@@ -271,7 +341,13 @@ describe('AuthService', () => {
             mockRedis.get.mockResolvedValue(mockUser.id);
             mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-            await expect(authService.refresh(refreshToken)).rejects.toThrow(UnauthorizedException);
+            try {
+                await authService.refresh(refreshToken);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Invalid or expired session. Please sign in again.');
+            }
         });
     });
 
@@ -370,14 +446,26 @@ describe('AuthService', () => {
         it('should throw UnauthorizedException if token is invalid', async () => {
             mockRedis.get.mockResolvedValue(null);
 
-            await expect(authService.resetPassword(token, newPassword)).rejects.toThrow(UnauthorizedException);
+            try {
+                await authService.resetPassword(token, newPassword);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Invalid or expired reset token.');
+            }
             expect(mockPrismaService.user.update).not.toHaveBeenCalled();
         });
 
         it('should throw UnauthorizedException if token is expired', async () => {
             mockRedis.get.mockResolvedValue(null);
 
-            await expect(authService.resetPassword(token, newPassword)).rejects.toThrow(UnauthorizedException);
+            try {
+                await authService.resetPassword(token, newPassword);
+                expect.unreachable('Should have thrown UnauthorizedException');
+            } catch (error) {
+                expect(error).toBeInstanceOf(UnauthorizedException);
+                expect(error.message).toBe('Invalid or expired reset token.');
+            }
         });
     });
 });
