@@ -1,7 +1,8 @@
 # Household Budget Tracker — Architecture & Technical Reference
 
-**Document Version:** 1.0
+**Document Version:** 2.0
 **Created:** January 29, 2026 (Extracted from SPEC.md v2.0)
+**Updated:** January 31, 2026 (Synced with current codebase state)
 
 > **Related docs:**
 > - `SPEC.md` — Business requirements, user stories, feature specs, API endpoints
@@ -31,22 +32,26 @@
 | Node.js | 24.13.0 LTS | Runtime |
 | NestJS | 11.1.x | Framework |
 | TypeScript | 5.9.x | Language (strict mode) |
-| Prisma | 7.2.x | ORM (Rust-free, TypeScript rewrite) |
-| @nestjs/swagger | latest | API documentation |
-| class-validator | latest | Input validation |
-| class-transformer | latest | DTO transformation |
-| ioredis | 5.x | Redis client |
-| @nestjs/jwt | latest | JWT authentication |
-| @nestjs/passport | latest | Auth strategies |
-| argon2 | latest | Password hashing |
-| vitest | latest | Testing framework |
+| Prisma | 7.3.0 | ORM (Rust-free, @prisma/adapter-pg) |
+| @nestjs/swagger | 11.2.5 | API documentation |
+| @nestjs/throttler | 6.5.0 | Rate limiting (Redis-backed) |
+| class-validator | 0.14.3 | Input validation |
+| class-transformer | 0.5.1 | DTO transformation |
+| ioredis | 5.9.2 | Redis client |
+| @nestjs/jwt | 11.0.2 | JWT authentication |
+| @nestjs/passport | 11.0.5 | Auth strategies |
+| passport-jwt | 4.0.1 | JWT strategy |
+| argon2 | 0.44.0 | Password hashing |
+| nestjs-pino | 4.5.0 | Structured logging |
+| pino | 10.3.0 | Logger |
+| vitest | 4.0.18 | Testing framework |
 
 ### Database
 | Technology | Version | Purpose |
 |-----------|---------|---------|
 | PostgreSQL | 18.1 | Primary database |
-| Prisma | 7.2.x | ORM + migrations |
-| Redis | 7.2.x | Caching + session storage |
+| Prisma | 7.3.0 | ORM + migrations (via @prisma/adapter-pg) |
+| Redis | 7.2.x | Session storage + rate limiting + caching |
 
 ---
 
@@ -84,7 +89,21 @@
 | role | Enum | OWNER or MEMBER |
 | joinedAt | DateTime | When user joined |
 
-**Constraints:** Unique on (userId, householdId). A user can belong to only one household.
+**Constraints:** Unique on (userId, householdId). userId is unique globally — a user can belong to only one household at a time.
+
+### HouseholdInvitation
+| Field | Type | Notes |
+|-------|------|-------|
+| id | UUID | Primary key |
+| status | Enum | PENDING, ACCEPTED, DECLINED, CANCELLED |
+| householdId | UUID | FK → Household (cascade delete) |
+| senderId | UUID | FK → User (household owner who invited) |
+| targetUserId | UUID | FK → User (invited user) |
+| createdAt | DateTime | Auto-generated |
+| respondedAt | DateTime? | When target user responded |
+
+**Indexes:** (targetUserId, status), (householdId, status), (senderId)
+**Lifecycle:** Owner invites → target accepts/declines → or owner cancels. On household delete, invitations cascade.
 
 ### Salary
 | Field | Type | Notes |
@@ -177,25 +196,116 @@
 
 ---
 
+## Error Handling
+
+### Global Exception Filter
+A global `HttpExceptionFilter` is registered via `APP_FILTER` in `app.module.ts`. It catches **all** unhandled exceptions and returns a consistent JSON shape:
+
+```json
+{
+  "statusCode": 409,
+  "message": "User already belongs to a household",
+  "error": "Conflict",
+  "timestamp": "2026-02-01T12:00:00.000Z",
+  "requestId": "abc-123-def"
+}
+```
+
+For validation errors (400), `message` is an array:
+```json
+{
+  "statusCode": 400,
+  "message": ["email must be an email", "name should not be empty"],
+  "error": "Bad Request",
+  "timestamp": "2026-02-01T12:00:00.000Z",
+  "requestId": "abc-123-def"
+}
+```
+
+### Exception Categories
+
+| Category | Detection | Status | Behavior |
+|----------|-----------|--------|----------|
+| **HttpException** | `instanceof HttpException` | From exception | Message + status passed through |
+| **Prisma P2002** | Unique constraint violation | 409 Conflict | `"A record with this value already exists"` |
+| **Prisma P2025** | Record not found | 404 Not Found | `"Record not found"` |
+| **Unknown** | Everything else | 500 Internal Server Error | Logged at `error` level, generic message returned |
+
+### Key Files
+- `common/dto/error-response.dto.ts` — Swagger DTO for the error shape
+- `common/filters/http-exception.filter.ts` — The filter implementation
+- `common/filters/http-exception.filter.spec.ts` — 13 unit tests
+
+### Request ID
+The `requestId` is extracted from `request.id`, which is set by Pino's `genReqId` (see `common/logger/logger.module.ts`). It uses the `x-request-id` header if present, otherwise generates a UUID. This ties error responses to log entries for debugging.
+
+---
+
 ## Project Structure
 
 ```
-backend/src/
-├── auth/
-│   ├── decorators/     # Custom decorators (endpoint, param)
-│   ├── dto/            # Request/Response DTOs
-│   ├── guards/         # Auth guards (JWT, etc.)
-│   ├── strategies/     # Passport strategies (JWT, local)
-│   ├── auth.controller.ts
-│   ├── auth.controller.spec.ts
-│   ├── auth.service.ts
-│   ├── auth.service.spec.ts
-│   └── auth.module.ts
-├── mail/               # Email sending service
-├── prisma/             # Prisma service + schema
-├── redis/              # Redis module + service
-└── common/
-    └── logger/         # Pino logger configuration
+backend/
+├── prisma/
+│   ├── schema.prisma              # Data model (6 models, 8 enums)
+│   ├── prisma.config.ts           # Prisma configuration
+│   └── migrations/                # Database migrations
+├── src/
+│   ├── main.ts                    # Bootstrap: Swagger, validation, CORS, API prefix
+│   ├── app.module.ts              # Root module (imports all feature modules)
+│   ├── app.controller.ts          # Health check endpoint
+│   │
+│   ├── auth/
+│   │   ├── decorators/
+│   │   │   ├── api-auth.decorators.ts     # 8 composite endpoint decorators
+│   │   │   └── current-user.decorator.ts  # @CurrentUser() param decorator
+│   │   ├── dto/                   # 8 DTOs (register, login, verify, resend, refresh, reset, forgot, auth-response)
+│   │   ├── guards/
+│   │   │   └── jwt-auth.guard.ts  # Passport JWT guard
+│   │   ├── strategies/
+│   │   │   └── jwt.strategy.ts    # JWT validation & user extraction
+│   │   ├── auth.controller.ts     # 8 endpoints
+│   │   ├── auth.controller.spec.ts
+│   │   ├── auth.service.ts        # Auth logic (register, verify, login, refresh, logout, password reset)
+│   │   ├── auth.service.spec.ts
+│   │   └── auth.module.ts
+│   │
+│   ├── household/
+│   │   ├── decorators/
+│   │   │   └── api-household.decorators.ts  # 10 composite endpoint decorators
+│   │   ├── dto/                   # 7 DTOs (household-response, invitation-response, invite, join-by-code, respond, transfer, message-response)
+│   │   ├── household.controller.ts          # 11 endpoints (CRUD + invitations + membership)
+│   │   ├── household.controller.spec.ts
+│   │   ├── household.service.ts             # CRUD + join by code + leave + remove + transfer ownership
+│   │   ├── household.service.spec.ts
+│   │   ├── household-invitation.service.ts  # Invite + respond + cancel + get pending
+│   │   ├── household-invitation.service.spec.ts
+│   │   └── household.module.ts
+│   │
+│   ├── mail/
+│   │   ├── mail.service.ts        # 5 email methods (placeholder — logs in dev)
+│   │   └── mail.module.ts         # Global module
+│   │
+│   ├── prisma/
+│   │   ├── prisma.service.ts      # Extended PrismaClient with @prisma/adapter-pg
+│   │   └── prisma.module.ts
+│   │
+│   ├── redis/
+│   │   ├── redis.module.ts        # Global module (ioredis)
+│   │   └── throttler-redis.storage.ts  # Custom NestJS throttler with Redis backend
+│   │
+│   ├── common/
+│   │   ├── dto/
+│   │   │   └── error-response.dto.ts   # Shared ErrorResponseDto (Swagger schema for all errors)
+│   │   ├── filters/
+│   │   │   ├── http-exception.filter.ts       # Global catch-all exception filter
+│   │   │   └── http-exception.filter.spec.ts  # 13 unit tests
+│   │   └── logger/
+│   │       └── logger.module.ts   # Pino logger with request logging + sensitive data redaction
+│   │
+│   └── generated/                 # Auto-generated Prisma client + DTOs (DO NOT EDIT)
+│
+├── vitest.config.ts               # Vitest configuration
+└── package.json
 ```
 
 ---
@@ -225,23 +335,35 @@ backend/src/
 
 ## Testing Strategy
 
-### Unit Tests
-- Backend: Auth logic, expense calculations, salary validation, settlement logic, approval workflow
-- Frontend: Component rendering, form validation, currency formatting, auth context
+### Current Test Files
+| File | Coverage |
+|------|----------|
+| `auth.service.spec.ts` | Register, verify, login, refresh, logout, forgot/reset password |
+| `auth.controller.spec.ts` | All 8 auth endpoints |
+| `household.service.spec.ts` | Create, get, regenerate code, join by code, leave, remove, transfer |
+| `household.controller.spec.ts` | All 11 household endpoints |
+| `household-invitation.service.spec.ts` | Invite, respond (accept/decline), cancel, get pending |
+| `http-exception.filter.spec.ts` | HttpException, validation arrays, Prisma P2002/P2025, unknown errors, metadata |
 
-### Integration Tests
-- API endpoints with real PostgreSQL database
-- Auth flow: register → login → refresh → access protected endpoint
-- Approval workflow: propose → accept/reject → verify expense state
-- Redis cache invalidation
-- Multi-expense settlement calculations
+### Test Framework
+- **Runner:** Vitest with `@nestjs/testing`
+- **Mocking:** `vi.fn()` for all dependencies
+- **Pattern:** AAA (Arrange-Act-Assert)
+- **Naming:** `should [expected behavior] when [condition]`
+
+### Test Cases Per Method
+1. Happy path — successful operation
+2. Validation failures — invalid input
+3. Not found — resource doesn't exist
+4. Unauthorized/Forbidden — wrong role or permissions
+5. Security — enumeration prevention, race conditions
 
 ### Coverage Targets
 | Area | Target |
 |------|--------|
 | Backend overall | >80% |
 | Frontend overall | >75% |
-| Critical paths (auth, approvals, settlement) | 100% |
+| Critical paths (auth, household, approvals, settlement) | 100% |
 
 ---
 
@@ -273,50 +395,97 @@ backend/src/
 ## Environment Variables
 
 ```env
-# Auth
-AUTH_VERIFICATION_CODE_TTL=600
-AUTH_REFRESH_TOKEN_TTL=604800
-AUTH_RESET_TOKEN_TTL=3600
+# App
+NODE_ENV=development
+PORT=3000
+API_PREFIX=api/v1
+CORS_ORIGIN=http://localhost:5173
 
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/sharedbudget
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=sharedbudget
+DB_USER=sharedbudget
+DB_PASSWORD=<password>
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<name>
 
 # Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
+REDIS_PASSWORD=<password>
 
 # JWT
-JWT_SECRET=your-secret-key
-JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY=7d
+JWT_ACCESS_SECRET=<strong-secret-32-chars>
+JWT_ACCESS_EXPIRATION=15m
+JWT_REFRESH_SECRET=<different-strong-secret-32-chars>
+JWT_REFRESH_EXPIRATION=7d
+
+# Auth TTLs (seconds)
+AUTH_VERIFICATION_CODE_TTL=600       # 10 minutes
+AUTH_REFRESH_TOKEN_TTL=604800        # 7 days
+AUTH_RESET_TOKEN_TTL=3600            # 1 hour
+
+# Argon2
+ARGON2_MEMORY_COST=65536
+ARGON2_TIME_COST=3
+ARGON2_PARALLELISM=1
+
+# Household
+HOUSEHOLD_MAX_MEMBERS=2
+INVITE_CODE_LENGTH=8
+
+# Cache TTLs (seconds) — for future use
+CACHE_TTL_USER_SESSION=604800
+CACHE_TTL_SALARIES=300
+CACHE_TTL_SUMMARY=120
+CACHE_TTL_EXPENSES=60
+CACHE_TTL_SETTLEMENT=120
 ```
 
 ---
 
 ## Development Phases
 
-### Phase 1: Core MVP (Current Focus)
-- Max 2 users per household (couple)
-- User registration + login with JWT
-- Household create/join with invite code
-- Personal + shared expenses with full CRUD
-- Approval workflow for shared expenses
-- Monthly + yearly expense support with payment options
-- Settlement calculation (50/50 or assigned)
-- Financial dashboard with savings overview
-- Redis caching
+### Phase 1: Core MVP
+
+#### ✅ Implemented
+- User registration with email verification (6-digit code)
+- JWT authentication with refresh token rotation
+- Password reset flow (forgot → email → reset)
+- Household creation with invite code
+- Join household by code (instant)
+- Email-based household invitations (invite → accept/decline → cancel)
+- Leave household / remove member / transfer ownership
+- Role-based access (OWNER vs MEMBER)
+- Rate limiting with Redis-backed throttler
+- Structured logging with Pino (sensitive data redaction)
+- Swagger/OpenAPI documentation
+- Global exception filter (consistent error shape with `timestamp` + `requestId`)
+- Comprehensive unit tests (5 spec files)
+- Mail service placeholder (logs in dev)
+
+#### 🔲 Remaining (Phase 1)
+- Salary management (CRUD, per-user per-month)
+- Personal expense management (CRUD with frequency options)
+- Shared expense management with approval workflow
+- Settlement calculation (who owes whom)
+- Financial dashboard & analytics
+- Redis data caching (salaries, expenses, summaries)
+- Frontend (React 19 + Vite 7)
 - Docker setup for all services
+- CI/CD with GitHub Actions
 
 ### Phase 2: Multi-Member Households (Future)
 - Support N members per household
 - Custom split ratios (proportional to income)
-- Role-based permissions (admin, member, viewer)
+- Extended role-based permissions (admin, member, viewer)
 - Expense categories and tags
 - Monthly/yearly reports and charts
 - Export to CSV/PDF
 - Push notifications for approvals
 - Multi-household support
+- Real email provider integration (Resend, SendGrid)
 
 ---
 
-*Extracted from SPEC.md v2.0 on January 29, 2026.*
+*Extracted from SPEC.md v2.0 on January 29, 2026. Updated January 31, 2026.*
