@@ -121,6 +121,13 @@ enum ApprovalStatus {
   REJECTED
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
 //#endregion ####################################################################################################
 
 //#region Models ####################################################################################################
@@ -162,6 +169,8 @@ model User {
   paidExpenses       Expense[]         @relation("ExpensePayer")
   requestedApprovals ExpenseApproval[] @relation("ApprovalRequester")
   reviewedApprovals  ExpenseApproval[] @relation("ApprovalReviewer")
+  sentInvitations     HouseholdInvitation[] @relation("InvitationSender")
+  receivedInvitations HouseholdInvitation[] @relation("InvitationTarget")
 
   @@map("users")
 }
@@ -190,6 +199,7 @@ model Household {
   salaries  Salary[]
   expenses  Expense[]
   approvals ExpenseApproval[]
+  invitations HouseholdInvitation[]
 
   @@map("households")
 }
@@ -214,6 +224,31 @@ model HouseholdMember {
   @@unique([userId, householdId])
   @@index([householdId])
   @@map("household_members")
+}
+
+model HouseholdInvitation {
+  id           String           @id @default(uuid())
+  /// Current status
+  /// @DtoReadOnly
+  status       InvitationStatus @default(PENDING)
+  /// Household this invitation is for
+  householdId  String
+  /// User who sent the invitation (the household owner)
+  senderId     String
+  /// User who was invited and must respond
+  targetUserId String
+  createdAt    DateTime         @default(now())
+  /// When the target user responded
+  respondedAt  DateTime?
+
+  household  Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  sender     User      @relation("InvitationSender", fields: [senderId], references: [id])
+  targetUser User      @relation("InvitationTarget", fields: [targetUserId], references: [id])
+
+  @@index([targetUserId, status])
+  @@index([householdId, status])
+  @@index([senderId])
+  @@map("household_invitations")
 }
 
 model Salary {
