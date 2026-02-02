@@ -259,6 +259,14 @@ Use these names **consistently** in all JSDoc scenarios throughout the app:
 - [ ] Rate limit sensitive endpoints
 - [ ] Redact sensitive data in logs
 
+### Pre-Production Checklist — Redis Hardening
+These are **not blockers for development** but **must be resolved before production deployment**.
+
+- [ ] **Enable TLS encryption** — `redis.module.ts` connects without TLS (`new Redis({...})` has no `tls` option). Add `tls: {}` to ioredis config and configure Redis server with certificates. Critical if Redis runs on a separate host.
+- [ ] **Bind Docker port to localhost only** — `docker-compose.yml` maps `${REDIS_PORT:-6379}:6379` which binds to `0.0.0.0`. Change to `127.0.0.1:${REDIS_PORT:-6379}:6379` or remove the port mapping entirely and use Docker internal networking.
+- [ ] **Add ioredis retry/reconnect strategy** — `redis.module.ts` creates the client with no `retryStrategy`, `maxRetriesPerRequest`, or error handling. Add reconnect config so the app survives brief Redis outages instead of throwing unhandled errors.
+- [ ] **Disable dangerous Redis commands** — The Redis server allows `FLUSHALL`, `FLUSHDB`, `CONFIG`, `DEBUG` by default. Use `rename-command` in `redis.conf` or Redis 7 ACLs to disable them in production.
+
 ---
 
 ## Quick Reference
@@ -269,7 +277,7 @@ Use these names **consistently** in all JSDoc scenarios throughout the app:
 | `verify:{email}`         | Email verification code      | 10 min |
 | `reset:{token}`          | Password reset token         | 1 hour |
 | `refresh:{token}`        | Refresh token → userId       | 7 days |
-| `user_sessions:{userId}` | Set of user's refresh tokens | No TTL |
+| `user_sessions:{userId}` | Set of user's refresh tokens | 7 days (refreshed on new token) |
 
 ### Environment Variables
 ```env

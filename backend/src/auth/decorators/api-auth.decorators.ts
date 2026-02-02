@@ -1,7 +1,8 @@
 import { applyDecorators, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { AuthResponseDto, MessageResponseDto } from '../dto/auth-response.dto';
+import { AuthResponseDto } from '../dto/auth-response.dto';
+import { MessageResponseDto } from '../../common/dto/message-response.dto';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
 export function RegisterEndpoint() {

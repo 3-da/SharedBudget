@@ -28,7 +28,3 @@ export class AuthResponseDto {
     user: UserDto;
 }
 
-export class MessageResponseDto {
-    @ApiProperty({ example: 'Operation completed successfully.' })
-    message: string;
-}

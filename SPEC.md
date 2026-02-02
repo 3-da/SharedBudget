@@ -3,7 +3,7 @@
 **Document Version:** 3.0
 **Created:** January 28, 2026
 **Updated:** January 31, 2026 (Synced with implemented codebase state)
-**Project Status:** Phase 1 — Auth & Household implemented, Expenses & Dashboard pending
+**Project Status:** Phase 1 — Auth, Household, User Profile & Salary implemented; Expenses, Approvals & Dashboard pending
 
 > **Related docs:**
 > - `ARCHITECTURE.md` — Tech stack, data model, infrastructure, caching, Docker, CI/CD
@@ -65,8 +65,8 @@ The system automatically calculates who owes whom based on shared expenses. Each
 - **Logout:** Invalidates the specific refresh token and removes from session set
 - **Forgot Password:** Sends reset link via email (1-hour TTL token in Redis)
 - **Reset Password:** Validates token, updates password, invalidates ALL user sessions
-- **Profile:** User can view and update their name (not email) — *not yet implemented*
-- **Password Change:** Requires current password + new password — *not yet implemented*
+- **Profile:** User can view and update their name (not email) ✅
+- **Password Change:** Requires current password + new password, invalidates all sessions ✅
 
 ### 1.1 Email Verification Flow (6-Digit Code) ✅
 When a user registers, their account is created but marked as **unverified**. They must verify via a 6-digit code before accessing the app.
@@ -134,7 +134,7 @@ When a user registers, their account is created but marked as **unverified**. Th
 - **Transfer Ownership:** Owner transfers OWNER role to another member (atomic transaction)
   - Current owner becomes MEMBER, target becomes OWNER
 
-### 3. Salary Management
+### 3. Salary Management ✅
 - **Per-User Salaries:** Each user manages their own salary
   - Default monthly salary (baseline expectation)
   - Current monthly salary (actual this month — can vary month to month)
@@ -479,14 +479,16 @@ DELETE /api/v1/household/members/:userId         - Remove member (OWNER only, ca
 POST   /api/v1/household/transfer-ownership      - Transfer OWNER role to another member             [5/min]
 ```
 
-### 🔲 User Endpoints (3 — not yet implemented)
+### ✅ User Endpoints (3 — all implemented)
+All require `Authorization: Bearer <token>` header.
 ```
-GET    /api/v1/users/me               - Get current user profile
-PUT    /api/v1/users/me               - Update user profile (name only)
-PUT    /api/v1/users/me/password      - Change password (requires current password)
+GET    /api/v1/users/me               - Get current user profile                         [10/min]
+PUT    /api/v1/users/me               - Update user profile (name only)                  [5/min]
+PUT    /api/v1/users/me/password      - Change password (requires current password)       [3/min]
 ```
 
-### 🔲 Salary Endpoints (4 — not yet implemented)
+### ✅ Salary Endpoints (4 — all implemented)
+All require `Authorization: Bearer <token>` header.
 ```
 GET    /api/v1/salaries/me                    - Get my salary (current month)
 PUT    /api/v1/salaries/me                    - Update my salary (default + current)
@@ -531,7 +533,7 @@ POST   /api/v1/dashboard/settlement/mark-paid - Mark current month's settlement 
 
 ---
 
-**Endpoint Summary:** 19 implemented (8 auth + 11 household) / 43 total planned
+**Endpoint Summary:** 26 implemented (8 auth + 11 household + 3 user + 4 salary) / 43 total planned
 **Phase 1 Focus:** 2-person household (couple), full auth, expenses with approval workflow
 
 *Split from original spec on January 29, 2026. Updated January 31, 2026.*

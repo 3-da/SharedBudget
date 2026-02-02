@@ -3,7 +3,7 @@ import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { HouseholdResponseDto } from '../dto/household-response.dto';
 import { Throttle } from '@nestjs/throttler';
 import { HouseholdInvitationResponseDto } from '../dto/household-invitation-response.dto';
-import { MessageResponseDto } from '../dto/message-response.dto';
+import { MessageResponseDto } from '../../common/dto/message-response.dto';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
 export function CreateHouseholdEndpoint() {

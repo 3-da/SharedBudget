@@ -23,7 +23,7 @@ import { HouseholdInvitationResponseDto } from './dto/household-invitation-respo
 import { HouseholdInvitationService } from './household-invitation.service';
 import { JoinByCodeDto } from './dto/join-by-code.dto';
 import { RespondInvitationDto } from './dto/respond-invitation.dto';
-import { MessageResponseDto } from './dto/message-response.dto';
+import { MessageResponseDto } from '../common/dto/message-response.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 
 @ApiTags('Household')

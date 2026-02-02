@@ -6,7 +6,8 @@ import { RegisterDto } from './dto/register.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResendCodeDto } from './dto/resend-code.dto';
-import { AuthResponseDto, MessageResponseDto } from './dto/auth-response.dto';
+import { AuthResponseDto } from './dto/auth-response.dto';
+import { MessageResponseDto } from '../common/dto/message-response.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import {
