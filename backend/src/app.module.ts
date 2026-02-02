@@ -14,6 +14,7 @@ import Redis from 'ioredis';
 import { LoggerModule } from './common/logger/logger.module';
 import { HouseholdModule } from './household/household.module';
 import { SalaryModule } from './salary/salary.module';
+import { UserModule } from './user/user.module';
 
 @Module({
     imports: [
@@ -33,6 +34,7 @@ import { SalaryModule } from './salary/salary.module';
         AuthModule,
         HouseholdModule,
         SalaryModule,
+        UserModule,
     ],
     controllers: [AppController],
     providers: [

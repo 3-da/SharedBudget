@@ -7,6 +7,7 @@ import * as argon2 from 'argon2';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { SessionService } from '../session/session.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { REDIS_CLIENT } from '../redis/redis.module';
@@ -33,19 +34,17 @@ describe('AuthService', () => {
     };
     const mockUnverifiedUser = { ...mockUser, emailVerified: false };
 
-    const mockPipeline = {
-        del: vi.fn().mockReturnThis(),
-        exec: vi.fn().mockResolvedValue([]),
-    };
-
     const mockRedis = {
         get: vi.fn(),
         set: vi.fn(),
         del: vi.fn(),
-        sadd: vi.fn(),
-        srem: vi.fn(),
-        smembers: vi.fn().mockResolvedValue([]),
-        pipeline: vi.fn(() => mockPipeline),
+    };
+
+    const mockSessionService = {
+        storeRefreshToken: vi.fn(),
+        getUserIdFromRefreshToken: vi.fn(),
+        removeRefreshToken: vi.fn(),
+        invalidateAllSessions: vi.fn().mockResolvedValue(0),
     };
 
     const mockPrismaService = {
@@ -71,6 +70,7 @@ describe('AuthService', () => {
                 { provide: PrismaService, useValue: mockPrismaService },
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: ConfigService, useValue: mockConfigService },
+                { provide: SessionService, useValue: mockSessionService },
                 { provide: REDIS_CLIENT, useValue: mockRedis },
                 { provide: MailService, useValue: mockMailService },
             ],
@@ -132,14 +132,14 @@ describe('AuthService', () => {
             expect(result.refreshToken).toBeDefined();
         });
 
-        it('should track token in session set after verification', async () => {
+        it('should store token via SessionService after verification', async () => {
             mockRedis.get.mockResolvedValue(code);
             mockPrismaService.user.findUnique.mockResolvedValue(mockUnverifiedUser);
             mockPrismaService.user.update.mockResolvedValue(mockUser);
 
             await authService.verifyCode(email, code);
 
-            expect(mockRedis.sadd).toHaveBeenCalledWith(`user_sessions:${mockUnverifiedUser.id}`, expect.any(String));
+            expect(mockSessionService.storeRefreshToken).toHaveBeenCalledWith(mockUnverifiedUser.id, expect.any(String));
         });
 
         it('should throw UnauthorizedException if code is invalid', async () => {
@@ -220,18 +220,9 @@ describe('AuthService', () => {
 
             expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({ where: { email: loginDto.email } });
             expect(argon2.verify).toHaveBeenCalledWith(mockUser.password, loginDto.password);
-            expect(mockRedis.set).toHaveBeenCalled();
+            expect(mockSessionService.storeRefreshToken).toHaveBeenCalledWith(mockUser.id, expect.any(String));
             expect(result.accessToken).toBe('mock-access-token');
             expect(result.refreshToken).toBeDefined();
-        });
-
-        it('should track token in session set on successful login', async () => {
-            mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
-            (argon2.verify as Mock).mockResolvedValue(true);
-
-            await authService.login(loginDto);
-
-            expect(mockRedis.sadd).toHaveBeenCalledWith(`user_sessions:${mockUser.id}`, expect.any(String));
         });
 
         it('should throw UnauthorizedException if user not found', async () => {
@@ -302,30 +293,29 @@ describe('AuthService', () => {
 
     describe('refresh', () => {
         it('should return new tokens for valid refresh token', async () => {
-            mockRedis.get.mockResolvedValue(mockUser.id);
+            mockSessionService.getUserIdFromRefreshToken.mockResolvedValue(mockUser.id);
             mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 
             const result = await authService.refresh(refreshToken);
 
-            expect(mockRedis.get).toHaveBeenCalledWith(`refresh:${refreshToken}`);
-            expect(mockRedis.del).toHaveBeenCalledWith(`refresh:${refreshToken}`);
-            expect(mockRedis.srem).toHaveBeenCalledWith(`user_sessions:${mockUser.id}`, refreshToken);
+            expect(mockSessionService.getUserIdFromRefreshToken).toHaveBeenCalledWith(refreshToken);
+            expect(mockSessionService.removeRefreshToken).toHaveBeenCalledWith(refreshToken);
             expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({ where: { id: mockUser.id } });
             expect(result.accessToken).toBe('mock-access-token');
             expect(result.refreshToken).toBeDefined();
         });
 
-        it('should track new token in session set', async () => {
-            mockRedis.get.mockResolvedValue(mockUser.id);
+        it('should store new token via SessionService after refresh', async () => {
+            mockSessionService.getUserIdFromRefreshToken.mockResolvedValue(mockUser.id);
             mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 
             await authService.refresh(refreshToken);
 
-            expect(mockRedis.sadd).toHaveBeenCalledWith(`user_sessions:${mockUser.id}`, expect.any(String));
+            expect(mockSessionService.storeRefreshToken).toHaveBeenCalledWith(mockUser.id, expect.any(String));
         });
 
         it('should throw UnauthorizedException if refresh token is invalid', async () => {
-            mockRedis.get.mockResolvedValue(null);
+            mockSessionService.getUserIdFromRefreshToken.mockResolvedValue(null);
 
             try {
                 await authService.refresh(refreshToken);
@@ -338,7 +328,7 @@ describe('AuthService', () => {
         });
 
         it('should throw UnauthorizedException if user not found', async () => {
-            mockRedis.get.mockResolvedValue(mockUser.id);
+            mockSessionService.getUserIdFromRefreshToken.mockResolvedValue(mockUser.id);
             mockPrismaService.user.findUnique.mockResolvedValue(null);
 
             try {
@@ -352,22 +342,20 @@ describe('AuthService', () => {
     });
 
     describe('logout', () => {
-        it('should delete refresh token and remove from session set', async () => {
-            mockRedis.get.mockResolvedValue(mockUser.id);
+        it('should remove refresh token via SessionService', async () => {
+            mockSessionService.removeRefreshToken.mockResolvedValue(mockUser.id);
 
             await authService.logout(refreshToken);
 
-            expect(mockRedis.del).toHaveBeenCalledWith(`refresh:${refreshToken}`);
-            expect(mockRedis.srem).toHaveBeenCalledWith(`user_sessions:${mockUser.id}`, refreshToken);
+            expect(mockSessionService.removeRefreshToken).toHaveBeenCalledWith(refreshToken);
         });
 
-        it('should still delete token even if userId not found', async () => {
-            mockRedis.get.mockResolvedValue(null);
+        it('should still succeed even if token was already gone', async () => {
+            mockSessionService.removeRefreshToken.mockResolvedValue(null);
 
             await authService.logout(refreshToken);
 
-            expect(mockRedis.del).toHaveBeenCalledWith(`refresh:${refreshToken}`);
-            expect(mockRedis.srem).not.toHaveBeenCalled();
+            expect(mockSessionService.removeRefreshToken).toHaveBeenCalledWith(refreshToken);
         });
     });
 
@@ -402,7 +390,7 @@ describe('AuthService', () => {
 
         it('should reset password for valid token', async () => {
             mockRedis.get.mockResolvedValue(mockUser.id);
-            mockRedis.smembers.mockResolvedValue([]);
+            mockSessionService.invalidateAllSessions.mockResolvedValue(0);
             mockPrismaService.user.update.mockResolvedValue(mockUser);
             (argon2.hash as Mock).mockResolvedValue('new-hashed-password');
 
@@ -416,30 +404,25 @@ describe('AuthService', () => {
         });
 
         it('should invalidate all user sessions after password reset', async () => {
-            const existingTokens = ['token1', 'token2', 'token3'];
             mockRedis.get.mockResolvedValue(mockUser.id);
-            mockRedis.smembers.mockResolvedValue(existingTokens);
+            mockSessionService.invalidateAllSessions.mockResolvedValue(3);
             mockPrismaService.user.update.mockResolvedValue(mockUser);
             (argon2.hash as Mock).mockResolvedValue('new-hashed-password');
 
             await authService.resetPassword(token, newPassword);
 
-            expect(mockRedis.smembers).toHaveBeenCalledWith(`user_sessions:${mockUser.id}`);
-            expect(mockRedis.pipeline).toHaveBeenCalled();
-            expect(mockPipeline.del).toHaveBeenCalledTimes(4); // 3 tokens + 1 session set
-            expect(mockPipeline.exec).toHaveBeenCalled();
+            expect(mockSessionService.invalidateAllSessions).toHaveBeenCalledWith(mockUser.id);
         });
 
         it('should handle reset when user has no active sessions', async () => {
             mockRedis.get.mockResolvedValue(mockUser.id);
-            mockRedis.smembers.mockResolvedValue([]);
+            mockSessionService.invalidateAllSessions.mockResolvedValue(0);
             mockPrismaService.user.update.mockResolvedValue(mockUser);
             (argon2.hash as Mock).mockResolvedValue('new-hashed-password');
 
             const result = await authService.resetPassword(token, newPassword);
 
-            expect(mockRedis.smembers).toHaveBeenCalledWith(`user_sessions:${mockUser.id}`);
-            expect(mockRedis.pipeline).not.toHaveBeenCalled();
+            expect(mockSessionService.invalidateAllSessions).toHaveBeenCalledWith(mockUser.id);
             expect(result.message).toBe('Password reset successfully. You can now log in with your new password.');
         });
 

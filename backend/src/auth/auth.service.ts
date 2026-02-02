@@ -6,20 +6,17 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { MailService } from '../mail/mail.service';
+import { SessionService } from '../session/session.service';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import Redis from 'ioredis';
-
-export interface MessageResponse {
-    message: string;
-}
+import { MessageResponseDto } from '../common/dto/message-response.dto';
 
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
 
-    private readonly refreshTokenTTL: number;
     private readonly verificationCodeTTL: number;
     private readonly resetTokenTTL: number;
 
@@ -28,14 +25,14 @@ export class AuthService {
         private jwtService: JwtService,
         private configService: ConfigService,
         private mailService: MailService,
+        private sessionService: SessionService,
         @Inject(REDIS_CLIENT) private redis: Redis,
     ) {
         this.verificationCodeTTL = this.configService.get<number>('AUTH_VERIFICATION_CODE_TTL', 600);
-        this.refreshTokenTTL = this.configService.get<number>('AUTH_REFRESH_TOKEN_TTL', 604800);
         this.resetTokenTTL = this.configService.get<number>('AUTH_RESET_TOKEN_TTL', 3600);
     }
 
-    async register(registerDto: RegisterDto): Promise<MessageResponse> {
+    async register(registerDto: RegisterDto): Promise<MessageResponseDto> {
         this.logger.log(`Registration attempt: ${registerDto.email}`);
 
         const existingUser = await this.prismaService.user.findUnique({ where: { email: registerDto.email } });
@@ -109,7 +106,7 @@ export class AuthService {
         return this.generateTokens(user); // Auto-login: return tokens
     }
 
-    async resendCode(email: string): Promise<MessageResponse> {
+    async resendCode(email: string): Promise<MessageResponseDto> {
         this.logger.log(`Resend verification code requested: ${email}`);
 
         const user = await this.prismaService.user.findUnique({ where: { email } });
@@ -125,7 +122,7 @@ export class AuthService {
     }
 
     async refresh(refreshToken: string): Promise<AuthResponseDto> {
-        const userId = await this.redis.get(`refresh:${refreshToken}`);
+        const userId = await this.sessionService.getUserIdFromRefreshToken(refreshToken);
 
         if (!userId) {
             this.logger.warn(`Invalid refresh token attempt`);
@@ -139,25 +136,21 @@ export class AuthService {
         }
 
         // Delete old refresh token and remove from session set
-        await this.redis.del(`refresh:${refreshToken}`);
-        await this.redis.srem(`user_sessions:${userId}`, refreshToken);
+        await this.sessionService.removeRefreshToken(refreshToken);
 
         this.logger.debug(`Token refreshed for user: ${userId}`);
         return this.generateTokens(user);
     }
 
     async logout(refreshToken: string): Promise<void> {
-        const userId = await this.redis.get(`refresh:${refreshToken}`);
-
-        await this.redis.del(`refresh:${refreshToken}`);
+        const userId = await this.sessionService.removeRefreshToken(refreshToken);
 
         if (userId) {
-            await this.redis.srem(`user_sessions:${userId}`, refreshToken);
             this.logger.log(`User logged out: ${userId}`);
         }
     }
 
-    async forgotPassword(email: string): Promise<MessageResponse> {
+    async forgotPassword(email: string): Promise<MessageResponseDto> {
         this.logger.log(`Password reset requested for email: ${email}`);
         const user = await this.prismaService.user.findUnique({ where: { email } });
 
@@ -177,7 +170,7 @@ export class AuthService {
         return { message: "If an account exists, we've sent a password reset link." };
     }
 
-    async resetPassword(token: string, newPassword: string): Promise<MessageResponse> {
+    async resetPassword(token: string, newPassword: string): Promise<MessageResponseDto> {
         const userId = await this.redis.get(`reset:${token}`);
 
         if (!userId) {
@@ -196,7 +189,7 @@ export class AuthService {
         await this.redis.del(`reset:${token}`);
 
         // Invalidate all existing sessions for security
-        const invalidatedCount = await this.invalidateAllSessions(userId);
+        const invalidatedCount = await this.sessionService.invalidateAllSessions(userId);
 
         this.logger.log(`Password reset for user: ${userId}, invalidated ${invalidatedCount} sessions`);
 
@@ -214,11 +207,7 @@ export class AuthService {
         const accessToken = this.jwtService.sign({ sub: user.id, email: user.email });
         const refreshToken = crypto.randomBytes(32).toString('hex');
 
-        // Store refresh token in Redis with user ID
-        await this.redis.set(`refresh:${refreshToken}`, user.id, 'EX', this.refreshTokenTTL);
-
-        // Track token in user's session set (for "logout all devices")
-        await this.redis.sadd(`user_sessions:${user.id}`, refreshToken);
+        await this.sessionService.storeRefreshToken(user.id, refreshToken);
 
         this.logger.debug(`Token generated for user: ${user.id}`);
 
@@ -234,22 +223,4 @@ export class AuthService {
         };
     }
 
-    private async invalidateAllSessions(userId: string): Promise<number> {
-        const tokens = await this.redis.smembers(`user_sessions:${userId}`);
-
-        if (tokens.length === 0) return 0;
-
-        // Delete all refresh tokens
-        const pipeline = this.redis.pipeline();
-        for (const token of tokens) {
-            pipeline.del(`refresh:${token}`);
-        }
-        // Delete the session set itself
-        pipeline.del(`user_sessions:${userId}`);
-
-        await pipeline.exec();
-
-        this.logger.log(`Invalidated ${tokens.length} sessions for user: ${userId}`);
-        return tokens.length;
-    }
 }
