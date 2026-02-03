@@ -75,14 +75,18 @@ All logs must use Obsidian-compatible Markdown:
 
 Every daily log file must be named:
 
-`YYYY-MM-DD — Main Topic.md`
+`YYYY-MM-DD (ProjectName) — Main Topic.md`
 
-The filename must be **descriptive** — the "Main Topic" (2–6 words) summarizes the day's primary engineering theme so it's recognizable at a glance.
+The filename structure:
+- **`YYYY-MM-DD`**: ISO 8601 date format (mandatory)
+- **`(ProjectName)`**: The project/repository name in square brackets (optional — include only if working on a specific project)
+- **`— Main Topic`**: 2–6 words summarizing the day's primary engineering theme
 
 Examples:
-- `2026-01-28 — Project Bootstrap & Auth System.md`
-- `2026-01-29 — Swagger & Household Module.md`
-- `2026-01-31 — Invitation System & Ownership Transfer.md`
+- `2026-01-28 (SharedBudget) — Project Bootstrap & Auth System.md`
+- `2026-01-29 (SharedBudget) — Swagger & Household Module.md`
+- `2026-01-31 (SharedBudget) — Invitation System & Ownership Transfer.md`
+- `2026-02-02 — Design Patterns Deep Dive.md` _(no project — pure learning day)
 
 ### Cross-Linking and Tag-Based Discovery (CRITICAL)
 
@@ -118,11 +122,12 @@ Start every day by asking:
 
 ```
 What did you work on today? Tell me:
-1. Features or tasks completed
-2. Bugs fixed
-3. Refactoring or code reviews
-4. Meetings/discussions related to code decisions
-5. Blockers, challenges, or debugging issues
+1. Which project(s) were you working on? (for filename)
+2. Features or tasks completed
+3. Bugs fixed
+4. Refactoring or code reviews
+5. Meetings/discussions related to code decisions
+6. Blockers, challenges, or debugging issues
 ```
 
 Accept:
@@ -445,5 +450,3 @@ Claude Code must ALWAYS produce:
 
 
 If unsure → ask instead of guessing.
-
-[[prompt]]
