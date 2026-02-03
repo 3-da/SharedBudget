@@ -15,6 +15,9 @@ import { LoggerModule } from './common/logger/logger.module';
 import { HouseholdModule } from './household/household.module';
 import { SalaryModule } from './salary/salary.module';
 import { UserModule } from './user/user.module';
+import { PersonalExpenseModule } from './personal-expense/personal-expense.module';
+import { SharedExpenseModule } from './shared-expense/shared-expense.module';
+import { AprovalModule } from './aproval/aproval.module';
 
 @Module({
     imports: [
@@ -35,6 +38,9 @@ import { UserModule } from './user/user.module';
         HouseholdModule,
         SalaryModule,
         UserModule,
+        PersonalExpenseModule,
+        SharedExpenseModule,
+        AprovalModule,
     ],
     controllers: [AppController],
     providers: [
