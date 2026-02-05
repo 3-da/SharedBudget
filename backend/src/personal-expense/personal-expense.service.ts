@@ -9,6 +9,7 @@ import { ExpenseType } from '../generated/prisma/enums';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { mapToPersonalExpenseResponse, buildExpenseNullableFields, EXPENSE_FIELDS } from '../common/expense/expense.mappers';
 import { pickDefined } from '../common/utils/pick-defined';
+import { CacheService } from '../common/cache/cache.service';
 
 @Injectable()
 export class PersonalExpenseService {
@@ -17,6 +18,7 @@ export class PersonalExpenseService {
     constructor(
         private readonly prismaService: PrismaService,
         private readonly expenseHelper: ExpenseHelperService,
+        private readonly cacheService: CacheService,
     ) {}
 
     /**
@@ -38,21 +40,26 @@ export class PersonalExpenseService {
 
         await this.expenseHelper.requireMembership(userId);
 
-        const where: any = {
-            createdById: userId,
-            type: ExpenseType.PERSONAL,
-            deletedAt: null,
-        };
+        const filterHash = this.cacheService.hashParams({ category: query.category, frequency: query.frequency });
+        const cacheKey = this.cacheService.personalExpensesKey(userId, filterHash);
 
-        if (query.category) where.category = query.category;
-        if (query.frequency) where.frequency = query.frequency;
+        return this.cacheService.getOrSet(cacheKey, this.cacheService.expensesTTL, async () => {
+            const where: any = {
+                createdById: userId,
+                type: ExpenseType.PERSONAL,
+                deletedAt: null,
+            };
 
-        const expenses = await this.prismaService.expense.findMany({
-            where,
-            orderBy: { createdAt: 'desc' },
+            if (query.category) where.category = query.category;
+            if (query.frequency) where.frequency = query.frequency;
+
+            const expenses = await this.prismaService.expense.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+            });
+
+            return expenses.map((expense) => mapToPersonalExpenseResponse(expense));
         });
-
-        return expenses.map((expense) => mapToPersonalExpenseResponse(expense));
     }
 
     /**
@@ -89,6 +96,13 @@ export class PersonalExpenseService {
         });
 
         this.logger.log(`Personal expense created: ${expense.id} for user: ${userId}`);
+
+        await Promise.all([
+            this.cacheService.invalidatePersonalExpenses(userId),
+            this.cacheService.invalidateDashboard(membership.householdId),
+            this.cacheService.invalidateSavings(membership.householdId),
+        ]);
+
         return mapToPersonalExpenseResponse(expense);
     }
 
@@ -151,6 +165,13 @@ export class PersonalExpenseService {
         });
 
         this.logger.log(`Personal expense updated: ${expenseId}`);
+
+        await Promise.all([
+            this.cacheService.invalidatePersonalExpenses(userId),
+            this.cacheService.invalidateDashboard(membership.householdId),
+            this.cacheService.invalidateSavings(membership.householdId),
+        ]);
+
         return mapToPersonalExpenseResponse(updated);
     }
 
@@ -184,6 +205,13 @@ export class PersonalExpenseService {
         await this.prismaService.expense.update({ where: { id: expenseId }, data: { deletedAt: new Date() } });
 
         this.logger.log(`Personal expense deleted: ${expenseId}`);
+
+        await Promise.all([
+            this.cacheService.invalidatePersonalExpenses(userId),
+            this.cacheService.invalidateDashboard(membership.householdId),
+            this.cacheService.invalidateSavings(membership.householdId),
+        ]);
+
         return { message: 'Personal expense deleted successfully.' };
     }
 }

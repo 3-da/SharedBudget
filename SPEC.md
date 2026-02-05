@@ -1,9 +1,9 @@
 # Household Budget Tracker — Feature Specification
 
-**Document Version:** 3.0
+**Document Version:** 4.0
 **Created:** January 28, 2026
-**Updated:** January 31, 2026 (Synced with implemented codebase state)
-**Project Status:** Phase 1 — Auth, Household, User Profile & Salary implemented; Expenses, Approvals & Dashboard pending
+**Updated:** February 4, 2026 (Synced with implemented codebase state)
+**Project Status:** Phase 1 — All backend features implemented (Auth, Household, User, Salary, Expenses, Approvals, Dashboard, Settlement); Frontend pending
 
 > **Related docs:**
 > - `ARCHITECTURE.md` — Tech stack, data model, infrastructure, caching, Docker, CI/CD
@@ -31,7 +31,7 @@ Phase 1 supports max 2 members (couple). Phase 2 will support unlimited members 
 - **Monthly:** Recurring every month, straightforward amount.
 - **Yearly:** A total annual amount with flexible payment options:
   - **Pay in full:** Pay entire amount in a specific month. Specify who pays (one person or split among members).
-  - **Split into installments:** Divide total by N (2 = semi-annual, 4 = quarterly, 12 = monthly). Each installment can be paid by one person or split among members.
+  - **Split into installments:** Divide total by installment frequency — SEMI_ANNUAL (2 payments), QUARTERLY (4 payments), or MONTHLY (12 payments). Each installment can be paid by one person or split among members.
   - For budget calculations, yearly expenses are always normalized to their **monthly equivalent** (total ÷ 12) regardless of payment strategy.
 
 ### Approval Workflow (Shared Expenses Only)
@@ -140,23 +140,27 @@ When a user registers, their account is created but marked as **unverified**. Th
   - Current monthly salary (actual this month — can vary month to month)
 - **Ownership:** Only the user can edit their own salary
 - **Visibility:** All household members can view all salaries (needed for calculations)
-- **Storage:** One salary record per user per month/year
+- **Storage:** One salary record per user per month/year (upsert semantics)
 - **Display:** Summary cards showing individual + total household income
 - **Validation:** Non-negative numbers only, format as EUR (€)
+- **Auto-detection:** Month and year are auto-determined from server clock on upsert
 
-### 4. Personal Expense Management
+### 4. Personal Expense Management ✅
 - **Ownership:** Each personal expense belongs to its creator
 - **Permissions:** Only the owner can create, edit, or delete their personal expenses
 - **Visibility:** All household members can see personal expenses (for budget overview), but cannot modify them
+- **Soft Delete:** Expenses are soft-deleted (deletedAt timestamp) rather than permanently removed
 - **Properties:**
-  - Name (string, max 100 chars)
-  - Amount (decimal €, non-negative)
+  - Name (string, 1-100 chars)
+  - Amount (decimal €, minimum 1)
   - Category: RECURRING or ONE_TIME
   - Frequency: MONTHLY or YEARLY
   - If YEARLY: payment strategy (FULL or INSTALLMENTS) + details
+  - If ONE_TIME: scoped to a specific month/year
+- **Filtering:** List endpoints support optional category and frequency query filters
 - **Examples:** Gym membership, hairstyling, personal subscriptions, car expenses
 
-### 5. Shared Expense Management (with Approval Workflow)
+### 5. Shared Expense Management (with Approval Workflow) ✅
 - **Ownership:** Belongs to the household, not any single user
 - **Permissions:** Any household member can PROPOSE creating, editing, or deleting a shared expense
 - **Approval Required:** Every proposed change creates a pending approval
@@ -164,13 +168,14 @@ When a user registers, their account is created but marked as **unverified**. Th
   - They can **accept** (with optional message) or **reject** (with required message explaining why)
   - Only accepted changes take effect
   - Rejected changes are logged with the rejection message
+- **Duplicate Prevention:** Cannot propose updates/deletes on an expense that already has a pending approval
 - **Splitting:** Shared expenses can be:
-  - Split equally among all household members (default)
-  - Assigned to one specific person to pay in full
-- **Properties:** Same as personal expenses + splitting configuration
+  - Split equally among all household members (default, `paidByUserId = null`)
+  - Assigned to one specific person to pay in full (`paidByUserId` validated as household member)
+- **Properties:** Same as personal expenses + paidByUserId (splitting configuration)
 - **Examples:** Rent, electricity, internet, groceries, shared subscriptions (Netflix, Spotify)
 
-### 6. Yearly Expense Payment Options
+### 6. Yearly Expense Payment Options ✅
 Yearly expenses (both personal and shared) support flexible payment strategies:
 
 #### Option A: Pay in Full
@@ -180,20 +185,20 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - Monthly equivalent (÷12) shown in the overview for planning purposes
 
 #### Option B: Split into Installments
-- Choose number of installments: **2** (semi-annual), **4** (quarterly), or **12** (monthly)
-- Each installment = total amount ÷ installment count
+- Choose installment frequency: **SEMI_ANNUAL** (2 payments), **QUARTERLY** (4 payments), or **MONTHLY** (12 payments)
+- Each installment = total amount ÷ payment count
 - Specify **who pays** each installment: one person or split among members
 - Installments are spread evenly across the year
-  - 2 installments: January & July
-  - 4 installments: January, April, July, October
-  - 12 installments: every month
+  - SEMI_ANNUAL: January & July
+  - QUARTERLY: January, April, July, October
+  - MONTHLY: every month
 - **Example:** €1,200 vacation
   - Full in June: €1,200 in June
-  - 2 installments: €600 in January + €600 in July
-  - 4 installments: €300 in Jan/Apr/Jul/Oct
-  - 12 installments: €100 every month
+  - SEMI_ANNUAL: €600 in January + €600 in July
+  - QUARTERLY: €300 in Jan/Apr/Jul/Oct
+  - MONTHLY: €100 every month
 
-### 7. Settlement Calculation
+### 7. Settlement Calculation ✅
 - **Automatic Calculation:**
   - Identify all shared expenses in the household
   - Calculate each person's fair share based on splitting rules
@@ -204,31 +209,31 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
   - If one person is assigned to pay → they owe the full amount
   - Net result: one person owes the other a specific amount
 - **Display:**
-  - Detailed breakdown of all shared expenses with individual shares
-  - Clear settlement message: "You owe [Partner] €XXX" or "[Partner] owes you €XXX"
+  - Context-aware settlement message: "You owe [Partner] €XXX" or "[Partner] owes you €XXX"
   - Updates in real-time as expenses change
-- **Mark as Settled:** Button to mark current month's settlement as paid (audit trail)
+  - Shows whether current month is already settled
+- **Mark as Settled:** Endpoint to mark current month's settlement as paid (creates audit trail record)
+  - Prevents duplicate settlements (ConflictException if already settled this month)
+  - Validates settlement amount > 0 (BadRequestException if no settlement needed)
 
-### 8. Financial Dashboard & Analytics
+### 8. Financial Dashboard & Analytics ✅
 - **Income Summary:**
   - Each member's default salary
   - Each member's current month salary
   - Total household income (default + current)
 - **Expense Summary:**
-  - Personal expenses per member (recurring + one-time, monthly equivalent)
-  - Shared expenses (recurring + one-time, monthly equivalent)
+  - Personal expenses per member (monthly equivalent)
+  - Shared expenses total (monthly equivalent)
   - Total household expenses
 - **Savings per Member:**
   - Default savings = default salary − personal expenses − share of shared expenses
-  - Current savings = current salary − all expenses this month (personal + shared share) ± settlement
-- **Combined Household Balance:** Total savings across all members (highlighted card)
-- **Pending Approvals Badge:** Shows count of pending approvals requiring attention
-- **Visual Indicators:**
-  - Positive balances: Teal (#2db8c6)
-  - Negative balances: Red (#c01527)
-  - Yearly expenses: Orange badge (#a84b2f)
-  - Shared expenses: Shared badge
-  - Pending approvals: Yellow badge
+  - Current savings = current salary − all expenses this month (personal + shared share)
+- **Combined Household Balance:** Total savings across all members
+- **Pending Approvals Count:** Shows count of pending approvals requiring attention
+- **Expense Normalization:**
+  - Monthly expenses: used as-is
+  - Yearly expenses: divided by 12 for monthly equivalent
+  - One-time expenses: included only if month/year matches current period
 
 ### 9. User Experience
 - **Responsive Design:** Mobile-first, works on phones/tablets/desktop
@@ -297,103 +302,115 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Race condition guard on accept (household could be full)
 - [ ] Frontend: household dashboard with member list and invite actions
 
-### User Story 3: Salary Management
+### User Story 3: Salary Management ✅
 **As a** household member
 **I want to** set my own default and current monthly salary
 **So that** the household income calculations are accurate
 
 **Acceptance Criteria:**
-- [ ] Each user has two salary fields: default (baseline) + current (this month)
-- [ ] Only I can edit my own salary
-- [ ] All household members can view all salaries
-- [ ] Salary values display in EUR currency format
-- [ ] Summary cards update in real-time
-- [ ] Values persist per month/year in PostgreSQL via Prisma
-- [ ] Invalid inputs (negative numbers) are rejected
+- [x] Each user has two salary fields: default (baseline) + current (this month)
+- [x] Only I can edit my own salary (upsert semantics — create or update)
+- [x] All household members can view all salaries
+- [x] Salary values display in EUR currency format
+- [x] Values persist per month/year in PostgreSQL via Prisma
+- [x] Invalid inputs (negative numbers) are rejected
+- [x] Month and year auto-determined from server clock
+- [ ] Frontend: salary input form with summary cards
 
-### User Story 4: Personal Expense Management
+### User Story 4: Personal Expense Management ✅
 **As a** household member
 **I want to** manage my own personal recurring and one-time expenses
 **So that** I can track spending that only I am responsible for
 
 **Acceptance Criteria:**
-- [ ] Can create expense with: name, amount, category (recurring/one-time), frequency (monthly/yearly)
-- [ ] Yearly expenses: choose payment strategy (full in specific month, or installments of 2/4/12)
-- [ ] Only I can edit/delete my personal expenses
-- [ ] My partner can see my expenses (for household overview) but cannot modify them
-- [ ] Expenses show appropriate badges (yearly, monthly equivalent)
-- [ ] Total personal expenses auto-calculated
-- [ ] One-time expenses scoped to a specific month/year
+- [x] Can create expense with: name, amount, category (recurring/one-time), frequency (monthly/yearly)
+- [x] Yearly expenses: choose payment strategy (full in specific month, or installments via frequency enum)
+- [x] Only I can edit/delete my personal expenses
+- [x] My partner can see my expenses (for household overview) but cannot modify them
+- [x] Total personal expenses auto-calculated
+- [x] One-time expenses scoped to a specific month/year
+- [x] Soft-delete support (deletedAt timestamp)
+- [x] List endpoint supports category and frequency query filters
+- [ ] Frontend: expense list with badges (yearly, monthly equivalent)
 
-### User Story 5: Shared Expense Proposals
+### User Story 5: Shared Expense Proposals ✅
 **As a** household member
 **I want to** propose shared expenses that affect both of us
 **So that** we can collaboratively manage our joint financial obligations
 
 **Acceptance Criteria:**
-- [ ] Can propose a new shared expense (name, amount, frequency, payment strategy, who pays/split)
-- [ ] Proposal creates a PENDING approval — expense is NOT active yet
-- [ ] Can propose editing an existing shared expense
-- [ ] Can propose deleting an existing shared expense
-- [ ] Pending proposals shown with yellow "Pending" badge
-- [ ] My partner receives notification/badge about pending approval
+- [x] Can propose a new shared expense (name, amount, frequency, payment strategy, who pays/split)
+- [x] Proposal creates a PENDING approval — expense is NOT active yet
+- [x] Can propose editing an existing shared expense (creates approval with proposed changes)
+- [x] Can propose deleting an existing shared expense (creates approval)
+- [x] Duplicate pending approvals prevented (ConflictException if expense already has pending approval)
+- [x] paidByUserId validated as household member
+- [ ] Frontend: pending proposals shown with yellow "Pending" badge
+- [ ] Frontend: partner receives notification/badge about pending approval
 
-### User Story 6: Expense Approval Workflow
+### User Story 6: Expense Approval Workflow ✅
 **As a** household member
 **I want to** review and approve or reject proposed shared expense changes
 **So that** both partners agree on household spending
 
 **Acceptance Criteria:**
-- [ ] Dedicated "Approvals" section showing all pending proposals
-- [ ] Each approval shows: what's proposed (create/edit/delete), proposed values, who proposed it
-- [ ] Can ACCEPT with an optional message (e.g., "Looks good!")
-- [ ] Can REJECT with a required message (e.g., "Too expensive this month, let's wait")
-- [ ] Accepted proposals take effect immediately (expense created/updated/deleted)
-- [ ] Rejected proposals are discarded; rejection reason visible to proposer
-- [ ] Approval history viewable (past accepted/rejected items)
+- [x] List pending approvals for the user's household
+- [x] Each approval shows: what's proposed (create/edit/delete), proposed values, who proposed it
+- [x] Can ACCEPT with an optional message (e.g., "Looks good!")
+- [x] Can REJECT with a required message (e.g., "Too expensive this month, let's wait")
+- [x] Accepted proposals take effect immediately (expense created/updated/soft-deleted via transaction)
+- [x] Rejected proposals are discarded; rejection reason visible to proposer
+- [x] Approval history viewable (past accepted/rejected items with optional status filter)
+- [x] Self-review prevention (reviewer ≠ requester → ForbiddenException)
+- [x] Already-reviewed prevention (ConflictException if approval not PENDING)
+- [ ] Frontend: dedicated "Approvals" section with pending/history tabs
 
-### User Story 7: Yearly Expense Configuration
+### User Story 7: Yearly Expense Configuration ✅
 **As a** household member
 **I want to** configure how yearly expenses are paid
 **So that** I can plan for large expenses flexibly
 
 **Acceptance Criteria:**
-- [ ] Choose "Pay in full": select month (1-12) + who pays (me, partner, or split)
-- [ ] Choose "Installments": select count (2, 4, or 12) + who pays each installment
-- [ ] Monthly equivalent always shown for budget planning (total ÷ 12)
-- [ ] Example: €1,200 vacation → "€100/month" shown, actual payments per chosen schedule
-- [ ] Works for both personal and shared yearly expenses
-- [ ] Shared yearly expenses go through approval workflow
+- [x] Choose "Pay in full": select month (1-12) + who pays (me, partner, or split)
+- [x] Choose "Installments": select frequency (MONTHLY, QUARTERLY, SEMI_ANNUAL) + who pays
+- [x] Monthly equivalent always shown for budget planning (total ÷ 12)
+- [x] Works for both personal and shared yearly expenses
+- [x] Shared yearly expenses go through approval workflow
+- [ ] Frontend: expense form with yearly payment strategy configuration
 
-### User Story 8: Settlement & Debt Tracking
+### User Story 8: Settlement & Debt Tracking ✅
 **As a** couple managing shared expenses
 **I want to** see exactly who owes whom each month
 **So that** we can settle debts fairly without manual calculation
 
 **Acceptance Criteria:**
-- [ ] All shared expenses calculated automatically
-- [ ] Each person's share computed (50/50 for split, or full amount if assigned)
-- [ ] Net settlement displayed: "You owe [Name] €XXX" or "[Name] owes you €XXX"
-- [ ] Settlement updates instantly when shared expenses change
-- [ ] "Mark as Settled" button to record when payment is made
-- [ ] Historical settlements viewable per month
-- [ ] Settlement data cached in Redis (2 min TTL)
+- [x] All shared expenses calculated automatically
+- [x] Each person's share computed (50/50 for split, or full amount if assigned)
+- [x] Net settlement displayed: "You owe [Name] €XXX" or "[Name] owes you €XXX"
+- [x] Settlement updates instantly when shared expenses change
+- [x] "Mark as Settled" endpoint to record when payment is made (with duplicate prevention)
+- [x] Settlement data stored per household/month/year with unique constraint
+- [x] Context-aware message (relative to requesting user)
+- [ ] Frontend: settlement card with "Mark as Paid" button
+- [ ] Frontend: historical settlements viewable per month
 
-### User Story 9: Financial Dashboard
+### User Story 9: Financial Dashboard ✅
 **As a** household member
 **I want to** see a comprehensive overview of our household finances
 **So that** I can make informed financial decisions
 
 **Acceptance Criteria:**
-- [ ] Individual income cards for each member (default + current)
-- [ ] Total household income card
-- [ ] Personal expense totals per member
-- [ ] Shared expense total with per-person shares
-- [ ] Individual savings: income − personal expenses − shared expense share
-- [ ] Combined household balance (highlighted, larger)
-- [ ] Pending approvals count badge
-- [ ] Negative balances in red, positive in teal
-- [ ] Responsive on mobile, tablet, desktop
+- [x] Individual income data for each member (default + current salary)
+- [x] Total household income (default + current totals)
+- [x] Personal expense totals per member (monthly equivalent)
+- [x] Shared expense total
+- [x] Individual savings: income − personal expenses − shared expense share
+- [x] Combined household savings (default + current totals)
+- [x] Pending approvals count
+- [x] Expense normalization (yearly ÷ 12, one-time only in matching month)
+- [ ] Frontend: responsive dashboard with income/expense/savings cards
+- [ ] Frontend: negative balances in red, positive in teal
+- [ ] Frontend: responsive on mobile, tablet, desktop
 
 ### User Story 10: Data Persistence & Security
 **As a** user
@@ -401,13 +418,13 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 **So that** I can access it anytime and trust it's protected
 
 **Acceptance Criteria:**
-- [ ] All data stored in PostgreSQL 18 database
-- [ ] Passwords hashed with Argon2id (recommended settings: memory 64MB, iterations 3, parallelism 1)
-- [ ] JWT tokens for stateless authentication
-- [ ] Data persists after page refresh
-- [ ] Backend validates all data before saving (Prisma 7)
-- [ ] Users can only access their own household's data
-- [ ] API endpoints protected with auth guards
+- [x] All data stored in PostgreSQL 18 database
+- [x] Passwords hashed with Argon2id (recommended settings: memory 64MB, iterations 3, parallelism 1)
+- [x] JWT tokens for stateless authentication
+- [x] Backend validates all data before saving (Prisma 7)
+- [x] Users can only access their own household's data
+- [x] API endpoints protected with auth guards
+- [ ] Data persists after page refresh (frontend integration)
 
 ### User Story 11: API Integration
 **As a** full-stack developer
@@ -415,13 +432,13 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 **So that** the frontend can communicate with the backend properly
 
 **Acceptance Criteria:**
-- [ ] All endpoints implemented (see API Endpoints section)
-- [ ] All endpoints use /api/v1 versioning
-- [ ] Proper HTTP methods (GET, POST, PUT, PATCH, DELETE)
-- [ ] Swagger/OpenAPI documentation generated
-- [ ] CORS properly configured
-- [ ] All non-auth endpoints protected with JWT guard
-- [ ] Consistent error response format: { statusCode, message, error }
+- [x] All endpoints implemented (see API Endpoints section)
+- [x] All endpoints use /api/v1 versioning
+- [x] Proper HTTP methods (GET, POST, PUT, DELETE)
+- [x] Swagger/OpenAPI documentation generated
+- [x] CORS properly configured
+- [x] All non-auth endpoints protected with JWT guard
+- [x] Consistent error response format: { statusCode, message, error, timestamp, requestId }
 
 ### User Story 12: Caching & Performance
 **As a** performance-conscious developer
@@ -490,50 +507,55 @@ PUT    /api/v1/users/me/password      - Change password (requires current passwo
 ### ✅ Salary Endpoints (4 — all implemented)
 All require `Authorization: Bearer <token>` header.
 ```
-GET    /api/v1/salaries/me                    - Get my salary (current month)
-PUT    /api/v1/salaries/me                    - Update my salary (default + current)
-GET    /api/v1/salaries/household             - Get all household members' salaries
-GET    /api/v1/salaries/household/:year/:month - Get household salaries for specific month
+GET    /api/v1/salary/me                       - Get my salary (current month)              [10/min]
+PUT    /api/v1/salary/me                       - Upsert my salary (default + current)       [5/min]
+GET    /api/v1/salary/household                - Get all household members' salaries         [10/min]
+GET    /api/v1/salary/household/:year/:month   - Get household salaries for specific month   [10/min]
 ```
 
-### 🔲 Personal Expense Endpoints (5 — not yet implemented)
+### ✅ Personal Expense Endpoints (5 — all implemented)
+All require `Authorization: Bearer <token>` header.
 ```
-GET    /api/v1/expenses/personal              - List my personal expenses (with filters)
-POST   /api/v1/expenses/personal              - Create personal expense
-GET    /api/v1/expenses/personal/:id          - Get personal expense details
-PUT    /api/v1/expenses/personal/:id          - Update personal expense (owner only)
-DELETE /api/v1/expenses/personal/:id          - Delete personal expense (owner only)
+GET    /api/v1/expenses/personal              - List my personal expenses (with optional filters)  [10/min]
+POST   /api/v1/expenses/personal              - Create personal expense                            [5/min]
+GET    /api/v1/expenses/personal/:id          - Get personal expense details                       [10/min]
+PUT    /api/v1/expenses/personal/:id          - Update personal expense (creator only)              [5/min]
+DELETE /api/v1/expenses/personal/:id          - Soft-delete personal expense (creator only)         [5/min]
 ```
 
-### 🔲 Shared Expense Endpoints (4 — not yet implemented)
+### ✅ Shared Expense Endpoints (5 — all implemented)
+All require `Authorization: Bearer <token>` header.
 ```
-GET    /api/v1/expenses/shared                - List household shared expenses
-GET    /api/v1/expenses/shared/:id            - Get shared expense details
-POST   /api/v1/expenses/shared                - Propose new shared expense → creates approval
-PUT    /api/v1/expenses/shared/:id            - Propose edit to shared expense → creates approval
-DELETE /api/v1/expenses/shared/:id            - Propose deletion of shared expense → creates approval
+GET    /api/v1/expenses/shared                - List household shared expenses (with optional filters)  [10/min]
+GET    /api/v1/expenses/shared/:id            - Get shared expense details                              [10/min]
+POST   /api/v1/expenses/shared                - Propose new shared expense → creates approval            [5/min]
+PUT    /api/v1/expenses/shared/:id            - Propose edit to shared expense → creates approval        [5/min]
+DELETE /api/v1/expenses/shared/:id            - Propose deletion of shared expense → creates approval    [5/min]
 ```
 **Note:** POST/PUT/DELETE on shared expenses don't directly modify data — they create approval requests.
 
-### 🔲 Approval Endpoints (4 — not yet implemented)
+### ✅ Approval Endpoints (4 — all implemented)
+All require `Authorization: Bearer <token>` header.
 ```
-GET    /api/v1/approvals                      - List pending approvals for current user
-GET    /api/v1/approvals/history              - List past approvals (accepted/rejected)
-PUT    /api/v1/approvals/:id/accept           - Accept a pending approval (with optional message)
-PUT    /api/v1/approvals/:id/reject           - Reject a pending approval (with required message)
+GET    /api/v1/approvals                      - List pending approvals for current user's household  [10/min]
+GET    /api/v1/approvals/history              - List past approvals (optional status filter)          [10/min]
+PUT    /api/v1/approvals/:id/accept           - Accept a pending approval (with optional message)    [5/min]
+PUT    /api/v1/approvals/:id/reject           - Reject a pending approval (with required message)    [5/min]
 ```
 
-### 🔲 Dashboard / Summary Endpoints (4 — not yet implemented)
+### ✅ Dashboard / Settlement Endpoints (4 — all implemented)
+All require `Authorization: Bearer <token>` header.
 ```
-GET    /api/v1/dashboard                      - Complete household financial overview
-GET    /api/v1/dashboard/savings              - Savings breakdown per member
-GET    /api/v1/dashboard/settlement           - Current settlement calculation
-POST   /api/v1/dashboard/settlement/mark-paid - Mark current month's settlement as paid
+GET    /api/v1/dashboard                      - Complete household financial overview                [10/min]
+GET    /api/v1/dashboard/savings              - Savings breakdown per member                        [10/min]
+GET    /api/v1/dashboard/settlement           - Current settlement calculation                      [10/min]
+POST   /api/v1/dashboard/settlement/mark-paid - Mark current month's settlement as paid             [5/min]
 ```
 
 ---
 
-**Endpoint Summary:** 26 implemented (8 auth + 11 household + 3 user + 4 salary) / 43 total planned
-**Phase 1 Focus:** 2-person household (couple), full auth, expenses with approval workflow
+**Endpoint Summary:** 44 total endpoints — all implemented (8 auth + 11 household + 3 user + 4 salary + 5 personal expense + 5 shared expense + 4 approval + 4 dashboard)
+**Phase 1 Focus:** 2-person household (couple), full auth, expenses with approval workflow, settlement, dashboard
+**Remaining:** Frontend (React 19 + Vite 7), Redis data caching, Docker setup, CI/CD
 
-*Split from original spec on January 29, 2026. Updated January 31, 2026.*
+*Split from original spec on January 29, 2026. Updated February 4, 2026.*

@@ -2,12 +2,16 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpsertSalaryDto } from './dto/upsert-salary.dto';
 import { SalaryResponseDto } from './dto/salary-response.dto';
+import { CacheService } from '../common/cache/cache.service';
 
 @Injectable()
 export class SalaryService {
     private readonly logger = new Logger(SalaryService.name);
 
-    constructor(private readonly prismaService: PrismaService) {}
+    constructor(
+        private readonly prismaService: PrismaService,
+        private readonly cacheService: CacheService,
+    ) {}
 
     async getMySalary(userId: string): Promise<SalaryResponseDto> {
         const now = new Date();
@@ -27,6 +31,14 @@ export class SalaryService {
         }
 
         return this.mapToResponseDto(salary);
+    }
+
+    /**
+     * Returns the householdId for a user, used for cache invalidation.
+     */
+    private async getHouseholdId(userId: string): Promise<string | null> {
+        const membership = await this.prismaService.householdMember.findUnique({ where: { userId } });
+        return membership?.householdId ?? null;
     }
 
     /**
@@ -78,6 +90,14 @@ export class SalaryService {
         });
 
         this.logger.log(`Salary upserted: ${salary.id} for user: ${userId}`);
+
+        // Invalidate salary and dashboard caches
+        await Promise.all([
+            this.cacheService.invalidateSalaries(membership.householdId),
+            this.cacheService.invalidateDashboard(membership.householdId),
+            this.cacheService.invalidateSavings(membership.householdId),
+        ]);
+
         return this.mapToResponseDto(salary);
     }
 
@@ -95,7 +115,7 @@ export class SalaryService {
 
     /**
      * Shared logic for fetching all household salaries filtered by period.
-     * Validates household membership before querying.
+     * Validates household membership before querying. Results are cached.
      *
      * @param userId - The requesting user's ID (used to find their household)
      * @param year - The year to filter by
@@ -113,12 +133,16 @@ export class SalaryService {
             throw new NotFoundException('You are not a member of any household');
         }
 
-        const salaries = await this.prismaService.salary.findMany({
-            where: { householdId: membership.householdId, month, year },
-            include: { user: { select: { firstName: true, lastName: true } } },
-        });
+        const cacheKey = this.cacheService.salaryKey(membership.householdId, year, month);
 
-        return salaries.map((salary) => this.mapToResponseDto(salary));
+        return this.cacheService.getOrSet(cacheKey, this.cacheService.salariesTTL, async () => {
+            const salaries = await this.prismaService.salary.findMany({
+                where: { householdId: membership.householdId, month, year },
+                include: { user: { select: { firstName: true, lastName: true } } },
+            });
+
+            return salaries.map((salary) => this.mapToResponseDto(salary));
+        });
     }
 
     private mapToResponseDto(salary: any): SalaryResponseDto {

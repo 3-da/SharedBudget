@@ -32,11 +32,7 @@ describe('SessionService', () => {
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                SessionService,
-                { provide: REDIS_CLIENT, useValue: mockRedis },
-                { provide: ConfigService, useValue: mockConfigService },
-            ],
+            providers: [SessionService, { provide: REDIS_CLIENT, useValue: mockRedis }, { provide: ConfigService, useValue: mockConfigService }],
         }).compile();
 
         sessionService = module.get<SessionService>(SessionService);

@@ -4,6 +4,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PersonalExpenseService } from './personal-expense.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
+import { CacheService } from '../common/cache/cache.service';
 import { ExpenseCategory, ExpenseFrequency, ExpenseType, InstallmentFrequency, YearlyPaymentStrategy } from '../generated/prisma/enums';
 
 describe('PersonalExpenseService', () => {
@@ -52,12 +53,23 @@ describe('PersonalExpenseService', () => {
         findExpenseOrFail: vi.fn(),
     };
 
+    const mockCacheService = {
+        getOrSet: vi.fn((key, ttl, fetchFn) => fetchFn()),
+        invalidatePersonalExpenses: vi.fn(),
+        invalidateDashboard: vi.fn(),
+        invalidateSavings: vi.fn(),
+        personalExpensesKey: vi.fn((userId, filterHash) => `cache:expenses:personal:${userId}:${filterHash}`),
+        hashParams: vi.fn(() => 'default'),
+        expensesTTL: 60,
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 PersonalExpenseService,
                 { provide: PrismaService, useValue: mockPrismaService },
                 { provide: ExpenseHelperService, useValue: mockExpenseHelper },
+                { provide: CacheService, useValue: mockCacheService },
             ],
         }).compile();
 
@@ -153,9 +165,7 @@ describe('PersonalExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.listPersonalExpenses(mockUserId, {});
@@ -300,9 +310,7 @@ describe('PersonalExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.createPersonalExpense(mockUserId, createDto);
@@ -324,11 +332,7 @@ describe('PersonalExpenseService', () => {
 
             const result = await service.getPersonalExpense(mockUserId, mockExpenseId);
 
-            expect(mockExpenseHelper.findExpenseOrFail).toHaveBeenCalledWith(
-                mockExpenseId,
-                mockHouseholdId,
-                ExpenseType.PERSONAL,
-            );
+            expect(mockExpenseHelper.findExpenseOrFail).toHaveBeenCalledWith(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL);
             expect(result.id).toBe(mockExpenseId);
         });
 
@@ -346,9 +350,7 @@ describe('PersonalExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.getPersonalExpense(mockUserId, mockExpenseId);
@@ -361,9 +363,7 @@ describe('PersonalExpenseService', () => {
 
         it('should throw NotFoundException if expense does not exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Personal expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Personal expense not found'));
 
             try {
                 await service.getPersonalExpense(mockUserId, 'nonexistent-id');
@@ -376,9 +376,7 @@ describe('PersonalExpenseService', () => {
 
         it('should not reveal expenses from other households (enumeration prevention)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Personal expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Personal expense not found'));
 
             try {
                 await service.getPersonalExpense(mockUserId, 'expense-in-other-household');
@@ -440,9 +438,7 @@ describe('PersonalExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.updatePersonalExpense(mockUserId, mockExpenseId, updateDto);
@@ -455,9 +451,7 @@ describe('PersonalExpenseService', () => {
 
         it('should throw NotFoundException if expense does not exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Personal expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Personal expense not found'));
 
             try {
                 await service.updatePersonalExpense(mockUserId, 'nonexistent-id', updateDto);
@@ -502,9 +496,7 @@ describe('PersonalExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.deletePersonalExpense(mockUserId, mockExpenseId);
@@ -517,9 +509,7 @@ describe('PersonalExpenseService', () => {
 
         it('should throw NotFoundException if expense does not exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Personal expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Personal expense not found'));
 
             try {
                 await service.deletePersonalExpense(mockUserId, 'nonexistent-id');
@@ -547,9 +537,7 @@ describe('PersonalExpenseService', () => {
 
         it('should propagate NotFoundException for already soft-deleted expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Personal expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Personal expense not found'));
 
             try {
                 await service.deletePersonalExpense(mockUserId, mockExpenseId);

@@ -324,12 +324,66 @@ backend/src/
 │   ├── household-invitation.service.ts    # Email invitation lifecycle (invite, respond, cancel)
 │   ├── household-invitation.service.spec.ts
 │   └── household.module.ts
+├── user/
+│   ├── decorators/     # Composite endpoint decorators (3 decorators)
+│   ├── dto/            # DTOs (update-profile, change-password, user-profile-response)
+│   ├── user.controller.ts                 # 3 endpoints (get profile, update, change password)
+│   ├── user.controller.spec.ts
+│   ├── user.service.ts
+│   ├── user.service.spec.ts
+│   └── user.module.ts
+├── salary/
+│   ├── decorators/     # Composite endpoint decorators (4 decorators)
+│   ├── dto/            # DTOs (upsert-salary, salary-response)
+│   ├── salary.controller.ts               # 4 endpoints (get my, upsert, household, by month)
+│   ├── salary.controller.spec.ts
+│   ├── salary.service.ts
+│   ├── salary.service.spec.ts
+│   └── salary.module.ts
+├── personal-expense/
+│   ├── decorators/     # Composite endpoint decorators (5 decorators)
+│   ├── dto/            # DTOs (create, update, list-query, response)
+│   ├── personal-expense.controller.ts     # 5 endpoints (list, create, get, update, delete)
+│   ├── personal-expense.controller.spec.ts
+│   ├── personal-expense.service.ts
+│   ├── personal-expense.service.spec.ts
+│   └── personal-expense.module.ts
+├── shared-expense/
+│   ├── decorators/     # Composite endpoint decorators (5 decorators)
+│   ├── dto/            # DTOs (create, update, list-query, response)
+│   ├── shared-expense.controller.ts       # 5 endpoints (list, get, propose create/update/delete)
+│   ├── shared-expense.controller.spec.ts
+│   ├── shared-expense.service.ts
+│   ├── shared-expense.service.spec.ts
+│   └── shared-expense.module.ts
+├── approval/
+│   ├── decorators/     # Composite endpoint decorators (4 decorators)
+│   ├── dto/            # DTOs (accept, reject, list-query, response)
+│   ├── approval.controller.ts             # 4 endpoints (list pending, history, accept, reject)
+│   ├── approval.controller.spec.ts
+│   ├── approval.service.ts                # Approval review logic (accept with transaction, reject)
+│   ├── approval.service.spec.ts
+│   └── approval.module.ts
+├── dashboard/
+│   ├── decorators/     # Composite endpoint decorators (4 decorators)
+│   ├── dto/            # DTOs (dashboard-response, expense-summary, member-income, member-savings, settlement-response, mark-settlement-paid-response)
+│   ├── dashboard.controller.ts            # 4 endpoints (overview, savings, settlement, mark-paid)
+│   ├── dashboard.controller.spec.ts
+│   ├── dashboard.service.ts               # Financial aggregation, settlement calc, mark-paid
+│   ├── dashboard.service.spec.ts
+│   └── dashboard.module.ts
+├── session/
+│   ├── session.service.ts                 # Redis session ops (store, get, remove, invalidate all)
+│   ├── session.service.spec.ts
+│   └── session.module.ts
 ├── mail/               # Email service (placeholder — logs in dev)
 ├── prisma/             # PrismaService with @prisma/adapter-pg
 ├── redis/              # Redis module + throttler storage
 ├── generated/          # Auto-generated Prisma client + DTOs (DO NOT EDIT)
 └── common/
-    ├── dto/            # Shared DTOs (ErrorResponseDto)
+    ├── dto/            # Shared DTOs (ErrorResponseDto, MessageResponseDto)
+    ├── expense/        # Shared expense utilities (ExpenseHelperService, mappers)
     ├── filters/        # Global exception filter (HttpExceptionFilter)
-    └── logger/         # Pino logger config with sensitive data redaction
+    ├── logger/         # Pino logger config with sensitive data redaction
+    └── utils/          # Utility functions (pickDefined)
 ```

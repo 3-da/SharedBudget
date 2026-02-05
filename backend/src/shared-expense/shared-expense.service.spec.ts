@@ -4,6 +4,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { SharedExpenseService } from './shared-expense.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
+import { CacheService } from '../common/cache/cache.service';
 import {
     ApprovalAction,
     ApprovalStatus,
@@ -92,12 +93,22 @@ describe('SharedExpenseService', () => {
         checkNoPendingApproval: vi.fn(),
     };
 
+    const mockCacheService = {
+        getOrSet: vi.fn((key, ttl, fetchFn) => fetchFn()),
+        invalidateApprovals: vi.fn(),
+        invalidateSharedExpenses: vi.fn(),
+        sharedExpensesKey: vi.fn((householdId, filterHash) => `cache:expenses:shared:${householdId}:${filterHash}`),
+        hashParams: vi.fn(() => 'default'),
+        expensesTTL: 60,
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 SharedExpenseService,
                 { provide: PrismaService, useValue: mockPrismaService },
                 { provide: ExpenseHelperService, useValue: mockExpenseHelper },
+                { provide: CacheService, useValue: mockCacheService },
             ],
         }).compile();
 
@@ -193,9 +204,7 @@ describe('SharedExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.listSharedExpenses(mockUserId, {});
@@ -227,11 +236,7 @@ describe('SharedExpenseService', () => {
 
             const result = await service.getSharedExpense(mockUserId, mockExpenseId);
 
-            expect(mockExpenseHelper.findExpenseOrFail).toHaveBeenCalledWith(
-                mockExpenseId,
-                mockHouseholdId,
-                ExpenseType.SHARED,
-            );
+            expect(mockExpenseHelper.findExpenseOrFail).toHaveBeenCalledWith(mockExpenseId, mockHouseholdId, ExpenseType.SHARED);
             expect(result.id).toBe(mockExpenseId);
             expect(result.paidByUserId).toBeNull();
         });
@@ -246,9 +251,7 @@ describe('SharedExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.getSharedExpense(mockUserId, mockExpenseId);
@@ -261,9 +264,7 @@ describe('SharedExpenseService', () => {
 
         it('should throw NotFoundException if expense does not exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Shared expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Shared expense not found'));
 
             try {
                 await service.getSharedExpense(mockUserId, 'nonexistent-id');
@@ -276,9 +277,7 @@ describe('SharedExpenseService', () => {
 
         it('should not reveal expenses from other households (enumeration prevention)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Shared expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Shared expense not found'));
 
             try {
                 await service.getSharedExpense(mockUserId, 'expense-in-other-household');
@@ -415,9 +414,7 @@ describe('SharedExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.proposeCreateSharedExpense(mockUserId, createDto);
@@ -432,9 +429,7 @@ describe('SharedExpenseService', () => {
         it('should throw NotFoundException if paidByUserId is not in the same household', async () => {
             const dtoWithInvalidPayer = { ...createDto, paidByUserId: 'outsider-user' };
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.validatePaidByUserId.mockRejectedValue(
-                new NotFoundException('The specified payer is not a member of this household'),
-            );
+            mockExpenseHelper.validatePaidByUserId.mockRejectedValue(new NotFoundException('The specified payer is not a member of this household'));
 
             try {
                 await service.proposeCreateSharedExpense(mockUserId, dtoWithInvalidPayer);
@@ -449,9 +444,7 @@ describe('SharedExpenseService', () => {
         it('should throw NotFoundException if paidByUserId is in a different household', async () => {
             const dtoWithWrongHousehold = { ...createDto, paidByUserId: 'other-household-user' };
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.validatePaidByUserId.mockRejectedValue(
-                new NotFoundException('The specified payer is not a member of this household'),
-            );
+            mockExpenseHelper.validatePaidByUserId.mockRejectedValue(new NotFoundException('The specified payer is not a member of this household'));
 
             try {
                 await service.proposeCreateSharedExpense(mockUserId, dtoWithWrongHousehold);
@@ -482,11 +475,7 @@ describe('SharedExpenseService', () => {
 
             const result = await service.proposeUpdateSharedExpense(mockUserId, mockExpenseId, updateDto);
 
-            expect(mockExpenseHelper.findExpenseOrFail).toHaveBeenCalledWith(
-                mockExpenseId,
-                mockHouseholdId,
-                ExpenseType.SHARED,
-            );
+            expect(mockExpenseHelper.findExpenseOrFail).toHaveBeenCalledWith(mockExpenseId, mockHouseholdId, ExpenseType.SHARED);
             expect(mockExpenseHelper.checkNoPendingApproval).toHaveBeenCalledWith(mockExpenseId);
             expect(mockPrismaService.expenseApproval.create).toHaveBeenCalledWith({
                 data: {
@@ -545,9 +534,7 @@ describe('SharedExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, mockExpenseId, updateDto);
@@ -560,9 +547,7 @@ describe('SharedExpenseService', () => {
 
         it('should throw NotFoundException if expense does not exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Shared expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Shared expense not found'));
 
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, 'nonexistent-id', updateDto);
@@ -576,9 +561,7 @@ describe('SharedExpenseService', () => {
         it('should throw ConflictException if pending approval already exists', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord);
-            mockExpenseHelper.checkNoPendingApproval.mockRejectedValue(
-                new ConflictException('There is already a pending approval for this expense'),
-            );
+            mockExpenseHelper.checkNoPendingApproval.mockRejectedValue(new ConflictException('There is already a pending approval for this expense'));
 
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, mockExpenseId, updateDto);
@@ -595,9 +578,7 @@ describe('SharedExpenseService', () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord);
             mockExpenseHelper.checkNoPendingApproval.mockResolvedValue(undefined);
-            mockExpenseHelper.validatePaidByUserId.mockRejectedValue(
-                new NotFoundException('The specified payer is not a member of this household'),
-            );
+            mockExpenseHelper.validatePaidByUserId.mockRejectedValue(new NotFoundException('The specified payer is not a member of this household'));
 
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, mockExpenseId, dtoWithInvalidPayer);
@@ -641,9 +622,7 @@ describe('SharedExpenseService', () => {
         });
 
         it('should throw NotFoundException if user has no household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, mockExpenseId);
@@ -656,9 +635,7 @@ describe('SharedExpenseService', () => {
 
         it('should throw NotFoundException if expense does not exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Shared expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Shared expense not found'));
 
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, 'nonexistent-id');
@@ -672,9 +649,7 @@ describe('SharedExpenseService', () => {
         it('should throw ConflictException if pending approval already exists', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord);
-            mockExpenseHelper.checkNoPendingApproval.mockRejectedValue(
-                new ConflictException('There is already a pending approval for this expense'),
-            );
+            mockExpenseHelper.checkNoPendingApproval.mockRejectedValue(new ConflictException('There is already a pending approval for this expense'));
 
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, mockExpenseId);
@@ -688,9 +663,7 @@ describe('SharedExpenseService', () => {
 
         it('should not reveal expenses from other households', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(
-                new NotFoundException('Shared expense not found'),
-            );
+            mockExpenseHelper.findExpenseOrFail.mockRejectedValue(new NotFoundException('Shared expense not found'));
 
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, 'expense-in-other-household');

@@ -1,6 +1,6 @@
 import { PersonalExpenseResponseDto } from '../../personal-expense/dto/personal-expense-response.dto';
 import { SharedExpenseResponseDto } from '../../shared-expense/dto/shared-expense-response.dto';
-import { ApprovalResponseDto } from '../../aproval/dto/approval-response.dto';
+import { ApprovalResponseDto } from '../../approval/dto/approval-response.dto';
 
 // Maps the common expense fields shared by both personal and shared response DTOs
 function mapBaseExpenseFields(expense: any) {

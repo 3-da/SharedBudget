@@ -17,13 +17,16 @@ import { SalaryModule } from './salary/salary.module';
 import { UserModule } from './user/user.module';
 import { PersonalExpenseModule } from './personal-expense/personal-expense.module';
 import { SharedExpenseModule } from './shared-expense/shared-expense.module';
-import { AprovalModule } from './aproval/aproval.module';
+import { ApprovalModule } from './approval/approval.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { CacheModule } from './common/cache/cache.module';
 
 @Module({
     imports: [
         LoggerModule,
         ConfigModule.forRoot(),
         RedisModule,
+        CacheModule,
         MailModule,
         ThrottlerModule.forRootAsync({
             imports: [RedisModule],
@@ -40,13 +43,10 @@ import { AprovalModule } from './aproval/aproval.module';
         UserModule,
         PersonalExpenseModule,
         SharedExpenseModule,
-        AprovalModule,
+        ApprovalModule,
+        DashboardModule,
     ],
     controllers: [AppController],
-    providers: [
-        AppService,
-        { provide: APP_GUARD, useClass: ThrottlerGuard },
-        { provide: APP_FILTER, useClass: HttpExceptionFilter },
-    ],
+    providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })
 export class AppModule {}
