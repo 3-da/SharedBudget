@@ -1,0 +1,165 @@
+{
+  "project": {
+    "name": "SharedBudget",
+    "description": "Household expense management app with approval workflows",
+    "version": "1.0.0",
+    "phase": "Phase 1 Complete",
+    "status": {
+      "backend": "complete",
+      "frontend": "pending",
+      "endpoints": 44,
+      "testFiles": 33
+    },
+    "generated": "2026-02-05"
+  },
+  "techStack": {
+    "runtime": { "name": "Node.js", "version": "24.13.0" },
+    "framework": { "name": "NestJS", "version": "11.1.x" },
+    "orm": { "name": "Prisma", "version": "7.3.0" },
+    "database": { "name": "PostgreSQL", "version": "18.1" },
+    "cache": { "name": "Redis", "version": "7.2.x" },
+    "testing": { "name": "Vitest", "version": "4.0.18" },
+    "docs": { "name": "@nestjs/swagger", "version": "11.2.5" }
+  },
+  "modules": [
+    { "name": "auth", "path": "backend/src/auth", "endpoints": 8, "description": "Registration, login, email verification, password reset" },
+    { "name": "household", "path": "backend/src/household", "endpoints": 11, "description": "CRUD, invitations, membership, ownership transfer" },
+    { "name": "user", "path": "backend/src/user", "endpoints": 3, "description": "Profile management, password change" },
+    { "name": "salary", "path": "backend/src/salary", "endpoints": 4, "description": "Monthly salary tracking" },
+    { "name": "personal-expense", "path": "backend/src/personal-expense", "endpoints": 5, "description": "Personal expenses (no approval)" },
+    { "name": "shared-expense", "path": "backend/src/shared-expense", "endpoints": 5, "description": "Shared expenses (approval workflow)" },
+    { "name": "approval", "path": "backend/src/approval", "endpoints": 4, "description": "Accept/reject expense changes" },
+    { "name": "dashboard", "path": "backend/src/dashboard", "endpoints": 4, "description": "Financial overview, settlement" },
+    { "name": "session", "path": "backend/src/session", "endpoints": 0, "description": "Redis session management" },
+    { "name": "mail", "path": "backend/src/mail", "endpoints": 0, "description": "Email service (placeholder)" },
+    { "name": "prisma", "path": "backend/src/prisma", "endpoints": 0, "description": "Database service" },
+    { "name": "redis", "path": "backend/src/redis", "endpoints": 0, "description": "Redis module + throttler" },
+    { "name": "common", "path": "backend/src/common", "endpoints": 0, "description": "Shared utilities" },
+    { "name": "generated", "path": "backend/src/generated", "endpoints": 0, "description": "Auto-generated Prisma client + DTOs" }
+  ],
+  "dataModel": {
+    "models": [
+      { "name": "User", "purpose": "User accounts with email verification" },
+      { "name": "Household", "purpose": "Budget groups with invite code" },
+      { "name": "HouseholdMember", "purpose": "Membership join table with role" },
+      { "name": "HouseholdInvitation", "purpose": "Email invitations with status" },
+      { "name": "Salary", "purpose": "Monthly income records" },
+      { "name": "Expense", "purpose": "Personal & shared expenses" },
+      { "name": "ExpenseApproval", "purpose": "Change proposals for shared expenses" },
+      { "name": "Settlement", "purpose": "Monthly settlement audit trail" }
+    ],
+    "enums": [
+      { "name": "HouseholdRole", "values": ["OWNER", "MEMBER"] },
+      { "name": "ExpenseType", "values": ["PERSONAL", "SHARED"] },
+      { "name": "ExpenseCategory", "values": ["RECURRING", "ONE_TIME"] },
+      { "name": "ExpenseFrequency", "values": ["MONTHLY", "YEARLY"] },
+      { "name": "YearlyPaymentStrategy", "values": ["FULL", "INSTALLMENTS"] },
+      { "name": "InstallmentFrequency", "values": ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL"] },
+      { "name": "ApprovalAction", "values": ["CREATE", "UPDATE", "DELETE"] },
+      { "name": "ApprovalStatus", "values": ["PENDING", "ACCEPTED", "REJECTED"] },
+      { "name": "InvitationStatus", "values": ["PENDING", "ACCEPTED", "DECLINED", "CANCELLED"] }
+    ]
+  },
+  "endpoints": {
+    "auth": [
+      { "method": "POST", "path": "/auth/register", "description": "Register + send verification code" },
+      { "method": "POST", "path": "/auth/verify-code", "description": "Verify email → auto-login" },
+      { "method": "POST", "path": "/auth/resend-code", "description": "Resend verification code" },
+      { "method": "POST", "path": "/auth/login", "description": "Login → JWT tokens" },
+      { "method": "POST", "path": "/auth/refresh", "description": "Refresh access token" },
+      { "method": "POST", "path": "/auth/logout", "description": "Invalidate refresh token" },
+      { "method": "POST", "path": "/auth/forgot-password", "description": "Request password reset" },
+      { "method": "POST", "path": "/auth/reset-password", "description": "Reset password with token" }
+    ],
+    "household": [
+      { "method": "POST", "path": "/household", "description": "Create household" },
+      { "method": "GET", "path": "/household/mine", "description": "Get my household" },
+      { "method": "POST", "path": "/household/regenerate-code", "description": "New invite code" },
+      { "method": "POST", "path": "/household/invite", "description": "Invite by email" },
+      { "method": "GET", "path": "/household/invitations/pending", "description": "My pending invitations" },
+      { "method": "POST", "path": "/household/invitations/:id/respond", "description": "Accept/decline" },
+      { "method": "DELETE", "path": "/household/invitations/:id", "description": "Cancel invitation" },
+      { "method": "POST", "path": "/household/join", "description": "Join by invite code" },
+      { "method": "POST", "path": "/household/leave", "description": "Leave household" },
+      { "method": "DELETE", "path": "/household/members/:userId", "description": "Remove member" },
+      { "method": "POST", "path": "/household/transfer-ownership", "description": "Transfer OWNER role" }
+    ],
+    "user": [
+      { "method": "GET", "path": "/users/me", "description": "Get profile" },
+      { "method": "PUT", "path": "/users/me", "description": "Update profile" },
+      { "method": "PUT", "path": "/users/me/password", "description": "Change password" }
+    ],
+    "salary": [
+      { "method": "GET", "path": "/salary/me", "description": "My salary" },
+      { "method": "PUT", "path": "/salary/me", "description": "Upsert my salary" },
+      { "method": "GET", "path": "/salary/household", "description": "All household salaries" },
+      { "method": "GET", "path": "/salary/household/:year/:month", "description": "Salaries by month" }
+    ],
+    "personal-expense": [
+      { "method": "GET", "path": "/expenses/personal", "description": "List personal expenses" },
+      { "method": "POST", "path": "/expenses/personal", "description": "Create expense" },
+      { "method": "GET", "path": "/expenses/personal/:id", "description": "Get expense" },
+      { "method": "PUT", "path": "/expenses/personal/:id", "description": "Update expense" },
+      { "method": "DELETE", "path": "/expenses/personal/:id", "description": "Delete expense" }
+    ],
+    "shared-expense": [
+      { "method": "GET", "path": "/expenses/shared", "description": "List shared expenses" },
+      { "method": "GET", "path": "/expenses/shared/:id", "description": "Get shared expense" },
+      { "method": "POST", "path": "/expenses/shared", "description": "Propose new expense" },
+      { "method": "PUT", "path": "/expenses/shared/:id", "description": "Propose edit" },
+      { "method": "DELETE", "path": "/expenses/shared/:id", "description": "Propose delete" }
+    ],
+    "approval": [
+      { "method": "GET", "path": "/approvals", "description": "List pending approvals" },
+      { "method": "GET", "path": "/approvals/history", "description": "Past approvals" },
+      { "method": "PUT", "path": "/approvals/:id/accept", "description": "Accept approval" },
+      { "method": "PUT", "path": "/approvals/:id/reject", "description": "Reject approval" }
+    ],
+    "dashboard": [
+      { "method": "GET", "path": "/dashboard", "description": "Financial overview" },
+      { "method": "GET", "path": "/dashboard/savings", "description": "Savings per member" },
+      { "method": "GET", "path": "/dashboard/settlement", "description": "Settlement calculation" },
+      { "method": "POST", "path": "/dashboard/settlement/mark-paid", "description": "Mark as settled" }
+    ]
+  },
+  "redisKeys": {
+    "verify:{email}": { "purpose": "Email verification code", "ttl": "10 min" },
+    "reset:{token}": { "purpose": "Password reset token", "ttl": "1 hour" },
+    "refresh:{token}": { "purpose": "Refresh token → userId", "ttl": "7 days" },
+    "user_sessions:{userId}": { "purpose": "Set of refresh tokens", "ttl": "7 days" }
+  },
+  "commands": {
+    "dev": "npm run start:dev",
+    "build": "npm run build",
+    "test": "npm run test",
+    "testWatch": "npm run test:watch",
+    "testCov": "npm run test:cov",
+    "lint": "npm run lint",
+    "format": "npm run format",
+    "prismaGenerate": "npx prisma generate --config ./prisma.config.ts",
+    "prismaMigrate": "npx prisma migrate dev --config ./prisma.config.ts",
+    "docker": "docker compose up -d"
+  },
+  "documentation": {
+    "spec": "SPEC.md",
+    "architecture": "ARCHITECTURE.md",
+    "claude": "CLAUDE.md",
+    "swagger": "/docs (non-prod only)"
+  },
+  "mandatoryRules": [
+    "Unit tests are NOT optional - write immediately after service methods",
+    "Every service must have a Logger",
+    "Every endpoint must have Swagger docs via composite decorators",
+    "Error responses must use ErrorResponseDto"
+  ],
+  "patterns": {
+    "compositeDecorators": "Each module has decorators/api-*.decorators.ts bundling route + Swagger + throttle",
+    "errorHandling": "Global HttpExceptionFilter returns consistent JSON with timestamp + requestId",
+    "approvalWorkflow": "Shared expense changes create ExpenseApproval records requiring acceptance",
+    "jsdocCast": {
+      "Alex": "OWNER (household creator)",
+      "Sam": "MEMBER (joined via code/invitation)",
+      "Jordan": "OUTSIDER (not in household yet)"
+    }
+  }
+}

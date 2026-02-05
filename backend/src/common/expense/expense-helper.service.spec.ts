@@ -51,9 +51,7 @@ describe('ExpenseHelperService', () => {
             mockPrismaService.householdMember.findUnique.mockResolvedValue(null);
 
             await expect(service.requireMembership(mockUserId)).rejects.toThrow(NotFoundException);
-            await expect(service.requireMembership(mockUserId)).rejects.toThrow(
-                'You must be in a household to manage expenses',
-            );
+            await expect(service.requireMembership(mockUserId)).rejects.toThrow('You must be in a household to manage expenses');
         });
     });
     //#endregion
@@ -93,31 +91,21 @@ describe('ExpenseHelperService', () => {
         it('should throw NotFoundException with "Personal" label when personal expense not found', async () => {
             mockPrismaService.expense.findFirst.mockResolvedValue(null);
 
-            await expect(
-                service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL),
-            ).rejects.toThrow(NotFoundException);
-            await expect(
-                service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL),
-            ).rejects.toThrow('Personal expense not found');
+            await expect(service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL)).rejects.toThrow(NotFoundException);
+            await expect(service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL)).rejects.toThrow('Personal expense not found');
         });
 
         it('should throw NotFoundException with "Shared" label when shared expense not found', async () => {
             mockPrismaService.expense.findFirst.mockResolvedValue(null);
 
-            await expect(
-                service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.SHARED),
-            ).rejects.toThrow(NotFoundException);
-            await expect(
-                service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.SHARED),
-            ).rejects.toThrow('Shared expense not found');
+            await expect(service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.SHARED)).rejects.toThrow(NotFoundException);
+            await expect(service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.SHARED)).rejects.toThrow('Shared expense not found');
         });
 
         it('should not find soft-deleted expenses (deletedAt filter)', async () => {
             mockPrismaService.expense.findFirst.mockResolvedValue(null);
 
-            await expect(
-                service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL),
-            ).rejects.toThrow(NotFoundException);
+            await expect(service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL)).rejects.toThrow(NotFoundException);
 
             expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
                 where: expect.objectContaining({ deletedAt: null }),
@@ -141,12 +129,8 @@ describe('ExpenseHelperService', () => {
         it('should throw NotFoundException when paidByUserId does not exist', async () => {
             mockPrismaService.householdMember.findUnique.mockResolvedValue(null);
 
-            await expect(service.validatePaidByUserId('nonexistent', mockHouseholdId)).rejects.toThrow(
-                NotFoundException,
-            );
-            await expect(service.validatePaidByUserId('nonexistent', mockHouseholdId)).rejects.toThrow(
-                'The specified payer is not a member of this household',
-            );
+            await expect(service.validatePaidByUserId('nonexistent', mockHouseholdId)).rejects.toThrow(NotFoundException);
+            await expect(service.validatePaidByUserId('nonexistent', mockHouseholdId)).rejects.toThrow('The specified payer is not a member of this household');
         });
 
         it('should throw NotFoundException when paidByUserId is in a different household', async () => {
@@ -155,12 +139,8 @@ describe('ExpenseHelperService', () => {
                 householdId: 'other-household',
             });
 
-            await expect(service.validatePaidByUserId('other-user', mockHouseholdId)).rejects.toThrow(
-                NotFoundException,
-            );
-            await expect(service.validatePaidByUserId('other-user', mockHouseholdId)).rejects.toThrow(
-                'The specified payer is not a member of this household',
-            );
+            await expect(service.validatePaidByUserId('other-user', mockHouseholdId)).rejects.toThrow(NotFoundException);
+            await expect(service.validatePaidByUserId('other-user', mockHouseholdId)).rejects.toThrow('The specified payer is not a member of this household');
         });
     });
     //#endregion
@@ -184,9 +164,7 @@ describe('ExpenseHelperService', () => {
             });
 
             await expect(service.checkNoPendingApproval(mockExpenseId)).rejects.toThrow(ConflictException);
-            await expect(service.checkNoPendingApproval(mockExpenseId)).rejects.toThrow(
-                'There is already a pending approval for this expense',
-            );
+            await expect(service.checkNoPendingApproval(mockExpenseId)).rejects.toThrow('There is already a pending approval for this expense');
         });
     });
     //#endregion

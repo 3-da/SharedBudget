@@ -22,7 +22,7 @@ describe('UpsertSalaryDto', () => {
         });
 
         it('should accept decimal amounts', async () => {
-            const dto = plainToInstance(UpsertSalaryDto, { defaultAmount: 3500.50, currentAmount: 3200.99 });
+            const dto = plainToInstance(UpsertSalaryDto, { defaultAmount: 3500.5, currentAmount: 3200.99 });
             const errors = await validate(dto);
 
             expect(errors.length).toBe(0);

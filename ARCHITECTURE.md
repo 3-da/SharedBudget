@@ -1,8 +1,8 @@
 # Household Budget Tracker — Architecture & Technical Reference
 
-**Document Version:** 2.0
+**Document Version:** 3.0
 **Created:** January 29, 2026 (Extracted from SPEC.md v2.0)
-**Updated:** January 31, 2026 (Synced with current codebase state)
+**Updated:** February 4, 2026 (Synced with current codebase state)
 
 > **Related docs:**
 > - `SPEC.md` — Business requirements, user stories, feature specs, API endpoints
@@ -56,6 +56,21 @@
 ---
 
 ## Data Model (Prisma Schema)
+
+**8 models, 9 enums**
+
+### Enums
+| Enum | Values | Purpose |
+|------|--------|---------|
+| HouseholdRole | OWNER, MEMBER | Member role in household |
+| ExpenseType | PERSONAL, SHARED | Expense ownership type |
+| ExpenseCategory | RECURRING, ONE_TIME | Expense recurrence |
+| ExpenseFrequency | MONTHLY, YEARLY | Payment frequency |
+| YearlyPaymentStrategy | FULL, INSTALLMENTS | How yearly expenses are paid |
+| InstallmentFrequency | MONTHLY, QUARTERLY, SEMI_ANNUAL | Installment payment schedule (12, 4, or 2 payments/year) |
+| ApprovalAction | CREATE, UPDATE, DELETE | Type of proposed change |
+| ApprovalStatus | PENDING, ACCEPTED, REJECTED | Approval lifecycle state |
+| InvitationStatus | PENDING, ACCEPTED, DECLINED, CANCELLED | Invitation lifecycle state |
 
 ### User
 | Field | Type | Notes |
@@ -111,8 +126,8 @@
 | id | UUID | Primary key |
 | userId | UUID | FK → User |
 | householdId | UUID | FK → Household |
-| defaultAmount | Decimal | Baseline monthly salary |
-| currentAmount | Decimal | Actual salary this month |
+| defaultAmount | Decimal(12,2) | Baseline monthly salary |
+| currentAmount | Decimal(12,2) | Actual salary this month |
 | month | Int | 1-12 |
 | year | Int | e.g., 2026 |
 | createdAt | DateTime | Auto-generated |
@@ -126,18 +141,18 @@
 | id | UUID | Primary key |
 | householdId | UUID | FK → Household |
 | createdById | UUID | FK → User (who created it) |
-| name | String | Max 100 chars |
-| amount | Decimal | Total amount in EUR |
+| name | String | VarChar(100) |
+| amount | Decimal(12,2) | Total amount in EUR |
 | type | Enum | PERSONAL or SHARED |
 | category | Enum | RECURRING or ONE_TIME |
 | frequency | Enum | MONTHLY or YEARLY |
 | yearlyPaymentStrategy | Enum? | FULL or INSTALLMENTS (null if monthly) |
-| installmentCount | Int? | 1, 2, 4, or 12 (null if monthly or FULL) |
+| installmentFrequency | Enum? | MONTHLY, QUARTERLY, or SEMI_ANNUAL (null if not INSTALLMENTS) |
 | paymentMonth | Int? | 1-12, which month to pay in full (null if not FULL) |
 | paidByUserId | UUID? | FK → User. Null = split among members |
-| deletedAt | DateTime? | Null = active. Non-null = soft-deleted |
 | month | Int? | For ONE_TIME expenses: which month |
 | year | Int? | For ONE_TIME expenses: which year |
+| deletedAt | DateTime? | Null = active. Non-null = soft-deleted |
 | createdAt | DateTime | Auto-generated |
 | updatedAt | DateTime | Auto-updated |
 
@@ -147,6 +162,9 @@
 - ONE_TIME expenses have month/year to scope them; RECURRING expenses repeat every month
 - `paidByUserId = null` means split equally among household members
 - `paidByUserId = <userId>` means that specific person pays the full amount
+- `installmentFrequency` replaced the earlier `installmentCount` design — uses an enum for type safety
+
+**Indexes:** (householdId, type), (createdById)
 
 ### ExpenseApproval
 | Field | Type | Notes |
@@ -158,7 +176,7 @@
 | status | Enum | PENDING, ACCEPTED, or REJECTED |
 | requestedById | UUID | FK → User (who proposed the change) |
 | reviewedById | UUID? | FK → User (who reviewed) |
-| message | String? | Reviewer's comment |
+| message | String? | Reviewer's comment (max 500 chars) |
 | proposedData | JSON? | For CREATE/UPDATE: the full proposed expense data |
 | createdAt | DateTime | Auto-generated |
 | reviewedAt | DateTime? | When review happened |
@@ -167,6 +185,23 @@
 - CREATE: `proposedData` holds the full new expense. On accept → expense is created.
 - UPDATE: `proposedData` holds the changed fields. On accept → expense is updated.
 - DELETE: No `proposedData` needed. On accept → expense is soft-deleted (`deletedAt` set).
+
+**Indexes:** (householdId, status), (requestedById)
+
+### Settlement
+| Field | Type | Notes |
+|-------|------|-------|
+| id | UUID | Primary key |
+| householdId | UUID | FK → Household |
+| month | Int | 1-12, month that was settled |
+| year | Int | Year that was settled |
+| amount | Decimal(12,2) | Net amount settled in EUR |
+| paidByUserId | UUID | FK → User (who owed the money and paid) |
+| paidToUserId | UUID | FK → User (who was owed and received) |
+| paidAt | DateTime | When the settlement was marked as paid |
+
+**Constraints:** Unique on (householdId, month, year). One settlement record per household per month.
+**Purpose:** Audit trail for when "Mark as Settled" is used. The dashboard checks for an existing record to show `isSettled` status.
 
 ---
 
@@ -181,13 +216,15 @@
 | Expense lists | 1 minute | Changes more often |
 | Settlement data | 2 minutes | Moderate freshness |
 
-### Redis Key Patterns
+**Note:** Data caching (salaries, expenses, summaries) is planned but not yet implemented. Currently only auth-related Redis keys are in use.
+
+### Redis Key Patterns (Currently Active)
 | Pattern | Purpose | TTL |
 |---------|---------|-----|
 | `verify:{email}` | Email verification code | 10 min |
 | `reset:{token}` | Password reset token | 1 hour |
 | `refresh:{token}` | Refresh token → userId | 7 days |
-| `user_sessions:{userId}` | Set of user's refresh tokens | No TTL |
+| `user_sessions:{userId}` | Set of user's refresh tokens | 7 days (refreshed on new token) |
 
 ### Cache Invalidation
 - Cache is invalidated on any write operation for the household
@@ -233,6 +270,7 @@ For validation errors (400), `message` is an array:
 
 ### Key Files
 - `common/dto/error-response.dto.ts` — Swagger DTO for the error shape
+- `common/dto/message-response.dto.ts` — Simple `{ message }` response DTO
 - `common/filters/http-exception.filter.ts` — The filter implementation
 - `common/filters/http-exception.filter.spec.ts` — 13 unit tests
 
@@ -246,12 +284,11 @@ The `requestId` is extracted from `request.id`, which is set by Pino's `genReqId
 ```
 backend/
 ├── prisma/
-│   ├── schema.prisma              # Data model (6 models, 8 enums)
-│   ├── prisma.config.ts           # Prisma configuration
-│   └── migrations/                # Database migrations
+│   ├── schema.prisma              # Data model (8 models, 9 enums)
+│   └── prisma.config.ts           # Prisma configuration
 ├── src/
 │   ├── main.ts                    # Bootstrap: Swagger, validation, CORS, API prefix
-│   ├── app.module.ts              # Root module (imports all feature modules)
+│   ├── app.module.ts              # Root module (imports all 14 modules)
 │   ├── app.controller.ts          # Health check endpoint
 │   │
 │   ├── auth/
@@ -281,6 +318,71 @@ backend/
 │   │   ├── household-invitation.service.spec.ts
 │   │   └── household.module.ts
 │   │
+│   ├── user/
+│   │   ├── decorators/
+│   │   │   └── api-user.decorators.ts       # 3 composite endpoint decorators
+│   │   ├── dto/                   # 3 DTOs (update-profile, change-password, user-profile-response)
+│   │   ├── user.controller.ts     # 3 endpoints (get profile, update profile, change password)
+│   │   ├── user.controller.spec.ts
+│   │   ├── user.service.ts
+│   │   ├── user.service.spec.ts
+│   │   └── user.module.ts
+│   │
+│   ├── salary/
+│   │   ├── decorators/
+│   │   │   └── api-salary.decorators.ts     # 4 composite endpoint decorators
+│   │   ├── dto/                   # 2 DTOs (upsert-salary, salary-response)
+│   │   ├── salary.controller.ts   # 4 endpoints (get my, upsert my, household, household by month)
+│   │   ├── salary.controller.spec.ts
+│   │   ├── salary.service.ts
+│   │   ├── salary.service.spec.ts
+│   │   └── salary.module.ts
+│   │
+│   ├── personal-expense/
+│   │   ├── decorators/
+│   │   │   └── api-personal-expense.decorators.ts  # 5 composite endpoint decorators
+│   │   ├── dto/                   # 4 DTOs (create, update, list-query, response)
+│   │   ├── personal-expense.controller.ts   # 5 endpoints (list, create, get, update, delete)
+│   │   ├── personal-expense.controller.spec.ts
+│   │   ├── personal-expense.service.ts
+│   │   ├── personal-expense.service.spec.ts
+│   │   └── personal-expense.module.ts
+│   │
+│   ├── shared-expense/
+│   │   ├── decorators/
+│   │   │   └── api-shared-expense.decorators.ts    # 5 composite endpoint decorators
+│   │   ├── dto/                   # 4 DTOs (create, update, list-query, response)
+│   │   ├── shared-expense.controller.ts     # 5 endpoints (list, get, propose create/update/delete)
+│   │   ├── shared-expense.controller.spec.ts
+│   │   ├── shared-expense.service.ts
+│   │   ├── shared-expense.service.spec.ts
+│   │   └── shared-expense.module.ts
+│   │
+│   ├── approval/
+│   │   ├── decorators/
+│   │   │   └── api-approval.decorators.ts   # 4 composite endpoint decorators
+│   │   ├── dto/                   # 4 DTOs (accept, reject, list-query, response)
+│   │   ├── approval.controller.ts # 4 endpoints (list pending, history, accept, reject)
+│   │   ├── approval.controller.spec.ts
+│   │   ├── approval.service.ts    # Approval review logic (accept with transaction, reject)
+│   │   ├── approval.service.spec.ts
+│   │   └── approval.module.ts
+│   │
+│   ├── dashboard/
+│   │   ├── decorators/
+│   │   │   └── api-dashboard.decorators.ts  # 4 composite endpoint decorators
+│   │   ├── dto/                   # 6 DTOs (dashboard-response, expense-summary, member-income, member-savings, settlement-response, mark-settlement-paid-response)
+│   │   ├── dashboard.controller.ts # 4 endpoints (overview, savings, settlement, mark-paid)
+│   │   ├── dashboard.controller.spec.ts
+│   │   ├── dashboard.service.ts   # Financial aggregation, settlement calc, mark-paid
+│   │   ├── dashboard.service.spec.ts
+│   │   └── dashboard.module.ts
+│   │
+│   ├── session/
+│   │   ├── session.service.ts     # Redis session operations (store, get, remove, invalidate all)
+│   │   ├── session.service.spec.ts
+│   │   └── session.module.ts
+│   │
 │   ├── mail/
 │   │   ├── mail.service.ts        # 5 email methods (placeholder — logs in dev)
 │   │   └── mail.module.ts         # Global module
@@ -295,12 +397,20 @@ backend/
 │   │
 │   ├── common/
 │   │   ├── dto/
-│   │   │   └── error-response.dto.ts   # Shared ErrorResponseDto (Swagger schema for all errors)
+│   │   │   ├── error-response.dto.ts        # Shared ErrorResponseDto (Swagger schema for all errors)
+│   │   │   └── message-response.dto.ts      # Simple { message } response DTO
+│   │   ├── expense/
+│   │   │   ├── expense-helper.module.ts     # Shared expense utility module
+│   │   │   ├── expense-helper.service.ts    # requireMembership, findExpenseOrFail, validatePaidByUserId, checkNoPendingApproval
+│   │   │   ├── expense-helper.service.spec.ts
+│   │   │   └── expense.mappers.ts           # Prisma → DTO mappers (personal, shared, approval responses)
 │   │   ├── filters/
 │   │   │   ├── http-exception.filter.ts       # Global catch-all exception filter
 │   │   │   └── http-exception.filter.spec.ts  # 13 unit tests
-│   │   └── logger/
-│   │       └── logger.module.ts   # Pino logger with request logging + sensitive data redaction
+│   │   ├── logger/
+│   │   │   └── logger.module.ts   # Pino logger with request logging + sensitive data redaction
+│   │   └── utils/
+│   │       └── pick-defined.ts    # Helper to filter undefined values from objects (for partial updates)
 │   │
 │   └── generated/                 # Auto-generated Prisma client + DTOs (DO NOT EDIT)
 │
@@ -340,9 +450,36 @@ backend/
 |------|----------|
 | `auth.service.spec.ts` | Register, verify, login, refresh, logout, forgot/reset password |
 | `auth.controller.spec.ts` | All 8 auth endpoints |
+| `auth-dto.spec.ts` | DTO validation for auth DTOs |
 | `household.service.spec.ts` | Create, get, regenerate code, join by code, leave, remove, transfer |
 | `household.controller.spec.ts` | All 11 household endpoints |
 | `household-invitation.service.spec.ts` | Invite, respond (accept/decline), cancel, get pending |
+| `household-dto.spec.ts` | DTO validation for household DTOs |
+| `user.service.spec.ts` | Get profile, update profile, change password |
+| `user.controller.spec.ts` | All 3 user endpoints |
+| `user-dto.spec.ts` | DTO validation for user DTOs |
+| `session.service.spec.ts` | Store, get, remove, invalidate all sessions |
+| `salary.service.spec.ts` | Get my, upsert, household salaries, by month |
+| `salary.controller.spec.ts` | All 4 salary endpoints |
+| `upsert-salary.dto.spec.ts` | DTO validation for salary upsert |
+| `personal-expense.service.spec.ts` | List, create, get, update, delete personal expenses |
+| `personal-expense.controller.spec.ts` | All 5 personal expense endpoints |
+| `create-personal-expense.dto.spec.ts` | DTO validation with conditional fields |
+| `update-personal-expense.dto.spec.ts` | DTO validation for partial updates |
+| `list-personal-expenses-query.dto.spec.ts` | Query filter validation |
+| `shared-expense.service.spec.ts` | List, get, propose create/update/delete |
+| `shared-expense.controller.spec.ts` | All 5 shared expense endpoints |
+| `create-shared-expense.dto.spec.ts` | DTO validation with paidByUserId |
+| `update-shared-expense.dto.spec.ts` | DTO validation for shared expense updates |
+| `list-shared-expenses-query.dto.spec.ts` | Query filter validation |
+| `approval.service.spec.ts` | List pending, history, accept (with transaction), reject |
+| `approval.controller.spec.ts` | All 4 approval endpoints |
+| `accept-approval.dto.spec.ts` | Optional message validation |
+| `reject-approval.dto.spec.ts` | Required message validation |
+| `list-approvals-query.dto.spec.ts` | Status filter validation |
+| `dashboard.service.spec.ts` | Overview, savings, settlement calc, mark-paid |
+| `dashboard.controller.spec.ts` | All 4 dashboard endpoints |
+| `expense-helper.service.spec.ts` | requireMembership, findExpenseOrFail, validatePaidByUserId, checkNoPendingApproval |
 | `http-exception.filter.spec.ts` | HttpException, validation arrays, Prisma P2002/P2025, unknown errors, metadata |
 
 ### Test Framework
@@ -357,6 +494,8 @@ backend/
 3. Not found — resource doesn't exist
 4. Unauthorized/Forbidden — wrong role or permissions
 5. Security — enumeration prevention, race conditions
+6. Boundary values — edge of valid ranges
+7. Error message assertions — exact message string verification
 
 ### Coverage Targets
 | Area | Target |
@@ -388,7 +527,7 @@ backend/
 
 ### Database
 - Connection pooling: 20-30 connections
-- Indexes on: userId, householdId, (userId + month + year), (householdId + type), (householdId + status)
+- Indexes on: userId, householdId, (userId + month + year), (householdId + type), (householdId + status), (targetUserId + status), createdById, requestedById
 
 ---
 
@@ -451,26 +590,31 @@ CACHE_TTL_SETTLEMENT=120
 #### ✅ Implemented
 - User registration with email verification (6-digit code)
 - JWT authentication with refresh token rotation
+- Session management (store, retrieve, invalidate refresh tokens in Redis)
 - Password reset flow (forgot → email → reset)
+- User profile management (view, update name, change password)
 - Household creation with invite code
 - Join household by code (instant)
 - Email-based household invitations (invite → accept/decline → cancel)
 - Leave household / remove member / transfer ownership
 - Role-based access (OWNER vs MEMBER)
+- Salary management (upsert per user per month, household view)
+- Personal expense CRUD (create, list, get, update, soft-delete with query filters)
+- Shared expense proposals (propose create/update/delete → creates approval)
+- Expense approval workflow (list pending, history, accept with transaction, reject)
+- Settlement calculation (who owes whom, context-aware messages)
+- Mark settlement as paid (audit trail with duplicate prevention)
+- Financial dashboard (income, expenses, savings, settlement, pending approvals)
+- Shared expense helper utilities (membership validation, expense lookup, mapper functions)
 - Rate limiting with Redis-backed throttler
 - Structured logging with Pino (sensitive data redaction)
 - Swagger/OpenAPI documentation
 - Global exception filter (consistent error shape with `timestamp` + `requestId`)
-- Comprehensive unit tests (5 spec files)
+- Comprehensive unit tests (33 spec files covering all services, controllers, and DTOs)
 - Mail service placeholder (logs in dev)
 
 #### 🔲 Remaining (Phase 1)
-- Salary management (CRUD, per-user per-month)
-- Personal expense management (CRUD with frequency options)
-- Shared expense management with approval workflow
-- Settlement calculation (who owes whom)
-- Financial dashboard & analytics
-- Redis data caching (salaries, expenses, summaries)
+- Redis data caching (salaries, expenses, summaries, settlements)
 - Frontend (React 19 + Vite 7)
 - Docker setup for all services
 - CI/CD with GitHub Actions
@@ -488,4 +632,4 @@ CACHE_TTL_SETTLEMENT=120
 
 ---
 
-*Extracted from SPEC.md v2.0 on January 29, 2026. Updated January 31, 2026.*
+*Extracted from SPEC.md v2.0 on January 29, 2026. Updated February 4, 2026.*

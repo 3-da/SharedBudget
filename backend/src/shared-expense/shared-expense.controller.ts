@@ -7,7 +7,7 @@ import { CreateSharedExpenseDto } from './dto/create-shared-expense.dto';
 import { UpdateSharedExpenseDto } from './dto/update-shared-expense.dto';
 import { ListSharedExpensesQueryDto } from './dto/list-shared-expenses-query.dto';
 import { SharedExpenseResponseDto } from './dto/shared-expense-response.dto';
-import { ApprovalResponseDto } from '../aproval/dto/approval-response.dto';
+import { ApprovalResponseDto } from '../approval/dto/approval-response.dto';
 import {
     GetSharedExpenseEndpoint,
     ListSharedExpensesEndpoint,

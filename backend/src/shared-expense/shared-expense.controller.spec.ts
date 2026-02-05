@@ -4,7 +4,7 @@ import { SharedExpenseController } from './shared-expense.controller';
 import { SharedExpenseService } from './shared-expense.service';
 import { ExpenseCategory, ExpenseFrequency } from '../generated/prisma/enums';
 import { SharedExpenseResponseDto } from './dto/shared-expense-response.dto';
-import { ApprovalResponseDto } from '../aproval/dto/approval-response.dto';
+import { ApprovalResponseDto } from '../approval/dto/approval-response.dto';
 
 describe('SharedExpenseController', () => {
     let controller: SharedExpenseController;

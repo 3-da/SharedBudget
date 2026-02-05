@@ -190,10 +190,7 @@ describe('HttpExceptionFilter', () => {
 
             filter.catch(exception, mockHost);
 
-            expect(loggerSpy).toHaveBeenCalledWith(
-                'Unexpected error: Database connection lost',
-                expect.any(String),
-            );
+            expect(loggerSpy).toHaveBeenCalledWith('Unexpected error: Database connection lost', expect.any(String));
         });
 
         it('should handle non-Error thrown values gracefully', () => {
@@ -216,11 +213,7 @@ describe('HttpExceptionFilter', () => {
 
             filter.catch(exception, mockHost);
 
-            expect(mockReply).toHaveBeenCalledWith(
-                {},
-                expect.objectContaining({ requestId: 'req-123-abc' }),
-                expect.any(Number),
-            );
+            expect(mockReply).toHaveBeenCalledWith({}, expect.objectContaining({ requestId: 'req-123-abc' }), expect.any(Number));
         });
 
         it('should fall back to "unknown" when request has no id', () => {
@@ -229,11 +222,7 @@ describe('HttpExceptionFilter', () => {
 
             filter.catch(exception, mockHost);
 
-            expect(mockReply).toHaveBeenCalledWith(
-                {},
-                expect.objectContaining({ requestId: 'unknown' }),
-                expect.any(Number),
-            );
+            expect(mockReply).toHaveBeenCalledWith({}, expect.objectContaining({ requestId: 'unknown' }), expect.any(Number));
         });
 
         it('should include a valid ISO 8601 timestamp', () => {

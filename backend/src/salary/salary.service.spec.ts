@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { SalaryService } from './salary.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CacheService } from '../common/cache/cache.service';
 
 describe('SalaryService', () => {
     let service: SalaryService;
@@ -39,9 +40,20 @@ describe('SalaryService', () => {
         },
     };
 
+    const mockCacheService = {
+        getOrSet: vi.fn((key, ttl, fetchFn) => fetchFn()),
+        invalidate: vi.fn(),
+        invalidatePattern: vi.fn(),
+        invalidateSalaries: vi.fn(),
+        invalidateDashboard: vi.fn(),
+        invalidateSavings: vi.fn(),
+        salaryKey: vi.fn((householdId, year, month) => `cache:salary:household:${householdId}:${year}:${month}`),
+        salariesTTL: 300,
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [SalaryService, { provide: PrismaService, useValue: mockPrismaService }],
+            providers: [SalaryService, { provide: PrismaService, useValue: mockPrismaService }, { provide: CacheService, useValue: mockCacheService }],
         }).compile();
 
         service = module.get<SalaryService>(SalaryService);

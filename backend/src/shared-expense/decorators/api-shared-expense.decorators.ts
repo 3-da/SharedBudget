@@ -2,7 +2,7 @@ import { applyDecorators, Delete, Get, HttpCode, HttpStatus, Post, Put } from '@
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { SharedExpenseResponseDto } from '../dto/shared-expense-response.dto';
-import { ApprovalResponseDto } from '../../aproval/dto/approval-response.dto';
+import { ApprovalResponseDto } from '../../approval/dto/approval-response.dto';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
 export function ListSharedExpensesEndpoint() {

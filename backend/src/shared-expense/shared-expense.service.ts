@@ -3,12 +3,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SharedExpenseResponseDto } from './dto/shared-expense-response.dto';
 import { ListSharedExpensesQueryDto } from './dto/list-shared-expenses-query.dto';
 import { ApprovalAction, ApprovalStatus, ExpenseType } from '../generated/prisma/enums';
-import { ApprovalResponseDto } from '../aproval/dto/approval-response.dto';
+import { ApprovalResponseDto } from '../approval/dto/approval-response.dto';
 import { CreateSharedExpenseDto } from './dto/create-shared-expense.dto';
 import { UpdateSharedExpenseDto } from './dto/update-shared-expense.dto';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
-import { mapToSharedExpenseResponse, mapToApprovalResponse, buildExpenseNullableFields, EXPENSE_FIELDS } from '../common/expense/expense.mappers';
+import { buildExpenseNullableFields, EXPENSE_FIELDS, mapToApprovalResponse, mapToSharedExpenseResponse } from '../common/expense/expense.mappers';
 import { pickDefined } from '../common/utils/pick-defined';
+import { CacheService } from '../common/cache/cache.service';
 
 @Injectable()
 export class SharedExpenseService {
@@ -17,6 +18,7 @@ export class SharedExpenseService {
     constructor(
         private readonly prismaService: PrismaService,
         private readonly expenseHelper: ExpenseHelperService,
+        private readonly cacheService: CacheService,
     ) {}
 
     /**
@@ -38,18 +40,23 @@ export class SharedExpenseService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
 
-        const where: any = {
-            householdId: membership.householdId,
-            type: ExpenseType.SHARED,
-            deletedAt: null,
-        };
+        const filterHash = this.cacheService.hashParams({ category: query.category, frequency: query.frequency });
+        const cacheKey = this.cacheService.sharedExpensesKey(membership.householdId, filterHash);
 
-        if (query.category) where.category = query.category;
-        if (query.frequency) where.frequency = query.frequency;
+        return this.cacheService.getOrSet(cacheKey, this.cacheService.expensesTTL, async () => {
+            const where: any = {
+                householdId: membership.householdId,
+                type: ExpenseType.SHARED,
+                deletedAt: null,
+            };
 
-        const expenses = await this.prismaService.expense.findMany({ where, orderBy: { createdAt: 'desc' } });
+            if (query.category) where.category = query.category;
+            if (query.frequency) where.frequency = query.frequency;
 
-        return expenses.map((expense) => mapToSharedExpenseResponse(expense));
+            const expenses = await this.prismaService.expense.findMany({ where, orderBy: { createdAt: 'desc' } });
+
+            return expenses.map((expense) => mapToSharedExpenseResponse(expense));
+        });
     }
 
     /**
@@ -123,6 +130,9 @@ export class SharedExpenseService {
         });
 
         this.logger.log(`Approval created: ${approval.id} for proposed shared expense by user: ${userId}`);
+
+        await this.cacheService.invalidateApprovals(membership.householdId);
+
         return mapToApprovalResponse(approval);
     }
 
@@ -169,6 +179,9 @@ export class SharedExpenseService {
         });
 
         this.logger.log(`Approval created: ${approval.id} for updating expense: ${expenseId}`);
+
+        await this.cacheService.invalidateApprovals(membership.householdId);
+
         return mapToApprovalResponse(approval);
     }
 
@@ -206,6 +219,9 @@ export class SharedExpenseService {
         });
 
         this.logger.log(`Approval created: ${approval.id} for deleting expense: ${expenseId}`);
+
+        await this.cacheService.invalidateApprovals(membership.householdId);
+
         return mapToApprovalResponse(approval);
     }
 }
