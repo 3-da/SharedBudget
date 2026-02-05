@@ -6,6 +6,7 @@ import { AcceptApprovalDto } from './dto/accept-approval.dto';
 import { RejectApprovalDto } from './dto/reject-approval.dto';
 import { ListApprovalsQueryDto } from './dto/list-approvals-query.dto';
 import { ApprovalAction, ApprovalStatus, ExpenseType } from '../generated/prisma/enums';
+import { Prisma } from '../generated/prisma/client';
 import { buildExpenseNullableFields, mapToApprovalResponse } from '../common/expense/expense.mappers';
 import { CacheService } from '../common/cache/cache.service';
 
@@ -71,7 +72,7 @@ export class ApprovalService {
         const cacheKey = this.cacheService.approvalHistoryKey(membership.householdId, query.status);
 
         return this.cacheService.getOrSet(cacheKey, this.cacheService.summaryTTL, async () => {
-            const where: any = {
+            const where: Prisma.ExpenseApprovalWhereInput = {
                 householdId: membership.householdId,
                 status: query.status ? query.status : { in: [ApprovalStatus.ACCEPTED, ApprovalStatus.REJECTED] },
             };

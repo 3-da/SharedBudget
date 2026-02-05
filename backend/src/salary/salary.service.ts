@@ -34,14 +34,6 @@ export class SalaryService {
     }
 
     /**
-     * Returns the householdId for a user, used for cache invalidation.
-     */
-    private async getHouseholdId(userId: string): Promise<string | null> {
-        const membership = await this.prismaService.householdMember.findUnique({ where: { userId } });
-        return membership?.householdId ?? null;
-    }
-
-    /**
      * Creates or updates the authenticated user's salary for the current month.
      * The month and year are auto-determined from the server clock. Only the
      * user themselves can set their own salary; household membership is required.

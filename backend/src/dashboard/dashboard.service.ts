@@ -1,7 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
-import { ApprovalStatus, ExpenseType } from '../generated/prisma/enums';
+import { ApprovalStatus, ExpenseCategory, ExpenseFrequency, ExpenseType } from '../generated/prisma/enums';
+import { Expense } from '../generated/dto/expense/expense.entity';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
 import { SavingsResponseDto, MemberSavingsDto } from './dto/member-savings.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
@@ -419,10 +420,10 @@ export class DashboardService {
      * - YEARLY expenses: return amount / 12 (normalized for budget calculations)
      * - ONE_TIME expenses: return amount only if it falls in the given month/year, else 0
      */
-    private getMonthlyAmount(expense: any, month: number, year: number): number {
+    private getMonthlyAmount(expense: Expense, month: number, year: number): number {
         const amount = Number(expense.amount);
 
-        if (expense.category === 'ONE_TIME') {
+        if (expense.category === ExpenseCategory.ONE_TIME) {
             // One-time expenses only count in their specific month/year
             if (expense.month === month && expense.year === year) {
                 return amount;
@@ -431,7 +432,7 @@ export class DashboardService {
         }
 
         // Recurring expenses
-        if (expense.frequency === 'YEARLY') {
+        if (expense.frequency === ExpenseFrequency.YEARLY) {
             // Yearly expenses are always normalized to monthly equivalent
             return amount / 12;
         }
