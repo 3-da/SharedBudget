@@ -8,34 +8,38 @@
       "backend": "complete",
       "frontend": "pending",
       "endpoints": 44,
-      "testFiles": 33
+      "sourceFiles": 91,
+      "testFiles": 34
     },
-    "generated": "2026-02-05"
+    "generated": "2026-02-07"
   },
   "techStack": {
-    "runtime": { "name": "Node.js", "version": "24.13.0" },
-    "framework": { "name": "NestJS", "version": "11.1.x" },
+    "runtime": { "name": "Node.js", "version": "24.x LTS" },
+    "framework": { "name": "NestJS", "version": "11.x" },
     "orm": { "name": "Prisma", "version": "7.3.0" },
-    "database": { "name": "PostgreSQL", "version": "18.1" },
-    "cache": { "name": "Redis", "version": "7.2.x" },
+    "database": { "name": "PostgreSQL", "version": "18 (alpine)" },
+    "cache": { "name": "Redis", "version": "7 (alpine)" },
+    "auth": { "name": "JWT + Argon2", "version": "passport-jwt 4.0.1, argon2 0.44.0" },
     "testing": { "name": "Vitest", "version": "4.0.18" },
     "docs": { "name": "@nestjs/swagger", "version": "11.2.5" }
   },
   "modules": [
-    { "name": "auth", "path": "backend/src/auth", "endpoints": 8, "description": "Registration, login, email verification, password reset" },
-    { "name": "household", "path": "backend/src/household", "endpoints": 11, "description": "CRUD, invitations, membership, ownership transfer" },
-    { "name": "user", "path": "backend/src/user", "endpoints": 3, "description": "Profile management, password change" },
-    { "name": "salary", "path": "backend/src/salary", "endpoints": 4, "description": "Monthly salary tracking" },
-    { "name": "personal-expense", "path": "backend/src/personal-expense", "endpoints": 5, "description": "Personal expenses (no approval)" },
-    { "name": "shared-expense", "path": "backend/src/shared-expense", "endpoints": 5, "description": "Shared expenses (approval workflow)" },
-    { "name": "approval", "path": "backend/src/approval", "endpoints": 4, "description": "Accept/reject expense changes" },
-    { "name": "dashboard", "path": "backend/src/dashboard", "endpoints": 4, "description": "Financial overview, settlement" },
-    { "name": "session", "path": "backend/src/session", "endpoints": 0, "description": "Redis session management" },
-    { "name": "mail", "path": "backend/src/mail", "endpoints": 0, "description": "Email service (placeholder)" },
-    { "name": "prisma", "path": "backend/src/prisma", "endpoints": 0, "description": "Database service" },
-    { "name": "redis", "path": "backend/src/redis", "endpoints": 0, "description": "Redis module + throttler" },
-    { "name": "common", "path": "backend/src/common", "endpoints": 0, "description": "Shared utilities" },
-    { "name": "generated", "path": "backend/src/generated", "endpoints": 0, "description": "Auto-generated Prisma client + DTOs" }
+    { "name": "auth", "path": "backend/src/auth", "endpoints": 8, "files": { "src": 15, "spec": 3 }, "description": "Registration, login, email verification, password reset, JWT tokens" },
+    { "name": "household", "path": "backend/src/household", "endpoints": 11, "files": { "src": 11, "spec": 4 }, "description": "CRUD, invitations, membership, ownership transfer" },
+    { "name": "user", "path": "backend/src/user", "endpoints": 3, "files": { "src": 7, "spec": 3 }, "description": "Profile management, password change" },
+    { "name": "salary", "path": "backend/src/salary", "endpoints": 4, "files": { "src": 6, "spec": 3 }, "description": "Monthly salary tracking (default + current)" },
+    { "name": "personal-expense", "path": "backend/src/personal-expense", "endpoints": 5, "files": { "src": 8, "spec": 5 }, "description": "Personal expenses (no approval)" },
+    { "name": "shared-expense", "path": "backend/src/shared-expense", "endpoints": 5, "files": { "src": 8, "spec": 5 }, "description": "Shared expenses (approval workflow)" },
+    { "name": "approval", "path": "backend/src/approval", "endpoints": 4, "files": { "src": 8, "spec": 5 }, "description": "Accept/reject proposed expense changes" },
+    { "name": "dashboard", "path": "backend/src/dashboard", "endpoints": 4, "files": { "src": 10, "spec": 2 }, "description": "Financial overview, savings, settlement" },
+    { "name": "session", "path": "backend/src/session", "endpoints": 0, "files": { "src": 2, "spec": 1 }, "description": "Redis session management (refresh tokens)" },
+    { "name": "mail", "path": "backend/src/mail", "endpoints": 0, "files": { "src": 2, "spec": 0 }, "description": "Email service (placeholder, logs in dev)" },
+    { "name": "prisma", "path": "backend/src/prisma", "endpoints": 0, "files": { "src": 2, "spec": 0 }, "description": "PrismaService with @prisma/adapter-pg" },
+    { "name": "redis", "path": "backend/src/redis", "endpoints": 0, "files": { "src": 2, "spec": 0 }, "description": "Redis module + throttler storage" },
+    { "name": "common/cache", "path": "backend/src/common/cache", "endpoints": 0, "files": { "src": 2, "spec": 1 }, "description": "CacheService (Redis-backed TTL cache)" },
+    { "name": "common/expense", "path": "backend/src/common/expense", "endpoints": 0, "files": { "src": 3, "spec": 1 }, "description": "ExpenseHelperService, mappers" },
+    { "name": "common", "path": "backend/src/common", "endpoints": 0, "files": { "src": 5, "spec": 1 }, "description": "DTOs, HttpExceptionFilter, logger, utils" },
+    { "name": "generated", "path": "backend/src/generated", "endpoints": 0, "files": { "src": 0, "spec": 0 }, "description": "Auto-generated Prisma client + DTOs (DO NOT EDIT)" }
   ],
   "dataModel": {
     "models": [
@@ -63,9 +67,9 @@
   "endpoints": {
     "auth": [
       { "method": "POST", "path": "/auth/register", "description": "Register + send verification code" },
-      { "method": "POST", "path": "/auth/verify-code", "description": "Verify email → auto-login" },
+      { "method": "POST", "path": "/auth/verify-code", "description": "Verify email -> auto-login" },
       { "method": "POST", "path": "/auth/resend-code", "description": "Resend verification code" },
-      { "method": "POST", "path": "/auth/login", "description": "Login → JWT tokens" },
+      { "method": "POST", "path": "/auth/login", "description": "Login -> JWT tokens" },
       { "method": "POST", "path": "/auth/refresh", "description": "Refresh access token" },
       { "method": "POST", "path": "/auth/logout", "description": "Invalidate refresh token" },
       { "method": "POST", "path": "/auth/forgot-password", "description": "Request password reset" },
@@ -125,7 +129,7 @@
   "redisKeys": {
     "verify:{email}": { "purpose": "Email verification code", "ttl": "10 min" },
     "reset:{token}": { "purpose": "Password reset token", "ttl": "1 hour" },
-    "refresh:{token}": { "purpose": "Refresh token → userId", "ttl": "7 days" },
+    "refresh:{token}": { "purpose": "Refresh token -> userId", "ttl": "7 days" },
     "user_sessions:{userId}": { "purpose": "Set of refresh tokens", "ttl": "7 days" }
   },
   "commands": {
@@ -136,14 +140,16 @@
     "testCov": "npm run test:cov",
     "lint": "npm run lint",
     "format": "npm run format",
-    "prismaGenerate": "npx prisma generate --config ./prisma.config.ts",
+    "prismaGenerate": "npm run generate",
     "prismaMigrate": "npx prisma migrate dev --config ./prisma.config.ts",
+    "prismaStudio": "npm run prisma:studio",
     "docker": "docker compose up -d"
   },
   "documentation": {
     "spec": "SPEC.md",
     "architecture": "ARCHITECTURE.md",
     "claude": "CLAUDE.md",
+    "projectIndex": "PROJECT_INDEX.md",
     "swagger": "/docs (non-prod only)"
   },
   "mandatoryRules": [
@@ -156,6 +162,7 @@
     "compositeDecorators": "Each module has decorators/api-*.decorators.ts bundling route + Swagger + throttle",
     "errorHandling": "Global HttpExceptionFilter returns consistent JSON with timestamp + requestId",
     "approvalWorkflow": "Shared expense changes create ExpenseApproval records requiring acceptance",
+    "caching": "CacheService wraps Redis with typed get/set/delete, used in salary and expense services",
     "jsdocCast": {
       "Alex": "OWNER (household creator)",
       "Sam": "MEMBER (joined via code/invitation)",
