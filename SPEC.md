@@ -2,7 +2,7 @@
 
 **Document Version:** 4.0
 **Created:** January 28, 2026
-**Updated:** February 4, 2026 (Synced with implemented codebase state)
+**Updated:** February 6, 2026 (Frontend stack changed to Angular 21 + Angular Material)
 **Project Status:** Phase 1 — All backend features implemented (Auth, Household, User, Salary, Expenses, Approvals, Dashboard, Settlement); Frontend pending
 
 > **Related docs:**
@@ -61,7 +61,7 @@ The system automatically calculates who owes whom based on shared expenses. Each
   - Access token: 15-minute expiry, sent in Authorization header
   - Refresh token: 7-day expiry, stored in Redis with session tracking
   - Refresh token rotation: old token invalidated on each refresh
-  - Auto-refresh on frontend via axios interceptor (planned)
+  - Auto-refresh on frontend via Angular HttpClient interceptor (planned)
 - **Logout:** Invalidates the specific refresh token and removes from session set
 - **Forgot Password:** Sends reset link via email (1-hour TTL token in Redis)
 - **Reset Password:** Validates token, updates password, invalidates ALL user sessions
@@ -276,7 +276,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Forgot password → sends reset email with 1-hour token
 - [x] Reset password → validates token, updates password, invalidates ALL sessions
 - [x] All auth endpoints rate-limited (3-10 req/min depending on endpoint)
-- [ ] Frontend: auto-refresh via axios interceptor
+- [ ] Frontend: auto-refresh via Angular HttpClient interceptor
 - [ ] Frontend: protected routes redirect to login if unauthenticated
 
 ### User Story 2.5: Household Management & Invitations ✅
@@ -556,6 +556,6 @@ POST   /api/v1/dashboard/settlement/mark-paid - Mark current month's settlement 
 
 **Endpoint Summary:** 44 total endpoints — all implemented (8 auth + 11 household + 3 user + 4 salary + 5 personal expense + 5 shared expense + 4 approval + 4 dashboard)
 **Phase 1 Focus:** 2-person household (couple), full auth, expenses with approval workflow, settlement, dashboard
-**Remaining:** Frontend (React 19 + Vite 7), Redis data caching, Docker setup, CI/CD
+**Remaining:** Frontend (Angular 21 + Angular Material), Redis data caching, Docker setup, CI/CD
 
-*Split from original spec on January 29, 2026. Updated February 4, 2026.*
+*Split from original spec on January 29, 2026. Updated February 6, 2026 (frontend stack changed to Angular 21 + Angular Material).*

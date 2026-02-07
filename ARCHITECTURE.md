@@ -2,7 +2,7 @@
 
 **Document Version:** 3.0
 **Created:** January 29, 2026 (Extracted from SPEC.md v2.0)
-**Updated:** February 4, 2026 (Synced with current codebase state)
+**Updated:** February 6, 2026 (Frontend stack changed to Angular 21 + Angular Material)
 
 > **Related docs:**
 > - `SPEC.md` — Business requirements, user stories, feature specs, API endpoints
@@ -14,44 +14,44 @@
 ## Technology Stack
 
 ### Frontend
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| React | 19.2.4 | UI framework |
-| Vite | 7.3.1 | Build tool + dev server with HMR |
-| TypeScript | 5.9.x | Language (strict mode) |
-| TailwindCSS | 4.1.x | Styling |
-| Shadcn/UI | latest | UI component library |
-| axios | 1.7.x | HTTP client with JWT interceptors |
-| React Hook Form | 7.x | Form handling |
-| Zod | latest | Schema validation |
-| date-fns | 4.x | Date utilities |
+| Technology       | Version  | Purpose                                                 |
+|------------------|----------|---------------------------------------------------------|
+| Angular          | 21.1.x   | UI framework (standalone components, signals, zoneless) |
+| Angular CLI      | 21.1.x   | Build tool + dev server with HMR                        |
+| TypeScript       | 5.9.x    | Language (strict mode)                                  |
+| Angular Material | 21.1.x   | UI component library (Material Design 3)                |
+| Angular CDK      | 21.1.x   | Component Dev Kit (layout, a11y, overlays)              |
+| HttpClient       | built-in | HTTP client with JWT interceptors                       |
+| Reactive Forms   | built-in | Form handling with validation                           |
+| Vitest           | 4.x      | Unit testing framework (Angular 21 default)             |
+| date-fns         | 4.x      | Date utilities                                          |
 
 ### Backend
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| Node.js | 24.13.0 LTS | Runtime |
-| NestJS | 11.1.x | Framework |
-| TypeScript | 5.9.x | Language (strict mode) |
-| Prisma | 7.3.0 | ORM (Rust-free, @prisma/adapter-pg) |
-| @nestjs/swagger | 11.2.5 | API documentation |
-| @nestjs/throttler | 6.5.0 | Rate limiting (Redis-backed) |
-| class-validator | 0.14.3 | Input validation |
-| class-transformer | 0.5.1 | DTO transformation |
-| ioredis | 5.9.2 | Redis client |
-| @nestjs/jwt | 11.0.2 | JWT authentication |
-| @nestjs/passport | 11.0.5 | Auth strategies |
-| passport-jwt | 4.0.1 | JWT strategy |
-| argon2 | 0.44.0 | Password hashing |
-| nestjs-pino | 4.5.0 | Structured logging |
-| pino | 10.3.0 | Logger |
-| vitest | 4.0.18 | Testing framework |
+| Technology        | Version     | Purpose                             |
+|-------------------|-------------|-------------------------------------|
+| Node.js           | 24.13.0 LTS | Runtime                             |
+| NestJS            | 11.1.x      | Framework                           |
+| TypeScript        | 5.9.x       | Language (strict mode)              |
+| Prisma            | 7.3.0       | ORM (Rust-free, @prisma/adapter-pg) |
+| @nestjs/swagger   | 11.2.5      | API documentation                   |
+| @nestjs/throttler | 6.5.0       | Rate limiting (Redis-backed)        |
+| class-validator   | 0.14.3      | Input validation                    |
+| class-transformer | 0.5.1       | DTO transformation                  |
+| ioredis           | 5.9.2       | Redis client                        |
+| @nestjs/jwt       | 11.0.2      | JWT authentication                  |
+| @nestjs/passport  | 11.0.5      | Auth strategies                     |
+| passport-jwt      | 4.0.1       | JWT strategy                        |
+| argon2            | 0.44.0      | Password hashing                    |
+| nestjs-pino       | 4.5.0       | Structured logging                  |
+| pino              | 10.3.0      | Logger                              |
+| vitest            | 4.0.18      | Testing framework                   |
 
 ### Database
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| PostgreSQL | 18.1 | Primary database |
-| Prisma | 7.3.0 | ORM + migrations (via @prisma/adapter-pg) |
-| Redis | 7.2.x | Session storage + rate limiting + caching |
+| Technology | Version | Purpose                                   |
+|------------|---------|-------------------------------------------|
+| PostgreSQL | 18.1    | Primary database                          |
+| Prisma     | 7.3.0   | ORM + migrations (via @prisma/adapter-pg) |
+| Redis      | 7.2.x   | Session storage + rate limiting + caching |
 
 ---
 
@@ -60,101 +60,101 @@
 **8 models, 9 enums**
 
 ### Enums
-| Enum | Values | Purpose |
-|------|--------|---------|
-| HouseholdRole | OWNER, MEMBER | Member role in household |
-| ExpenseType | PERSONAL, SHARED | Expense ownership type |
-| ExpenseCategory | RECURRING, ONE_TIME | Expense recurrence |
-| ExpenseFrequency | MONTHLY, YEARLY | Payment frequency |
-| YearlyPaymentStrategy | FULL, INSTALLMENTS | How yearly expenses are paid |
-| InstallmentFrequency | MONTHLY, QUARTERLY, SEMI_ANNUAL | Installment payment schedule (12, 4, or 2 payments/year) |
-| ApprovalAction | CREATE, UPDATE, DELETE | Type of proposed change |
-| ApprovalStatus | PENDING, ACCEPTED, REJECTED | Approval lifecycle state |
-| InvitationStatus | PENDING, ACCEPTED, DECLINED, CANCELLED | Invitation lifecycle state |
+| Enum                  | Values                                 | Purpose                                                  |
+|-----------------------|----------------------------------------|----------------------------------------------------------|
+| HouseholdRole         | OWNER, MEMBER                          | Member role in household                                 |
+| ExpenseType           | PERSONAL, SHARED                       | Expense ownership type                                   |
+| ExpenseCategory       | RECURRING, ONE_TIME                    | Expense recurrence                                       |
+| ExpenseFrequency      | MONTHLY, YEARLY                        | Payment frequency                                        |
+| YearlyPaymentStrategy | FULL, INSTALLMENTS                     | How yearly expenses are paid                             |
+| InstallmentFrequency  | MONTHLY, QUARTERLY, SEMI_ANNUAL        | Installment payment schedule (12, 4, or 2 payments/year) |
+| ApprovalAction        | CREATE, UPDATE, DELETE                 | Type of proposed change                                  |
+| ApprovalStatus        | PENDING, ACCEPTED, REJECTED            | Approval lifecycle state                                 |
+| InvitationStatus      | PENDING, ACCEPTED, DECLINED, CANCELLED | Invitation lifecycle state                               |
 
 ### User
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| email | String | Unique, used for login |
-| password | String | Argon2id hashed |
-| firstName | String | Display name |
-| lastName | String | Display name |
-| emailVerified | Boolean | Default `false`, set `true` after verification |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
-| deletedAt | DateTime? | Null = active. Non-null = soft-deleted |
+| Field         | Type      | Notes                                          |
+|---------------|-----------|------------------------------------------------|
+| id            | UUID      | Primary key                                    |
+| email         | String    | Unique, used for login                         |
+| password      | String    | Argon2id hashed                                |
+| firstName     | String    | Display name                                   |
+| lastName      | String    | Display name                                   |
+| emailVerified | Boolean   | Default `false`, set `true` after verification |
+| createdAt     | DateTime  | Auto-generated                                 |
+| updatedAt     | DateTime  | Auto-updated                                   |
+| deletedAt     | DateTime? | Null = active. Non-null = soft-deleted         |
 
 ### Household
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| name | String | e.g., "The Smiths" |
-| inviteCode | String | Unique 8-char code for joining |
-| maxMembers | Int | Default 2 (Phase 1) |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
+| Field      | Type     | Notes                          |
+|------------|----------|--------------------------------|
+| id         | UUID     | Primary key                    |
+| name       | String   | e.g., "The Smiths"             |
+| inviteCode | String   | Unique 8-char code for joining |
+| maxMembers | Int      | Default 2 (Phase 1)            |
+| createdAt  | DateTime | Auto-generated                 |
+| updatedAt  | DateTime | Auto-updated                   |
 
 ### HouseholdMember
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| userId | UUID | FK → User |
-| householdId | UUID | FK → Household |
-| role | Enum | OWNER or MEMBER |
-| joinedAt | DateTime | When user joined |
+| Field       | Type     | Notes            |
+|-------------|----------|------------------|
+| id          | UUID     | Primary key      |
+| userId      | UUID     | FK → User        |
+| householdId | UUID     | FK → Household   |
+| role        | Enum     | OWNER or MEMBER  |
+| joinedAt    | DateTime | When user joined |
 
 **Constraints:** Unique on (userId, householdId). userId is unique globally — a user can belong to only one household at a time.
 
 ### HouseholdInvitation
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| status | Enum | PENDING, ACCEPTED, DECLINED, CANCELLED |
-| householdId | UUID | FK → Household (cascade delete) |
-| senderId | UUID | FK → User (household owner who invited) |
-| targetUserId | UUID | FK → User (invited user) |
-| createdAt | DateTime | Auto-generated |
-| respondedAt | DateTime? | When target user responded |
+| Field        | Type      | Notes                                   |
+|--------------|-----------|-----------------------------------------|
+| id           | UUID      | Primary key                             |
+| status       | Enum      | PENDING, ACCEPTED, DECLINED, CANCELLED  |
+| householdId  | UUID      | FK → Household (cascade delete)         |
+| senderId     | UUID      | FK → User (household owner who invited) |
+| targetUserId | UUID      | FK → User (invited user)                |
+| createdAt    | DateTime  | Auto-generated                          |
+| respondedAt  | DateTime? | When target user responded              |
 
 **Indexes:** (targetUserId, status), (householdId, status), (senderId)
 **Lifecycle:** Owner invites → target accepts/declines → or owner cancels. On household delete, invitations cascade.
 
 ### Salary
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| userId | UUID | FK → User |
-| householdId | UUID | FK → Household |
-| defaultAmount | Decimal(12,2) | Baseline monthly salary |
+| Field         | Type          | Notes                    |
+|---------------|---------------|--------------------------|
+| id            | UUID          | Primary key              |
+| userId        | UUID          | FK → User                |
+| householdId   | UUID          | FK → Household           |
+| defaultAmount | Decimal(12,2) | Baseline monthly salary  |
 | currentAmount | Decimal(12,2) | Actual salary this month |
-| month | Int | 1-12 |
-| year | Int | e.g., 2026 |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
+| month         | Int           | 1-12                     |
+| year          | Int           | e.g., 2026               |
+| createdAt     | DateTime      | Auto-generated           |
+| updatedAt     | DateTime      | Auto-updated             |
 
 **Constraints:** Unique on (userId, month, year). One salary record per user per month.
 
 ### Expense
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| householdId | UUID | FK → Household |
-| createdById | UUID | FK → User (who created it) |
-| name | String | VarChar(100) |
-| amount | Decimal(12,2) | Total amount in EUR |
-| type | Enum | PERSONAL or SHARED |
-| category | Enum | RECURRING or ONE_TIME |
-| frequency | Enum | MONTHLY or YEARLY |
-| yearlyPaymentStrategy | Enum? | FULL or INSTALLMENTS (null if monthly) |
-| installmentFrequency | Enum? | MONTHLY, QUARTERLY, or SEMI_ANNUAL (null if not INSTALLMENTS) |
-| paymentMonth | Int? | 1-12, which month to pay in full (null if not FULL) |
-| paidByUserId | UUID? | FK → User. Null = split among members |
-| month | Int? | For ONE_TIME expenses: which month |
-| year | Int? | For ONE_TIME expenses: which year |
-| deletedAt | DateTime? | Null = active. Non-null = soft-deleted |
-| createdAt | DateTime | Auto-generated |
-| updatedAt | DateTime | Auto-updated |
+| Field                 | Type          | Notes                                                         |
+|-----------------------|---------------|---------------------------------------------------------------|
+| id                    | UUID          | Primary key                                                   |
+| householdId           | UUID          | FK → Household                                                |
+| createdById           | UUID          | FK → User (who created it)                                    |
+| name                  | String        | VarChar(100)                                                  |
+| amount                | Decimal(12,2) | Total amount in EUR                                           |
+| type                  | Enum          | PERSONAL or SHARED                                            |
+| category              | Enum          | RECURRING or ONE_TIME                                         |
+| frequency             | Enum          | MONTHLY or YEARLY                                             |
+| yearlyPaymentStrategy | Enum?         | FULL or INSTALLMENTS (null if monthly)                        |
+| installmentFrequency  | Enum?         | MONTHLY, QUARTERLY, or SEMI_ANNUAL (null if not INSTALLMENTS) |
+| paymentMonth          | Int?          | 1-12, which month to pay in full (null if not FULL)           |
+| paidByUserId          | UUID?         | FK → User. Null = split among members                         |
+| month                 | Int?          | For ONE_TIME expenses: which month                            |
+| year                  | Int?          | For ONE_TIME expenses: which year                             |
+| deletedAt             | DateTime?     | Null = active. Non-null = soft-deleted                        |
+| createdAt             | DateTime      | Auto-generated                                                |
+| updatedAt             | DateTime      | Auto-updated                                                  |
 
 **Notes:**
 - Personal expenses: `createdById` is the owner, only they can manage it
@@ -167,19 +167,19 @@
 **Indexes:** (householdId, type), (createdById)
 
 ### ExpenseApproval
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| expenseId | UUID? | FK → Expense (null for CREATE actions) |
-| householdId | UUID | FK → Household |
-| action | Enum | CREATE, UPDATE, or DELETE |
-| status | Enum | PENDING, ACCEPTED, or REJECTED |
-| requestedById | UUID | FK → User (who proposed the change) |
-| reviewedById | UUID? | FK → User (who reviewed) |
-| message | String? | Reviewer's comment (max 500 chars) |
-| proposedData | JSON? | For CREATE/UPDATE: the full proposed expense data |
-| createdAt | DateTime | Auto-generated |
-| reviewedAt | DateTime? | When review happened |
+| Field         | Type      | Notes                                             |
+|---------------|-----------|---------------------------------------------------|
+| id            | UUID      | Primary key                                       |
+| expenseId     | UUID?     | FK → Expense (null for CREATE actions)            |
+| householdId   | UUID      | FK → Household                                    |
+| action        | Enum      | CREATE, UPDATE, or DELETE                         |
+| status        | Enum      | PENDING, ACCEPTED, or REJECTED                    |
+| requestedById | UUID      | FK → User (who proposed the change)               |
+| reviewedById  | UUID?     | FK → User (who reviewed)                          |
+| message       | String?   | Reviewer's comment (max 500 chars)                |
+| proposedData  | JSON?     | For CREATE/UPDATE: the full proposed expense data |
+| createdAt     | DateTime  | Auto-generated                                    |
+| reviewedAt    | DateTime? | When review happened                              |
 
 **Workflow:**
 - CREATE: `proposedData` holds the full new expense. On accept → expense is created.
@@ -189,16 +189,16 @@
 **Indexes:** (householdId, status), (requestedById)
 
 ### Settlement
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| householdId | UUID | FK → Household |
-| month | Int | 1-12, month that was settled |
-| year | Int | Year that was settled |
-| amount | Decimal(12,2) | Net amount settled in EUR |
-| paidByUserId | UUID | FK → User (who owed the money and paid) |
-| paidToUserId | UUID | FK → User (who was owed and received) |
-| paidAt | DateTime | When the settlement was marked as paid |
+| Field        | Type          | Notes                                   |
+|--------------|---------------|-----------------------------------------|
+| id           | UUID          | Primary key                             |
+| householdId  | UUID          | FK → Household                          |
+| month        | Int           | 1-12, month that was settled            |
+| year         | Int           | Year that was settled                   |
+| amount       | Decimal(12,2) | Net amount settled in EUR               |
+| paidByUserId | UUID          | FK → User (who owed the money and paid) |
+| paidToUserId | UUID          | FK → User (who was owed and received)   |
+| paidAt       | DateTime      | When the settlement was marked as paid  |
 
 **Constraints:** Unique on (householdId, month, year). One settlement record per household per month.
 **Purpose:** Audit trail for when "Mark as Settled" is used. The dashboard checks for an existing record to show `isSettled` status.
@@ -208,22 +208,22 @@
 ## Caching Strategy (Redis)
 
 ### TTL Configuration
-| Data | TTL | Rationale |
-|------|-----|-----------|
-| User sessions (refresh tokens) | 7 days | Long-lived auth |
-| Salaries | 5 minutes | Rarely changes |
+| Data                           | TTL       | Rationale          |
+|--------------------------------|-----------|--------------------|
+| User sessions (refresh tokens) | 7 days    | Long-lived auth    |
+| Salaries                       | 5 minutes | Rarely changes     |
 | Summary/dashboard calculations | 2 minutes | Moderate freshness |
-| Expense lists | 1 minute | Changes more often |
-| Settlement data | 2 minutes | Moderate freshness |
+| Expense lists                  | 1 minute  | Changes more often |
+| Settlement data                | 2 minutes | Moderate freshness |
 
 **Note:** Data caching (salaries, expenses, summaries) is planned but not yet implemented. Currently only auth-related Redis keys are in use.
 
 ### Redis Key Patterns (Currently Active)
-| Pattern | Purpose | TTL |
-|---------|---------|-----|
-| `verify:{email}` | Email verification code | 10 min |
-| `reset:{token}` | Password reset token | 1 hour |
-| `refresh:{token}` | Refresh token → userId | 7 days |
+| Pattern                  | Purpose                      | TTL                             |
+|--------------------------|------------------------------|---------------------------------|
+| `verify:{email}`         | Email verification code      | 10 min                          |
+| `reset:{token}`          | Password reset token         | 1 hour                          |
+| `refresh:{token}`        | Refresh token → userId       | 7 days                          |
 | `user_sessions:{userId}` | Set of user's refresh tokens | 7 days (refreshed on new token) |
 
 ### Cache Invalidation
@@ -261,12 +261,12 @@ For validation errors (400), `message` is an array:
 
 ### Exception Categories
 
-| Category | Detection | Status | Behavior |
-|----------|-----------|--------|----------|
-| **HttpException** | `instanceof HttpException` | From exception | Message + status passed through |
-| **Prisma P2002** | Unique constraint violation | 409 Conflict | `"A record with this value already exists"` |
-| **Prisma P2025** | Record not found | 404 Not Found | `"Record not found"` |
-| **Unknown** | Everything else | 500 Internal Server Error | Logged at `error` level, generic message returned |
+| Category          | Detection                   | Status                    | Behavior                                          |
+|-------------------|-----------------------------|---------------------------|---------------------------------------------------|
+| **HttpException** | `instanceof HttpException`  | From exception            | Message + status passed through                   |
+| **Prisma P2002**  | Unique constraint violation | 409 Conflict              | `"A record with this value already exists"`       |
+| **Prisma P2025**  | Record not found            | 404 Not Found             | `"Record not found"`                              |
+| **Unknown**       | Everything else             | 500 Internal Server Error | Logged at `error` level, generic message returned |
 
 ### Key Files
 - `common/dto/error-response.dto.ts` — Swagger DTO for the error shape
@@ -423,12 +423,12 @@ backend/
 ## Docker & Containerization
 
 ### Services in docker-compose.yml
-| Service | Image | Port |
-|---------|-------|------|
-| PostgreSQL 18.1 | postgres:18-alpine | 5432 |
-| Redis 7.2 | redis:7-alpine | 6379 |
-| Backend (NestJS 11) | node:24-alpine | 3000 |
-| Frontend (React 19 + Vite 7) | node:24-alpine → nginx (prod) | 5173 dev / 3001 prod |
+| Service               | Image                         | Port                 |
+|-----------------------|-------------------------------|----------------------|
+| PostgreSQL 18.1       | postgres:18-alpine            | 5432                 |
+| Redis 7.2             | redis:7-alpine                | 6379                 |
+| Backend (NestJS 11)   | node:24-alpine                | 3000                 |
+| Frontend (Angular 21) | node:24-alpine → nginx (prod) | 4200 dev / 3001 prod |
 
 ---
 
@@ -446,44 +446,44 @@ backend/
 ## Testing Strategy
 
 ### Current Test Files
-| File | Coverage |
-|------|----------|
-| `auth.service.spec.ts` | Register, verify, login, refresh, logout, forgot/reset password |
-| `auth.controller.spec.ts` | All 8 auth endpoints |
-| `auth-dto.spec.ts` | DTO validation for auth DTOs |
-| `household.service.spec.ts` | Create, get, regenerate code, join by code, leave, remove, transfer |
-| `household.controller.spec.ts` | All 11 household endpoints |
-| `household-invitation.service.spec.ts` | Invite, respond (accept/decline), cancel, get pending |
-| `household-dto.spec.ts` | DTO validation for household DTOs |
-| `user.service.spec.ts` | Get profile, update profile, change password |
-| `user.controller.spec.ts` | All 3 user endpoints |
-| `user-dto.spec.ts` | DTO validation for user DTOs |
-| `session.service.spec.ts` | Store, get, remove, invalidate all sessions |
-| `salary.service.spec.ts` | Get my, upsert, household salaries, by month |
-| `salary.controller.spec.ts` | All 4 salary endpoints |
-| `upsert-salary.dto.spec.ts` | DTO validation for salary upsert |
-| `personal-expense.service.spec.ts` | List, create, get, update, delete personal expenses |
-| `personal-expense.controller.spec.ts` | All 5 personal expense endpoints |
-| `create-personal-expense.dto.spec.ts` | DTO validation with conditional fields |
-| `update-personal-expense.dto.spec.ts` | DTO validation for partial updates |
-| `list-personal-expenses-query.dto.spec.ts` | Query filter validation |
-| `shared-expense.service.spec.ts` | List, get, propose create/update/delete |
-| `shared-expense.controller.spec.ts` | All 5 shared expense endpoints |
-| `create-shared-expense.dto.spec.ts` | DTO validation with paidByUserId |
-| `update-shared-expense.dto.spec.ts` | DTO validation for shared expense updates |
-| `list-shared-expenses-query.dto.spec.ts` | Query filter validation |
-| `approval.service.spec.ts` | List pending, history, accept (with transaction), reject |
-| `approval.controller.spec.ts` | All 4 approval endpoints |
-| `accept-approval.dto.spec.ts` | Optional message validation |
-| `reject-approval.dto.spec.ts` | Required message validation |
-| `list-approvals-query.dto.spec.ts` | Status filter validation |
-| `dashboard.service.spec.ts` | Overview, savings, settlement calc, mark-paid |
-| `dashboard.controller.spec.ts` | All 4 dashboard endpoints |
-| `expense-helper.service.spec.ts` | requireMembership, findExpenseOrFail, validatePaidByUserId, checkNoPendingApproval |
-| `http-exception.filter.spec.ts` | HttpException, validation arrays, Prisma P2002/P2025, unknown errors, metadata |
+| File                                       | Coverage                                                                           |
+|--------------------------------------------|------------------------------------------------------------------------------------|
+| `auth.service.spec.ts`                     | Register, verify, login, refresh, logout, forgot/reset password                    |
+| `auth.controller.spec.ts`                  | All 8 auth endpoints                                                               |
+| `auth-dto.spec.ts`                         | DTO validation for auth DTOs                                                       |
+| `household.service.spec.ts`                | Create, get, regenerate code, join by code, leave, remove, transfer                |
+| `household.controller.spec.ts`             | All 11 household endpoints                                                         |
+| `household-invitation.service.spec.ts`     | Invite, respond (accept/decline), cancel, get pending                              |
+| `household-dto.spec.ts`                    | DTO validation for household DTOs                                                  |
+| `user.service.spec.ts`                     | Get profile, update profile, change password                                       |
+| `user.controller.spec.ts`                  | All 3 user endpoints                                                               |
+| `user-dto.spec.ts`                         | DTO validation for user DTOs                                                       |
+| `session.service.spec.ts`                  | Store, get, remove, invalidate all sessions                                        |
+| `salary.service.spec.ts`                   | Get my, upsert, household salaries, by month                                       |
+| `salary.controller.spec.ts`                | All 4 salary endpoints                                                             |
+| `upsert-salary.dto.spec.ts`                | DTO validation for salary upsert                                                   |
+| `personal-expense.service.spec.ts`         | List, create, get, update, delete personal expenses                                |
+| `personal-expense.controller.spec.ts`      | All 5 personal expense endpoints                                                   |
+| `create-personal-expense.dto.spec.ts`      | DTO validation with conditional fields                                             |
+| `update-personal-expense.dto.spec.ts`      | DTO validation for partial updates                                                 |
+| `list-personal-expenses-query.dto.spec.ts` | Query filter validation                                                            |
+| `shared-expense.service.spec.ts`           | List, get, propose create/update/delete                                            |
+| `shared-expense.controller.spec.ts`        | All 5 shared expense endpoints                                                     |
+| `create-shared-expense.dto.spec.ts`        | DTO validation with paidByUserId                                                   |
+| `update-shared-expense.dto.spec.ts`        | DTO validation for shared expense updates                                          |
+| `list-shared-expenses-query.dto.spec.ts`   | Query filter validation                                                            |
+| `approval.service.spec.ts`                 | List pending, history, accept (with transaction), reject                           |
+| `approval.controller.spec.ts`              | All 4 approval endpoints                                                           |
+| `accept-approval.dto.spec.ts`              | Optional message validation                                                        |
+| `reject-approval.dto.spec.ts`              | Required message validation                                                        |
+| `list-approvals-query.dto.spec.ts`         | Status filter validation                                                           |
+| `dashboard.service.spec.ts`                | Overview, savings, settlement calc, mark-paid                                      |
+| `dashboard.controller.spec.ts`             | All 4 dashboard endpoints                                                          |
+| `expense-helper.service.spec.ts`           | requireMembership, findExpenseOrFail, validatePaidByUserId, checkNoPendingApproval |
+| `http-exception.filter.spec.ts`            | HttpException, validation arrays, Prisma P2002/P2025, unknown errors, metadata     |
 
 ### Test Framework
-- **Runner:** Vitest with `@nestjs/testing`
+- **Runner:** Vitest (backend: `@nestjs/testing`, frontend: Angular TestBed + `@testing-library/angular`)
 - **Mocking:** `vi.fn()` for all dependencies
 - **Pattern:** AAA (Arrange-Act-Assert)
 - **Naming:** `should [expected behavior] when [condition]`
@@ -498,31 +498,31 @@ backend/
 7. Error message assertions — exact message string verification
 
 ### Coverage Targets
-| Area | Target |
-|------|--------|
-| Backend overall | >80% |
-| Frontend overall | >75% |
-| Critical paths (auth, household, approvals, settlement) | 100% |
+| Area                                                    | Target |
+|---------------------------------------------------------|--------|
+| Backend overall                                         | >80%   |
+| Frontend overall                                        | >75%   |
+| Critical paths (auth, household, approvals, settlement) | 100%   |
 
 ---
 
 ## Performance Targets
 
 ### Frontend
-| Metric | Target |
-|--------|--------|
-| Lighthouse Score | >90 |
-| First Contentful Paint | <1.5s |
-| Largest Contentful Paint | <2.5s |
-| Time to Interactive | <2s |
-| Bundle Size (gzipped) | <250KB |
+| Metric                   | Target |
+|--------------------------|--------|
+| Lighthouse Score         | >90    |
+| First Contentful Paint   | <1.5s  |
+| Largest Contentful Paint | <2.5s  |
+| Time to Interactive      | <2s    |
+| Bundle Size (gzipped)    | <250KB |
 
 ### Backend
-| Metric | Target |
-|--------|--------|
-| API response (cached) | <50ms |
+| Metric                  | Target |
+|-------------------------|--------|
+| API response (cached)   | <50ms  |
 | API response (uncached) | <200ms |
-| Database query time | <100ms |
+| Database query time     | <100ms |
 | 99th percentile latency | <500ms |
 
 ### Database
@@ -538,7 +538,7 @@ backend/
 NODE_ENV=development
 PORT=3000
 API_PREFIX=api/v1
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:4200
 
 # Database
 DB_HOST=localhost
@@ -615,7 +615,7 @@ CACHE_TTL_SETTLEMENT=120
 
 #### 🔲 Remaining (Phase 1)
 - Redis data caching (salaries, expenses, summaries, settlements)
-- Frontend (React 19 + Vite 7)
+- Frontend (Angular 21 + Angular Material)
 - Docker setup for all services
 - CI/CD with GitHub Actions
 
@@ -632,4 +632,4 @@ CACHE_TTL_SETTLEMENT=120
 
 ---
 
-*Extracted from SPEC.md v2.0 on January 29, 2026. Updated February 4, 2026.*
+*Extracted from SPEC.md v2.0 on January 29, 2026. Updated February 6, 2026 (frontend stack changed to Angular 21 + Angular Material).*

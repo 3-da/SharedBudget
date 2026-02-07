@@ -272,11 +272,11 @@ These are **not blockers for development** but **must be resolved before product
 ## Quick Reference
 
 ### Redis Key Patterns
-| Pattern                  | Purpose                      | TTL    |
-|--------------------------|------------------------------|--------|
-| `verify:{email}`         | Email verification code      | 10 min |
-| `reset:{token}`          | Password reset token         | 1 hour |
-| `refresh:{token}`        | Refresh token → userId       | 7 days |
+| Pattern                  | Purpose                      | TTL                             |
+|--------------------------|------------------------------|---------------------------------|
+| `verify:{email}`         | Email verification code      | 10 min                          |
+| `reset:{token}`          | Password reset token         | 1 hour                          |
+| `refresh:{token}`        | Refresh token → userId       | 7 days                          |
 | `user_sessions:{userId}` | Set of user's refresh tokens | 7 days (refreshed on new token) |
 
 ### Environment Variables
