@@ -201,6 +201,33 @@ describe('SalaryService', () => {
         });
     });
 
+    describe('getMyYearlySalary', () => {
+        it('should return all salary records for the user in the given year', async () => {
+            const records = [
+                { ...mockSalaryRecord, month: 1 },
+                { ...mockSalaryRecord, month: 2 },
+            ];
+            mockPrismaService.salary.findMany.mockResolvedValue(records);
+
+            const result = await service.getMyYearlySalary(mockUserId, currentYear);
+
+            expect(mockPrismaService.salary.findMany).toHaveBeenCalledWith({
+                where: { userId: mockUserId, year: currentYear },
+                include: { user: { select: { firstName: true, lastName: true } } },
+                orderBy: { month: 'asc' },
+            });
+            expect(result).toHaveLength(2);
+        });
+
+        it('should return empty array when no salary records exist', async () => {
+            mockPrismaService.salary.findMany.mockResolvedValue([]);
+
+            const result = await service.getMyYearlySalary(mockUserId, 2020);
+
+            expect(result).toEqual([]);
+        });
+    });
+
     describe('getHouseholdSalaries', () => {
         it('should return all salaries for household in current month', async () => {
             const secondSalary = {

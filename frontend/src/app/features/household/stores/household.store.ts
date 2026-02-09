@@ -1,0 +1,101 @@
+import { Injectable, inject, signal, computed } from '@angular/core';
+import { Household, HouseholdInvitation } from '../../../shared/models/household.model';
+import { DashboardOverview } from '../../../shared/models/dashboard.model';
+import { HouseholdRole } from '../../../shared/models/enums';
+import { HouseholdService } from '../services/household.service';
+import { InvitationService } from '../services/invitation.service';
+import { DashboardService } from '../../dashboard/services/dashboard.service';
+import { AuthService } from '../../../core/auth/auth.service';
+
+@Injectable({ providedIn: 'root' })
+export class HouseholdStore {
+  private readonly householdService = inject(HouseholdService);
+  private readonly invitationService = inject(InvitationService);
+  private readonly dashboardService = inject(DashboardService);
+  private readonly authService = inject(AuthService);
+
+  readonly household = signal<Household | null>(null);
+  readonly overview = signal<DashboardOverview | null>(null);
+  readonly invitations = signal<HouseholdInvitation[]>([]);
+  readonly loading = signal(false);
+  readonly overviewLoading = signal(false);
+  readonly error = signal<string | null>(null);
+
+  readonly hasHousehold = computed(() => !!this.household());
+  readonly members = computed(() => this.household()?.members ?? []);
+  readonly isOwner = computed(() => {
+    const user = this.authService.currentUser();
+    if (!user) return false;
+    return this.members().some(m => m.userId === user.id && m.role === HouseholdRole.OWNER);
+  });
+  readonly currentUserId = computed(() => this.authService.currentUser()?.id ?? '');
+
+  readonly monthLabel = computed(() => {
+    const ov = this.overview();
+    if (!ov) return '';
+    return new Date(ov.year, ov.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  });
+
+  loadHousehold(): void {
+    this.loading.set(true);
+    this.householdService.getMine().subscribe({
+      next: h => {
+        this.household.set(h);
+        this.loading.set(false);
+        this.loadOverview();
+      },
+      error: () => { this.household.set(null); this.loading.set(false); },
+    });
+  }
+
+  loadOverview(): void {
+    this.overviewLoading.set(true);
+    this.dashboardService.getOverview().subscribe({
+      next: o => { this.overview.set(o); this.overviewLoading.set(false); },
+      error: () => { this.overview.set(null); this.overviewLoading.set(false); },
+    });
+  }
+
+  markSettlementPaid(): void {
+    this.dashboardService.markSettlementPaid().subscribe({
+      next: () => this.loadOverview(),
+      error: err => this.error.set(err.error?.message),
+    });
+  }
+
+  createHousehold(name: string): void {
+    this.loading.set(true);
+    this.householdService.create({ name }).subscribe({
+      next: h => { this.household.set(h); this.loading.set(false); },
+      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+    });
+  }
+
+  joinByCode(inviteCode: string): void {
+    this.loading.set(true);
+    this.householdService.joinByCode({ inviteCode }).subscribe({
+      next: h => { this.household.set(h); this.loading.set(false); },
+      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+    });
+  }
+
+  regenerateCode(): void {
+    this.householdService.regenerateCode().subscribe({ next: h => this.household.set(h) });
+  }
+
+  leave(): void {
+    this.householdService.leave().subscribe({ next: () => { this.household.set(null); this.overview.set(null); } });
+  }
+
+  removeMember(userId: string): void {
+    this.householdService.removeMember(userId).subscribe({ next: () => this.loadHousehold() });
+  }
+
+  transferOwnership(targetUserId: string): void {
+    this.householdService.transferOwnership({ targetUserId }).subscribe({ next: h => this.household.set(h) });
+  }
+
+  loadInvitations(): void {
+    this.invitationService.getPending().subscribe({ next: inv => this.invitations.set(inv) });
+  }
+}

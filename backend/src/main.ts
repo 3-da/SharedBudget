@@ -18,7 +18,7 @@ async function bootstrap() {
     app.setGlobalPrefix(apiPrefix);
 
     // CORS
-    const corsOrigin = configService.get('CORS_ORIGIN', 'http://localhost:5173');
+    const corsOrigin = configService.get('CORS_ORIGIN', 'http://localhost:4200');
     app.enableCors({ origin: corsOrigin, credentials: true });
 
     // Swagger setup

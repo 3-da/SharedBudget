@@ -93,6 +93,29 @@ export class SalaryService {
         return this.mapToResponseDto(salary);
     }
 
+    /**
+     * Returns all salary records for the authenticated user across a full year.
+     * Used on the Salary page to render a 12-month bar chart.
+     *
+     * Scenario: Alex opens the Salary page and sees a bar chart of their salary
+     * for each month of 2026. Months without a record are simply absent.
+     *
+     * @param userId - The authenticated user's ID
+     * @param year - The year to fetch
+     * @returns Array of salary records (0-12 entries, one per month that has data)
+     */
+    async getMyYearlySalary(userId: string, year: number): Promise<SalaryResponseDto[]> {
+        this.logger.debug(`Get yearly salary for user: ${userId}, year: ${year}`);
+
+        const salaries = await this.prismaService.salary.findMany({
+            where: { userId, year },
+            include: { user: { select: { firstName: true, lastName: true } } },
+            orderBy: { month: 'asc' },
+        });
+
+        return salaries.map((salary) => this.mapToResponseDto(salary));
+    }
+
     async getHouseholdSalaries(userId: string): Promise<SalaryResponseDto[]> {
         const now = new Date();
         const month = now.getMonth() + 1;
