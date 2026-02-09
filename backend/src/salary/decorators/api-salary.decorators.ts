@@ -37,6 +37,21 @@ export function UpsertMySalaryEndpoint() {
     );
 }
 
+export function GetMyYearlySalaryEndpoint() {
+    return applyDecorators(
+        Get('me/yearly/:year'),
+        ApiOperation({
+            summary: 'Get my salary for all months in a year',
+            description: "Returns the current user's salary records for all 12 months of the specified year.",
+        }),
+        ApiResponse({ status: 200, description: 'Salaries returned.', type: [SalaryResponseDto] }),
+        ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
+        ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
+        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        HttpCode(HttpStatus.OK),
+    );
+}
+
 export function GetHouseholdSalariesEndpoint() {
     return applyDecorators(
         Get('household'),

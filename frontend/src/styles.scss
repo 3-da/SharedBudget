@@ -1,0 +1,41 @@
+@use '@angular/material' as mat;
+@use 'styles/variables';
+@use 'styles/mixins';
+@use 'styles/reset';
+
+html {
+  height: 100%;
+  @include mat.theme((
+    color: (
+      primary: mat.$cyan-palette,
+      tertiary: mat.$orange-palette,
+    ),
+    typography: (
+      brand-family: 'Inter, sans-serif',
+      plain-family: 'Inter, sans-serif',
+    ),
+    density: 0,
+  ));
+}
+
+body {
+  color-scheme: light dark;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+}
+
+.error-snackbar {
+  --mdc-snackbar-container-color: var(--color-negative);
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.success-snackbar {
+  --mdc-snackbar-container-color: var(--color-positive);
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.positive { color: var(--color-positive); }
+.negative { color: var(--color-negative); }

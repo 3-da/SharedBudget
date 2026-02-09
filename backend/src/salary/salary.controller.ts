@@ -9,6 +9,7 @@ import {
     GetHouseholdSalariesByMonthEndpoint,
     GetHouseholdSalariesEndpoint,
     GetMySalaryEndpoint,
+    GetMyYearlySalaryEndpoint,
     UpsertMySalaryEndpoint,
 } from './decorators/api-salary.decorators';
 
@@ -27,6 +28,14 @@ export class SalaryController {
     @UpsertMySalaryEndpoint()
     async upsertMySalary(@CurrentUser('id') userId: string, @Body() dto: UpsertSalaryDto): Promise<SalaryResponseDto> {
         return this.salaryService.upsertMySalary(userId, dto);
+    }
+
+    @GetMyYearlySalaryEndpoint()
+    async getMyYearlySalary(
+        @CurrentUser('id') userId: string,
+        @Param('year', ParseIntPipe) year: number,
+    ): Promise<SalaryResponseDto[]> {
+        return this.salaryService.getMyYearlySalary(userId, year);
     }
 
     @GetHouseholdSalariesEndpoint()

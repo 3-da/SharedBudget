@@ -20,6 +20,9 @@ import { SharedExpenseModule } from './shared-expense/shared-expense.module';
 import { ApprovalModule } from './approval/approval.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { CacheModule } from './common/cache/cache.module';
+import { ExpensePaymentModule } from './expense-payment/expense-payment.module';
+import { RecurringOverrideModule } from './recurring-override/recurring-override.module';
+import { SavingModule } from './saving/saving.module';
 
 @Module({
     imports: [
@@ -45,6 +48,9 @@ import { CacheModule } from './common/cache/cache.module';
         SharedExpenseModule,
         ApprovalModule,
         DashboardModule,
+        ExpensePaymentModule,
+        RecurringOverrideModule,
+        SavingModule,
     ],
     controllers: [AppController],
     providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
