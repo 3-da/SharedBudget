@@ -21,7 +21,7 @@ export class SalaryController {
     constructor(private readonly salaryService: SalaryService) {}
 
     @GetMySalaryEndpoint()
-    async getMySalary(@CurrentUser('id') userId: string): Promise<SalaryResponseDto> {
+    async getMySalary(@CurrentUser('id') userId: string): Promise<SalaryResponseDto | null> {
         return this.salaryService.getMySalary(userId);
     }
 

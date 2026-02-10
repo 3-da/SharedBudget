@@ -1,4 +1,4 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -17,8 +17,8 @@ export class DashboardController {
     constructor(private readonly dashboardService: DashboardService) {}
 
     @GetDashboardEndpoint()
-    async getOverview(@CurrentUser('id') userId: string): Promise<DashboardResponseDto> {
-        return this.dashboardService.getOverview(userId);
+    async getOverview(@CurrentUser('id') userId: string, @Query('mode') mode?: string): Promise<DashboardResponseDto> {
+        return this.dashboardService.getOverview(userId, mode === 'yearly' ? 'yearly' : 'monthly');
     }
 
     @GetSavingsEndpoint()

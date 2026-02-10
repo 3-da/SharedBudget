@@ -11,11 +11,10 @@ export function GetMySalaryEndpoint() {
             summary: 'Get my salary for current month',
             description: "Returns the current user's salary record for the current month.",
         }),
-        ApiResponse({ status: 200, description: 'Salary returned.', type: SalaryResponseDto }),
+        ApiResponse({ status: 200, description: 'Salary returned, or null if no salary set for current month.', type: SalaryResponseDto }),
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
-        ApiResponse({ status: 404, description: 'No salary set for current month.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -47,7 +46,7 @@ export function GetMyYearlySalaryEndpoint() {
         ApiResponse({ status: 200, description: 'Salaries returned.', type: [SalaryResponseDto] }),
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -63,7 +62,7 @@ export function GetHouseholdSalariesEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -79,7 +78,7 @@ export function GetHouseholdSalariesByMonthEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }

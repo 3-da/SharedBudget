@@ -12,6 +12,9 @@ export class MemberExpenseSummaryDto {
 
     @ApiProperty({ example: 349.99, type: 'number', description: 'Total personal expenses (monthly equivalent)' })
     personalExpensesTotal: number;
+
+    @ApiProperty({ example: 149.99, type: 'number', description: 'Remaining unpaid personal expenses this month' })
+    remainingExpenses: number;
 }
 
 export class ExpenseSummaryDto {
@@ -21,6 +24,9 @@ export class ExpenseSummaryDto {
     @ApiProperty({ example: 1200.0, type: 'number', description: 'Total shared expenses (monthly equivalent)' })
     sharedExpensesTotal: number;
 
-    @ApiProperty({ example: 1899.98, type: 'number', description: 'Total household expenses (personal + shared)' })
+    @ApiProperty({ example: 1899.98, type: 'number', description: 'Total household expenses (personal + shared) for this month' })
     totalHouseholdExpenses: number;
+
+    @ApiProperty({ example: 899.98, type: 'number', description: 'Remaining unpaid household expenses this month (total - paid)' })
+    remainingHouseholdExpenses: number;
 }

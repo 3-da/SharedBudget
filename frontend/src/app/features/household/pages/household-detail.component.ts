@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { RouterLink } from '@angular/router';
 import { HouseholdStore } from '../stores/household.store';
 import { CreateHouseholdFormComponent } from '../components/create-household-form.component';
@@ -20,7 +21,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   selector: 'app-household-detail',
   standalone: true,
   imports: [
-    MatButtonModule, MatIconModule, MatBadgeModule, MatTabsModule, RouterLink,
+    MatButtonModule, MatIconModule, MatBadgeModule, MatTabsModule, MatButtonToggleModule, RouterLink,
     CreateHouseholdFormComponent, JoinByCodeFormComponent,
     FinancialSummaryComponent, MemberFinanceCardComponent,
     SettlementSummaryComponent, HouseholdManagementComponent,
@@ -49,6 +50,10 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     } @else {
       <app-page-header [title]="store.household()!.name" [subtitle]="store.monthLabel()">
         <div class="header-actions">
+          <mat-button-toggle-group [value]="store.viewMode()" (change)="store.setViewMode($event.value)">
+            <mat-button-toggle value="monthly">This Month</mat-button-toggle>
+            <mat-button-toggle value="yearly">Yearly Average</mat-button-toggle>
+          </mat-button-toggle-group>
           @if (store.overview()?.pendingApprovalsCount; as count) {
             <button mat-stroked-button routerLink="/approvals" [matBadge]="count" matBadgeColor="warn">
               <mat-icon>pending_actions</mat-icon> Approvals
@@ -62,7 +67,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
       } @else if (store.overview(); as ov) {
         <!-- Summary Cards -->
         <section class="section">
-          <app-financial-summary [data]="ov" />
+          <app-financial-summary [data]="ov" [viewMode]="store.viewMode()" />
         </section>
 
         <!-- Members Financial Cards -->
@@ -74,7 +79,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
                 [income]="member"
                 [expenses]="getExpenseForMember(member.userId)"
                 [savings]="getSavingsForMember(member.userId)"
-                [isSelf]="member.userId === store.currentUserId()" />
+                [sharedExpensesShare]="getSharedExpensesShare()" />
             }
           </div>
         </section>
@@ -139,5 +144,12 @@ export class HouseholdDetailComponent implements OnInit {
 
   getSavingsForMember(userId: string) {
     return this.store.overview()?.savings.members.find(s => s.userId === userId) ?? null;
+  }
+
+  getSharedExpensesShare(): number {
+    const ov = this.store.overview();
+    if (!ov) return 0;
+    const memberCount = ov.income.length || 1;
+    return Math.round((ov.expenses.sharedExpensesTotal / memberCount) * 100) / 100;
   }
 }

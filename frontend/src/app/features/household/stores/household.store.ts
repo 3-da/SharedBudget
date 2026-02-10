@@ -20,6 +20,7 @@ export class HouseholdStore {
   readonly loading = signal(false);
   readonly overviewLoading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly viewMode = signal<'monthly' | 'yearly'>('monthly');
 
   readonly hasHousehold = computed(() => !!this.household());
   readonly members = computed(() => this.household()?.members ?? []);
@@ -50,10 +51,15 @@ export class HouseholdStore {
 
   loadOverview(): void {
     this.overviewLoading.set(true);
-    this.dashboardService.getOverview().subscribe({
+    this.dashboardService.getOverview(this.viewMode()).subscribe({
       next: o => { this.overview.set(o); this.overviewLoading.set(false); },
       error: () => { this.overview.set(null); this.overviewLoading.set(false); },
     });
+  }
+
+  setViewMode(mode: 'monthly' | 'yearly'): void {
+    this.viewMode.set(mode);
+    this.loadOverview();
   }
 
   markSettlementPaid(): void {

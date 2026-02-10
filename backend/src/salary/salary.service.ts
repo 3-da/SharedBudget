@@ -13,7 +13,7 @@ export class SalaryService {
         private readonly cacheService: CacheService,
     ) {}
 
-    async getMySalary(userId: string): Promise<SalaryResponseDto> {
+    async getMySalary(userId: string): Promise<SalaryResponseDto | null> {
         const now = new Date();
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
@@ -26,8 +26,8 @@ export class SalaryService {
         });
 
         if (!salary) {
-            this.logger.warn(`No salary found for user: ${userId}, month: ${month}, year: ${year}`);
-            throw new NotFoundException('No salary record found for current month');
+            this.logger.debug(`No salary found for user: ${userId}, month: ${month}, year: ${year}`);
+            return null;
         }
 
         return this.mapToResponseDto(salary);

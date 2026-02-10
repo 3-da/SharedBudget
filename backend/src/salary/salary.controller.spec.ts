@@ -52,11 +52,12 @@ describe('SalaryController', () => {
             expect(result.defaultAmount).toBe(3500);
         });
 
-        it('should propagate NotFoundException from service', async () => {
-            mockSalaryService.getMySalary.mockRejectedValue(new NotFoundException('No salary record found for current month'));
+        it('should return null when no salary exists for current month', async () => {
+            mockSalaryService.getMySalary.mockResolvedValue(null);
 
-            await expect(controller.getMySalary(mockUserId)).rejects.toThrow(NotFoundException);
-            await expect(controller.getMySalary(mockUserId)).rejects.toThrow('No salary record found for current month');
+            const result = await controller.getMySalary(mockUserId);
+
+            expect(result).toBeNull();
         });
     });
 

@@ -74,7 +74,7 @@ export function RefreshEndpoint() {
         ApiResponse({ status: 200, description: 'Tokens refreshed.', type: AuthResponseDto }),
         ApiResponse({ status: 401, description: 'Invalid or expired refresh token.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -88,7 +88,7 @@ export function LogoutEndpoint() {
         }),
         ApiResponse({ status: 200, description: 'Logged out successfully.', type: MessageResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }

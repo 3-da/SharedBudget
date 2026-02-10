@@ -2,7 +2,7 @@ import { Component, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDividerModule } from '@angular/material/divider';
+
 
 interface NavItem {
   icon: string;
@@ -13,7 +13,7 @@ interface NavItem {
 @Component({
   selector: 'app-sidenav',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, MatListModule, MatIconModule, MatDividerModule],
+  imports: [RouterLink, RouterLinkActive, MatListModule, MatIconModule],
   template: `
     <mat-nav-list>
       @for (item of navItems; track item.route) {
@@ -25,11 +25,6 @@ interface NavItem {
           <span matListItemTitle>{{ item.label }}</span>
         </a>
       }
-      <mat-divider />
-      <a mat-list-item routerLink="/settings" routerLinkActive="active" (click)="navClick.emit()">
-        <mat-icon matListItemIcon>settings</mat-icon>
-        <span matListItemTitle>Settings</span>
-      </a>
     </mat-nav-list>
   `,
   styles: [`

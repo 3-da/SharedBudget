@@ -15,7 +15,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
           <div class="card-icon income">
             <mat-icon>trending_up</mat-icon>
           </div>
-          <span class="label">Total Income</span>
+          <span class="label">{{ prefix() }}Income</span>
           <span class="value">{{ data().totalCurrentIncome | currencyEur }}</span>
         </mat-card-content>
       </mat-card>
@@ -25,8 +25,18 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
           <div class="card-icon expenses">
             <mat-icon>trending_down</mat-icon>
           </div>
-          <span class="label">Total Expenses</span>
+          <span class="label">{{ prefix() }}Expenses</span>
           <span class="value">{{ data().expenses.totalHouseholdExpenses | currencyEur }}</span>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <div class="card-icon remaining-expenses">
+            <mat-icon>pending</mat-icon>
+          </div>
+          <span class="label">Remaining Expenses</span>
+          <span class="value">{{ data().expenses.remainingHouseholdExpenses | currencyEur }}</span>
         </mat-card-content>
       </mat-card>
 
@@ -36,18 +46,28 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
             <mat-icon>savings</mat-icon>
           </div>
           <span class="label">Total Savings</span>
-          <span class="value">{{ data().savings.totalCurrentSavings | currencyEur }}</span>
+          <span class="value">{{ data().savings.totalSavings | currencyEur }}</span>
         </mat-card-content>
       </mat-card>
 
       <mat-card class="summary-card">
         <mat-card-content>
-          <div class="card-icon" [class]="remaining() >= 0 ? 'positive' : 'negative'">
-            <mat-icon>{{ remaining() >= 0 ? 'account_balance' : 'warning' }}</mat-icon>
+          <div class="card-icon shared-savings">
+            <mat-icon>group</mat-icon>
+          </div>
+          <span class="label">Shared Savings</span>
+          <span class="value">{{ data().savings.totalSharedSavings | currencyEur }}</span>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <div class="card-icon" [class]="remainingBudget() >= 0 ? 'positive' : 'negative'">
+            <mat-icon>{{ remainingBudget() >= 0 ? 'account_balance' : 'warning' }}</mat-icon>
           </div>
           <span class="label">Remaining Budget</span>
-          <span class="value" [class]="remaining() >= 0 ? 'positive' : 'negative'">
-            {{ remaining() | currencyEur }}
+          <span class="value" [class]="remainingBudget() >= 0 ? 'positive' : 'negative'">
+            {{ remainingBudget() | currencyEur }}
           </span>
         </mat-card-content>
       </mat-card>
@@ -56,11 +76,12 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   styles: [`
     .summary-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: var(--space-md);
     }
-    @media (max-width: 1024px) { .summary-row { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 600px) { .summary-row { grid-template-columns: 1fr; } }
+    @media (max-width: 1280px) { .summary-row { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) { .summary-row { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .summary-row { grid-template-columns: 1fr; } }
 
     .summary-card mat-card-content {
       display: flex;
@@ -81,7 +102,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     }
     .card-icon.income { background: color-mix(in srgb, var(--color-positive) 15%, transparent); color: var(--color-positive); }
     .card-icon.expenses { background: color-mix(in srgb, var(--color-negative) 15%, transparent); color: var(--color-negative); }
+    .card-icon.remaining-expenses { background: color-mix(in srgb, var(--mat-sys-tertiary) 15%, transparent); color: var(--mat-sys-tertiary); }
     .card-icon.savings { background: color-mix(in srgb, var(--color-info) 15%, transparent); color: var(--color-info); }
+    .card-icon.shared-savings { background: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent); color: var(--mat-sys-primary); }
     .card-icon.positive { background: color-mix(in srgb, var(--color-positive) 15%, transparent); color: var(--color-positive); }
     .card-icon.negative { background: color-mix(in srgb, var(--color-negative) 15%, transparent); color: var(--color-negative); }
     .label { font: var(--mat-sys-label-medium); color: var(--mat-sys-on-surface-variant); }
@@ -92,12 +115,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 })
 export class FinancialSummaryComponent {
   readonly data = input.required<DashboardOverview>();
+  readonly viewMode = input<'monthly' | 'yearly'>('monthly');
 
-  readonly remaining = computed(() => {
-    const d = this.data();
-    const income = d.totalCurrentIncome;
-    const expenses = d.expenses.totalHouseholdExpenses;
-    const savings = d.savings.totalCurrentSavings;
-    return Math.round((income - expenses - savings) * 100) / 100;
-  });
+  readonly prefix = computed(() => this.viewMode() === 'yearly' ? 'Avg. ' : '');
+
+  readonly remainingBudget = computed(() => this.data().savings.totalRemainingBudget);
 }

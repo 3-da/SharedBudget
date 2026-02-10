@@ -29,6 +29,13 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
       </div>
     </app-page-header>
 
+    @if (store.error()) {
+      <div class="error-banner">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ store.error() }}</span>
+      </div>
+    }
+
     @if (store.loading()) {
       <app-loading-spinner />
     } @else if (store.expenses().length === 0) {
@@ -52,6 +59,13 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
     .actions { display: flex; align-items: center; gap: 16px; }
     .month-nav { display: flex; align-items: center; gap: 8px; }
     .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .error-banner {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px; margin-bottom: 16px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--mat-sys-error) 10%, transparent);
+      color: var(--mat-sys-error);
+    }
   `],
 })
 export class SharedExpenseListComponent implements OnInit {

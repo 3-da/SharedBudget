@@ -34,7 +34,7 @@ export function GetMyHouseholdEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User has no household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
     );
 }
 
@@ -105,7 +105,7 @@ export function RespondToInvitationEndpoint() {
         ApiResponse({ status: 404, description: 'Invitation not found.', type: ErrorResponseDto }),
         ApiResponse({ status: 409, description: 'Already responded, household full, or user already in household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -120,7 +120,7 @@ export function GetPendingInvitationsEndpoint() {
         ApiResponse({ status: 200, description: 'Pending invitations returned.', type: [HouseholdInvitationResponseDto] }),
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
     );
 }
 

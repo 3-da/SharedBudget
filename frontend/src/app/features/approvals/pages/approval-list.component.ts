@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, computed } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDialog } from '@angular/material/dialog';
 import { ApprovalStore } from '../stores/approval.store';
@@ -7,6 +7,7 @@ import { RejectDialogComponent } from '../components/reject-dialog.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-approval-list',
@@ -26,7 +27,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state.comp
           } @else {
             <div class="approval-grid">
               @for (a of store.pending(); track a.id) {
-                <app-approval-card [approval]="a" (accept)="onAccept($event)" (reject)="onReject($event)" />
+                <app-approval-card [approval]="a" [currentUserId]="currentUserId()" (accept)="onAccept($event)" (reject)="onReject($event)" (cancel)="onCancel($event)" />
               }
             </div>
           }
@@ -37,7 +38,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state.comp
           } @else {
             <div class="approval-grid">
               @for (a of store.history(); track a.id) {
-                <app-approval-card [approval]="a" (accept)="onAccept($event)" (reject)="onReject($event)" />
+                <app-approval-card [approval]="a" [currentUserId]="currentUserId()" (accept)="onAccept($event)" (reject)="onReject($event)" (cancel)="onCancel($event)" />
               }
             </div>
           }
@@ -50,6 +51,8 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state.comp
 export class ApprovalListComponent implements OnInit {
   readonly store = inject(ApprovalStore);
   private readonly dialog = inject(MatDialog);
+  private readonly authService = inject(AuthService);
+  readonly currentUserId = computed(() => this.authService.currentUser()?.id ?? null);
 
   ngOnInit(): void {
     this.store.loadPending();
@@ -64,5 +67,9 @@ export class ApprovalListComponent implements OnInit {
     this.dialog.open(RejectDialogComponent, { width: '400px' }).afterClosed().subscribe(message => {
       if (message) this.store.reject(id, message);
     });
+  }
+
+  onCancel(id: string): void {
+    this.store.reject(id, 'Cancelled by requester');
   }
 }

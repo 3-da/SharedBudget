@@ -1,20 +1,23 @@
 {
   "project": "SharedBudget",
-  "generated": "2026-02-08",
-  "description": "Household budget management app for tracking personal/shared expenses, salaries, and debt settlement.",
+  "generated": "2026-02-10",
+  "description": "Household budget management app for tracking personal/shared expenses, salaries, savings, and debt settlement.",
   "status": {
     "backend": "complete",
     "frontend": "complete",
-    "endpoints": 44,
-    "backendSpecFiles": 35,
+    "endpoints": 46,
+    "backendTests": 723,
+    "backendSpecFiles": 42,
     "frontendSpecFiles": 33,
-    "totalSpecFiles": 68
+    "totalSpecFiles": 75,
+    "bugFixPlan": "all sprints complete"
   },
   "techStack": {
     "frontend": {
       "framework": "Angular 21.1.x",
       "ui": "Angular Material 21.1.x (M3)",
       "dates": "date-fns 4.x",
+      "charts": "chart.js 4.5.x",
       "language": "TypeScript 5.9",
       "testRunner": "Vitest 4.x",
       "patterns": ["standalone components", "signals", "zoneless", "lazy-loaded routes"]
@@ -42,31 +45,35 @@
     "CLAUDE.md": "Development rules (tests, logging, Swagger)",
     "SPEC.md": "Business requirements, user stories, API spec",
     "ARCHITECTURE.md": "Tech stack, data model, infrastructure",
+    "PLAN.md": "Bug fix & feature plan (all sprints complete)",
     "PROJECT_INDEX.md": "Human-readable project index",
-    "PROJECT_INDEX.json": "Machine-readable project index (this file)",
-    "TODO.md": "Task tracking"
+    "PROJECT_INDEX.json": "Machine-readable project index (this file)"
   },
   "backend": {
-    "totalEndpoints": 44,
-    "totalControllers": 8,
-    "totalServices": 15,
-    "totalModules": 16,
-    "totalSpecFiles": 35,
+    "totalEndpoints": 46,
+    "totalControllers": 11,
+    "totalServices": 18,
+    "totalModules": 19,
+    "totalSpecFiles": 42,
+    "totalTests": 723,
     "modules": [
       { "name": "auth", "path": "backend/src/auth", "endpoints": 8, "hasController": true, "services": ["AuthService"], "purpose": "Register, verify email, login, refresh, logout, password reset" },
-      { "name": "household", "path": "backend/src/household", "endpoints": 10, "hasController": true, "services": ["HouseholdService", "HouseholdInvitationService"], "purpose": "CRUD, join/leave, invite by email, transfer ownership" },
+      { "name": "household", "path": "backend/src/household", "endpoints": 11, "hasController": true, "services": ["HouseholdService", "HouseholdInvitationService"], "purpose": "CRUD, join/leave, invite by email, transfer ownership" },
       { "name": "user", "path": "backend/src/user", "endpoints": 3, "hasController": true, "services": ["UserService"], "purpose": "Profile get/update, change password" },
-      { "name": "salary", "path": "backend/src/salary", "endpoints": 4, "hasController": true, "services": ["SalaryService"], "purpose": "Upsert salary, get own/household/monthly" },
+      { "name": "salary", "path": "backend/src/salary", "endpoints": 4, "hasController": true, "services": ["SalaryService"], "purpose": "Upsert salary, get own/household/monthly (returns null if none)" },
       { "name": "personal-expense", "path": "backend/src/personal-expense", "endpoints": 5, "hasController": true, "services": ["PersonalExpenseService"], "purpose": "CRUD for personal expenses" },
       { "name": "shared-expense", "path": "backend/src/shared-expense", "endpoints": 5, "hasController": true, "services": ["SharedExpenseService"], "purpose": "Propose create/update/delete (approval-gated)" },
-      { "name": "approval", "path": "backend/src/approval", "endpoints": 4, "hasController": true, "services": ["ApprovalService"], "purpose": "List pending/history, accept, reject" },
+      { "name": "approval", "path": "backend/src/approval", "endpoints": 4, "hasController": true, "services": ["ApprovalService"], "purpose": "List pending/history, accept, reject (includes user relations)" },
       { "name": "dashboard", "path": "backend/src/dashboard", "endpoints": 4, "hasController": true, "services": ["DashboardService"], "purpose": "Financial overview, savings, settlement, mark-paid" },
+      { "name": "expense-payment", "path": "backend/src/expense-payment", "endpoints": 3, "hasController": true, "services": ["ExpensePaymentService"], "purpose": "Mark expense months as paid/pending" },
+      { "name": "recurring-override", "path": "backend/src/recurring-override", "endpoints": 4, "hasController": true, "services": ["RecurringOverrideService"], "purpose": "Override amounts per month, batch upsert, delete upcoming" },
+      { "name": "saving", "path": "backend/src/saving", "endpoints": 4, "hasController": true, "services": ["SavingService"], "purpose": "Personal/shared savings upsert, get own/household" },
       { "name": "session", "path": "backend/src/session", "endpoints": 0, "hasController": false, "services": ["SessionService"], "purpose": "Redis session CRUD (refresh tokens)" },
-      { "name": "cache", "path": "backend/src/common/cache", "endpoints": 0, "hasController": false, "services": ["CacheService"], "purpose": "Redis-backed TTL cache" },
+      { "name": "cache", "path": "backend/src/common/cache", "endpoints": 0, "hasController": false, "services": ["CacheService"], "purpose": "Redis-backed TTL cache with invalidation" },
       { "name": "prisma", "path": "backend/src/prisma", "endpoints": 0, "hasController": false, "services": ["PrismaService"], "purpose": "Database client (PostgreSQL via @prisma/adapter-pg)" },
       { "name": "redis", "path": "backend/src/redis", "endpoints": 0, "hasController": false, "services": [], "purpose": "Redis connection + throttler storage" },
       { "name": "mail", "path": "backend/src/mail", "endpoints": 0, "hasController": false, "services": ["MailService"], "purpose": "Email placeholder (logs in dev)" },
-      { "name": "expense-helper", "path": "backend/src/common/expense", "endpoints": 0, "hasController": false, "services": ["ExpenseHelperService"], "purpose": "Shared expense mappers and utilities" },
+      { "name": "expense-helper", "path": "backend/src/common/expense", "endpoints": 0, "hasController": false, "services": ["ExpenseHelperService"], "purpose": "Shared expense mappers and membership check" },
       { "name": "logger", "path": "backend/src/common/logger", "endpoints": 0, "hasController": false, "services": [], "purpose": "Pino logger config with sensitive data redaction" },
       { "name": "common", "path": "backend/src/common", "endpoints": 0, "hasController": false, "services": [], "purpose": "Shared DTOs, HttpExceptionFilter, pickDefined util" }
     ],
@@ -93,7 +100,7 @@
       { "method": "GET", "path": "/users/me", "description": "Get profile" },
       { "method": "PUT", "path": "/users/me", "description": "Update profile (name)" },
       { "method": "PUT", "path": "/users/me/password", "description": "Change password" },
-      { "method": "GET", "path": "/salary/me", "description": "My salary (current month)" },
+      { "method": "GET", "path": "/salary/me", "description": "My salary (returns null if none)" },
       { "method": "PUT", "path": "/salary/me", "description": "Upsert my salary" },
       { "method": "GET", "path": "/salary/household", "description": "All household salaries" },
       { "method": "GET", "path": "/salary/household/:year/:month", "description": "Salaries for specific month" },
@@ -107,21 +114,32 @@
       { "method": "POST", "path": "/expenses/shared", "description": "Propose new expense -> approval" },
       { "method": "PUT", "path": "/expenses/shared/:id", "description": "Propose edit -> approval" },
       { "method": "DELETE", "path": "/expenses/shared/:id", "description": "Propose delete -> approval" },
-      { "method": "GET", "path": "/approvals", "description": "List pending approvals" },
+      { "method": "GET", "path": "/approvals", "description": "List pending approvals (includes user objects)" },
       { "method": "GET", "path": "/approvals/history", "description": "Past approvals (with status filter)" },
-      { "method": "PUT", "path": "/approvals/:id/accept", "description": "Accept approval" },
-      { "method": "PUT", "path": "/approvals/:id/reject", "description": "Reject approval" },
+      { "method": "PUT", "path": "/approvals/:id/accept", "description": "Accept approval (includes user objects)" },
+      { "method": "PUT", "path": "/approvals/:id/reject", "description": "Reject approval (includes user objects)" },
       { "method": "GET", "path": "/dashboard", "description": "Full financial overview" },
       { "method": "GET", "path": "/dashboard/savings", "description": "Savings per member" },
       { "method": "GET", "path": "/dashboard/settlement", "description": "Settlement calculation" },
-      { "method": "POST", "path": "/dashboard/settlement/mark-paid", "description": "Mark as settled" }
+      { "method": "POST", "path": "/dashboard/settlement/mark-paid", "description": "Mark as settled" },
+      { "method": "GET", "path": "/expense-payments/:expenseId", "description": "Get payment statuses for expense" },
+      { "method": "PUT", "path": "/expense-payments/:expenseId/:year/:month", "description": "Mark month as paid/pending" },
+      { "method": "GET", "path": "/expense-payments/household", "description": "All household payment statuses" },
+      { "method": "GET", "path": "/recurring-overrides/:expenseId", "description": "List overrides for expense" },
+      { "method": "PUT", "path": "/recurring-overrides/:expenseId/:year/:month", "description": "Upsert single override" },
+      { "method": "PUT", "path": "/recurring-overrides/:expenseId/batch", "description": "Batch upsert overrides" },
+      { "method": "DELETE", "path": "/recurring-overrides/:expenseId/upcoming/:year/:month", "description": "Delete upcoming overrides" },
+      { "method": "GET", "path": "/savings/me", "description": "My savings (personal + shared)" },
+      { "method": "PUT", "path": "/savings/me/personal", "description": "Upsert personal savings" },
+      { "method": "PUT", "path": "/savings/me/shared", "description": "Upsert shared savings" },
+      { "method": "GET", "path": "/savings/household", "description": "All household savings" }
     ]
   },
   "frontend": {
-    "totalPages": 15,
+    "totalPages": 17,
     "totalComponents": 25,
-    "totalStores": 6,
-    "totalServices": 9,
+    "totalStores": 7,
+    "totalServices": 10,
     "totalSpecFiles": 33,
     "features": [
       {
@@ -135,8 +153,8 @@
       {
         "name": "household",
         "path": "frontend/src/app/features/household",
-        "pages": ["HouseholdDetailComponent", "PendingInvitationsComponent"],
-        "components": ["CreateHouseholdFormComponent", "JoinByCodeFormComponent", "InviteDialogComponent", "MemberListComponent"],
+        "pages": ["HouseholdDetailComponent", "MemberDetailComponent", "PendingInvitationsComponent"],
+        "components": ["CreateHouseholdFormComponent", "JoinByCodeFormComponent", "InviteDialogComponent", "MemberListComponent", "MemberFinanceCardComponent", "FinancialSummaryComponent", "SettlementSummaryComponent", "IncomeExpenseChartComponent", "SavingsChartComponent", "HouseholdManagementComponent"],
         "store": "HouseholdStore",
         "services": ["HouseholdService", "InvitationService"]
       },
@@ -144,17 +162,17 @@
         "name": "salary",
         "path": "frontend/src/app/features/salary",
         "pages": ["SalaryOverviewComponent"],
-        "components": ["SalaryFormComponent", "SalarySummaryCardComponent"],
+        "components": ["SalaryFormComponent", "SalarySummaryCardComponent", "SalaryChartComponent"],
         "store": "SalaryStore",
         "services": ["SalaryService"]
       },
       {
         "name": "personal-expenses",
         "path": "frontend/src/app/features/personal-expenses",
-        "pages": ["PersonalExpenseListComponent", "PersonalExpenseFormPageComponent"],
-        "components": ["ExpenseCardComponent", "ExpenseFormComponent"],
+        "pages": ["PersonalExpenseListComponent", "PersonalExpenseFormPageComponent", "RecurringTimelineComponent"],
+        "components": ["ExpenseCardComponent", "ExpenseFormComponent", "RecurringOverrideDialogComponent"],
         "store": "PersonalExpenseStore",
-        "services": ["PersonalExpenseService"]
+        "services": ["PersonalExpenseService", "RecurringOverrideService"]
       },
       {
         "name": "shared-expenses",
@@ -181,6 +199,14 @@
         "services": ["DashboardService"]
       },
       {
+        "name": "savings",
+        "path": "frontend/src/app/features/savings",
+        "pages": ["SavingsOverviewComponent"],
+        "components": [],
+        "store": "SavingStore",
+        "services": ["SavingService"]
+      },
+      {
         "name": "settings",
         "path": "frontend/src/app/features/settings",
         "pages": ["SettingsComponent"],
@@ -196,9 +222,11 @@
       "layout": { "path": "frontend/src/app/core/layout", "exports": ["ShellComponent", "ToolbarComponent", "SidenavComponent"] }
     },
     "shared": {
+      "models": ["auth.model", "user.model", "expense.model", "approval.model", "household.model", "salary.model", "saving.model", "dashboard.model", "expense-payment.model", "recurring-override.model", "enums"],
       "pipes": ["CurrencyEurPipe", "MonthlyEquivalentPipe", "RelativeTimePipe"],
       "directives": ["AutoFocusDirective", "PositiveNumberDirective"],
-      "components": ["LoadingSpinnerComponent", "EmptyStateComponent", "CurrencyDisplayComponent", "ConfirmDialogComponent", "PageHeaderComponent"]
+      "validators": ["PasswordMatchValidator"],
+      "components": ["LoadingSpinnerComponent", "EmptyStateComponent", "CurrencyDisplayComponent", "ConfirmDialogComponent", "PageHeaderComponent", "BaseChartComponent"]
     }
   },
   "dataModel": {
@@ -210,7 +238,10 @@
       { "name": "Salary", "table": "salaries", "key": "id (uuid)", "unique": ["userId+month+year"] },
       { "name": "Expense", "table": "expenses", "key": "id (uuid)" },
       { "name": "ExpenseApproval", "table": "expense_approvals", "key": "id (uuid)" },
-      { "name": "Settlement", "table": "settlements", "key": "id (uuid)", "unique": ["householdId+month+year"] }
+      { "name": "Settlement", "table": "settlements", "key": "id (uuid)", "unique": ["householdId+month+year"] },
+      { "name": "ExpensePaymentStatus", "table": "expense_payment_statuses", "key": "id (uuid)", "unique": ["expenseId+month+year"] },
+      { "name": "RecurringOverride", "table": "recurring_overrides", "key": "id (uuid)", "unique": ["expenseId+month+year"] },
+      { "name": "Saving", "table": "savings", "key": "id (uuid)", "unique": ["userId+month+year+isShared"] }
     ],
     "enums": [
       { "name": "HouseholdRole", "values": ["OWNER", "MEMBER"] },
@@ -221,7 +252,8 @@
       { "name": "InstallmentFrequency", "values": ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL"] },
       { "name": "ApprovalAction", "values": ["CREATE", "UPDATE", "DELETE"] },
       { "name": "ApprovalStatus", "values": ["PENDING", "ACCEPTED", "REJECTED"] },
-      { "name": "InvitationStatus", "values": ["PENDING", "ACCEPTED", "DECLINED", "CANCELLED"] }
+      { "name": "InvitationStatus", "values": ["PENDING", "ACCEPTED", "DECLINED", "CANCELLED"] },
+      { "name": "PaymentStatus", "values": ["PENDING", "PAID", "CANCELLED"] }
     ]
   },
   "redis": {
@@ -229,7 +261,10 @@
       { "pattern": "verify:{email}", "purpose": "Email verification code", "ttl": "10 min" },
       { "pattern": "reset:{token}", "purpose": "Password reset token", "ttl": "1 hour" },
       { "pattern": "refresh:{token}", "purpose": "Refresh token -> userId", "ttl": "7 days" },
-      { "pattern": "user_sessions:{userId}", "purpose": "Set of user's refresh tokens", "ttl": "7 days" }
+      { "pattern": "user_sessions:{userId}", "purpose": "Set of user's refresh tokens", "ttl": "7 days" },
+      { "pattern": "cache:dashboard:{householdId}:*", "purpose": "Dashboard overview/savings", "ttl": "120s" },
+      { "pattern": "cache:approvals:pending:{householdId}", "purpose": "Pending approvals list", "ttl": "120s" },
+      { "pattern": "cache:approvals:history:{householdId}:*", "purpose": "Approval history", "ttl": "120s" }
     ]
   },
   "commands": {
@@ -260,11 +295,19 @@
     "Error responses must use ErrorResponseDto"
   ],
   "patterns": {
+    "authFlow": "app.config.ts calls authService.refresh() then loadCurrentUser() via switchMap on init. Access token in-memory, refresh in localStorage.",
     "compositeDecorators": "Each module has decorators/api-*.decorators.ts bundling route + Swagger + throttle",
-    "errorHandling": "Global HttpExceptionFilter returns consistent JSON with timestamp + requestId",
-    "approvalWorkflow": "Shared expense changes create ExpenseApproval records requiring acceptance",
+    "errorHandling": "Global HttpExceptionFilter returns consistent JSON with timestamp + requestId. Prisma P2002->409, P2025->404.",
+    "approvalWorkflow": "Shared expense changes create ExpenseApproval with requestedBy/reviewedBy user relations. Accept/reject include user objects.",
+    "expenseTypes": {
+      "RECURRING_MONTHLY": "Every month at full amount, supports per-month overrides",
+      "RECURRING_YEARLY_FULL": "Once in paymentMonth at full amount",
+      "RECURRING_YEARLY_INSTALLMENTS": "Spread at amount/divisor (MONTHLY=12, QUARTERLY=4, SEMI_ANNUAL=2)",
+      "ONE_TIME_FULL": "Single expense at specific month/year",
+      "ONE_TIME_INSTALLMENTS": "Spread over installmentYears at calculated per-installment"
+    },
     "signalStores": "Frontend features use Angular signals for state management with loading/error signals",
-    "caching": "CacheService wraps Redis with typed get/set/delete, used in salary and expense services",
+    "caching": "CacheService wraps Redis with getOrSet(). invalidateHousehold() clears ALL caches for a household.",
     "jsdocCast": {
       "Alex": "OWNER (household creator)",
       "Sam": "MEMBER (joined via code/invitation)",

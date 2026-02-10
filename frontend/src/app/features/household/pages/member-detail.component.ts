@@ -70,18 +70,22 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
         <mat-card>
           <mat-card-header>
             <mat-icon matCardAvatar class="icon-savings">savings</mat-icon>
-            <mat-card-title>Savings</mat-card-title>
-            <mat-card-subtitle>Income minus expenses</mat-card-subtitle>
+            <mat-card-title>Savings & Budget</mat-card-title>
+            <mat-card-subtitle>Actual savings from records</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="stat-row">
-              <span class="stat-label">Default savings</span>
-              <span class="stat-value">{{ memberSavingsDefault() | currencyEur }}</span>
+              <span class="stat-label">Personal savings</span>
+              <span class="stat-value">{{ memberPersonalSavings() | currencyEur }}</span>
             </div>
             <div class="stat-row">
-              <span class="stat-label">Current savings</span>
-              <span class="stat-value" [class]="memberSavingsCurrent() >= 0 ? 'positive' : 'negative'">
-                {{ memberSavingsCurrent() | currencyEur }}
+              <span class="stat-label">Shared savings</span>
+              <span class="stat-value">{{ memberSharedSavings() | currencyEur }}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Remaining budget</span>
+              <span class="stat-value" [class]="memberRemainingBudget() >= 0 ? 'positive' : 'negative'">
+                {{ memberRemainingBudget() | currencyEur }}
               </span>
             </div>
           </mat-card-content>
@@ -136,12 +140,16 @@ export class MemberDetailComponent implements OnInit {
     this.store.overview()?.expenses.personalExpenses.find(e => e.userId === this.userId)?.personalExpensesTotal ?? 0,
   );
 
-  readonly memberSavingsDefault = computed(() =>
-    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.defaultSavings ?? 0,
+  readonly memberPersonalSavings = computed(() =>
+    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.personalSavings ?? 0,
   );
 
-  readonly memberSavingsCurrent = computed(() =>
-    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.currentSavings ?? 0,
+  readonly memberSharedSavings = computed(() =>
+    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.sharedSavings ?? 0,
+  );
+
+  readonly memberRemainingBudget = computed(() =>
+    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.remainingBudget ?? 0,
   );
 
   ngOnInit(): void {

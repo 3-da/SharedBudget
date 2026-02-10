@@ -7,8 +7,9 @@ import { DashboardOverview, MarkSettlementPaidResponse } from '../../../shared/m
 export class DashboardService {
   private readonly api = inject(ApiService);
 
-  getOverview(): Observable<DashboardOverview> {
-    return this.api.get<DashboardOverview>('/dashboard');
+  getOverview(mode?: 'monthly' | 'yearly'): Observable<DashboardOverview> {
+    const params = mode && mode !== 'monthly' ? `?mode=${mode}` : '';
+    return this.api.get<DashboardOverview>(`/dashboard${params}`);
   }
 
   markSettlementPaid(): Observable<MarkSettlementPaidResponse> {
