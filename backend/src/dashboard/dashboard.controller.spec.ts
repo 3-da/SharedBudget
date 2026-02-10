@@ -111,10 +111,22 @@ describe('DashboardController', () => {
         it('should call dashboardService.getOverview and return dashboard', async () => {
             const result = await controller.getOverview(mockUserId);
 
-            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId);
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly');
             expect(result.totalDefaultIncome).toBe(6000);
             expect(result.income).toHaveLength(2);
             expect(result.pendingApprovalsCount).toBe(2);
+        });
+
+        it('should pass yearly mode when mode query param is yearly', async () => {
+            const result = await controller.getOverview(mockUserId, 'yearly');
+
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'yearly');
+        });
+
+        it('should default to monthly for unknown mode values', async () => {
+            await controller.getOverview(mockUserId, 'invalid');
+
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly');
         });
 
         it('should propagate NotFoundException from service', async () => {

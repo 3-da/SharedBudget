@@ -78,11 +78,12 @@ describe('SalaryService', () => {
             expect(result.currentAmount).toBe(3500.0);
         });
 
-        it('should throw NotFoundException with correct message when no salary exists', async () => {
+        it('should return null when no salary exists for current month', async () => {
             mockPrismaService.salary.findUnique.mockResolvedValue(null);
 
-            await expect(service.getMySalary(mockUserId)).rejects.toThrow(NotFoundException);
-            await expect(service.getMySalary(mockUserId)).rejects.toThrow('No salary record found for current month');
+            const result = await service.getMySalary(mockUserId);
+
+            expect(result).toBeNull();
         });
 
         it('should correctly map Decimal fields to numbers in response', async () => {

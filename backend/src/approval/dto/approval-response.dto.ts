@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+class ApprovalUserDto {
+    @ApiProperty({ type: 'string' })
+    id: string;
+
+    @ApiProperty({ example: 'John' })
+    firstName: string;
+
+    @ApiProperty({ example: 'Doe' })
+    lastName: string;
+}
+
 export class ApprovalResponseDto {
     @ApiProperty({ type: 'string' })
     id: string;
@@ -19,8 +30,14 @@ export class ApprovalResponseDto {
     @ApiProperty({ type: 'string' })
     requestedById: string;
 
+    @ApiProperty({ type: ApprovalUserDto, description: 'User who requested the approval' })
+    requestedBy: ApprovalUserDto;
+
     @ApiPropertyOptional({ type: 'string', nullable: true, description: 'User who reviewed the approval' })
     reviewedById: string | null;
+
+    @ApiPropertyOptional({ type: ApprovalUserDto, nullable: true, description: 'User who reviewed the approval' })
+    reviewedBy: ApprovalUserDto | null;
 
     @ApiPropertyOptional({ type: 'string', nullable: true, description: "Reviewer's comment", maxLength: 500 })
     message: string | null;

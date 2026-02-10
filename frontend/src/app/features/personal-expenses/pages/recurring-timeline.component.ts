@@ -4,10 +4,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { PersonalExpenseStore } from '../stores/personal-expense.store';
 import { RecurringOverrideService } from '../services/recurring-override.service';
 import { RecurringOverride } from '../../../shared/models/recurring-override.model';
+import { BatchOverrideItem } from '../../../shared/models/recurring-override.model';
+import { ExpenseCategory, ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy } from '../../../shared/models/enums';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
@@ -16,6 +18,22 @@ import {
   RecurringOverrideDialogData,
   RecurringOverrideDialogResult,
 } from '../components/recurring-override-dialog.component';
+
+@Component({
+  selector: 'app-undo-scope-dialog',
+  standalone: true,
+  imports: [MatDialogModule, MatButtonModule],
+  template: `
+    <h2 mat-dialog-title>Undo Override</h2>
+    <mat-dialog-content>Which overrides should be removed?</mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-button [mat-dialog-close]="'single'">This month only</button>
+      <button mat-flat-button [mat-dialog-close]="'all_upcoming'">All upcoming months</button>
+    </mat-dialog-actions>
+  `,
+})
+class UndoScopeDialogComponent {}
 
 interface TimelineMonth {
   month: number;
@@ -32,7 +50,7 @@ interface TimelineMonth {
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
   template: `
-    <app-page-header [title]="expenseName()" subtitle="Recurring expense timeline">
+    <app-page-header [title]="expenseName()" [subtitle]="timelineSubtitle()">
       <button mat-button (click)="router.navigate(['/expenses/personal'])">
         <mat-icon>arrow_back</mat-icon> Back
       </button>
@@ -53,8 +71,13 @@ interface TimelineMonth {
             <mat-card-content>
               <span class="amount">{{ m.amount | currencyEur }}</span>
             </mat-card-content>
-            @if (!m.isPast) {
+            @if (!m.isPast && !isOneTimeInstallment()) {
               <mat-card-actions align="end">
+                @if (m.isOverride) {
+                  <button mat-button (click)="undoOverride(m)">
+                    <mat-icon>undo</mat-icon> Undo
+                  </button>
+                }
                 <button mat-button (click)="openOverride(m)">
                   <mat-icon>edit</mat-icon> Override
                 </button>
@@ -90,19 +113,76 @@ export class RecurringTimelineComponent implements OnInit {
   private readonly expenseId = signal('');
 
   readonly expenseName = computed(() => this.store.selectedExpense()?.name ?? 'Expense');
-  readonly defaultAmount = computed(() => this.store.selectedExpense()?.amount ?? 0);
+  readonly defaultAmount = computed(() => {
+    const e = this.store.selectedExpense();
+    if (!e) return 0;
+    const amount = Number(e.amount);
+    // For yearly installments, show per-installment amount
+    if (e.frequency === ExpenseFrequency.YEARLY && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
+      switch (e.installmentFrequency) {
+        case InstallmentFrequency.MONTHLY: return Math.round((amount / 12) * 100) / 100;
+        case InstallmentFrequency.QUARTERLY: return Math.round((amount / 4) * 100) / 100;
+        case InstallmentFrequency.SEMI_ANNUAL: return Math.round((amount / 2) * 100) / 100;
+      }
+    }
+    return amount;
+  });
+  readonly isOneTimeInstallment = computed(() => {
+    const e = this.store.selectedExpense();
+    return e?.category === ExpenseCategory.ONE_TIME && e?.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS;
+  });
+  readonly timelineSubtitle = computed(() =>
+    this.isOneTimeInstallment() ? 'Installment schedule' : 'Recurring expense timeline',
+  );
 
   readonly timeline = computed<TimelineMonth[]>(() => {
+    const expense = this.store.selectedExpense();
+    if (!expense) return [];
+
     const now = new Date();
     const currentM = now.getMonth() + 1;
     const currentY = now.getFullYear();
+
+    if (this.isOneTimeInstallment()) {
+      return this.buildInstallmentTimeline(expense, currentM, currentY);
+    }
+
+    return this.buildRecurringTimeline(currentM, currentY);
+  });
+
+  private buildRecurringTimeline(currentM: number, currentY: number): TimelineMonth[] {
+    const expense = this.store.selectedExpense();
     const overrideMap = new Map(this.overrides().map(o => [`${o.year}-${o.month}`, o]));
     const months: TimelineMonth[] = [];
+
+    // For YEARLY frequency, only show applicable months based on payment strategy
+    const isYearly = expense?.frequency === ExpenseFrequency.YEARLY;
+    const strategy = expense?.yearlyPaymentStrategy;
+    const installFreq = expense?.installmentFrequency;
+    const expenseMonth = expense?.month ?? 1;
 
     for (let offset = -12; offset <= 12; offset++) {
       const d = new Date(currentY, currentM - 1 + offset);
       const m = d.getMonth() + 1;
       const y = d.getFullYear();
+
+      // Skip months that don't apply for yearly expenses
+      if (isYearly) {
+        if (strategy === YearlyPaymentStrategy.FULL) {
+          // Only show the payment month
+          if (m !== expenseMonth) continue;
+        } else if (strategy === YearlyPaymentStrategy.INSTALLMENTS) {
+          if (installFreq === InstallmentFrequency.QUARTERLY) {
+            // Show every 3 months starting from expense month
+            if ((m - expenseMonth + 12) % 3 !== 0) continue;
+          } else if (installFreq === InstallmentFrequency.SEMI_ANNUAL) {
+            // Show every 6 months starting from expense month
+            if ((m - expenseMonth + 12) % 6 !== 0) continue;
+          }
+          // MONTHLY installments show all months
+        }
+      }
+
       const key = `${y}-${m}`;
       const override = overrideMap.get(key);
       months.push({
@@ -115,7 +195,41 @@ export class RecurringTimelineComponent implements OnInit {
       });
     }
     return months;
-  });
+  }
+
+  private buildInstallmentTimeline(expense: any, currentM: number, currentY: number): TimelineMonth[] {
+    const startMonth = expense.month ?? currentM;
+    const startYear = expense.year ?? currentY;
+    const freq = expense.installmentFrequency;
+    const totalAmount = Number(expense.amount);
+
+    // Determine installment count and step based on frequency
+    let count: number;
+    let stepMonths: number;
+    switch (freq) {
+      case InstallmentFrequency.QUARTERLY: count = 4; stepMonths = 3; break;
+      case InstallmentFrequency.SEMI_ANNUAL: count = 2; stepMonths = 6; break;
+      case InstallmentFrequency.MONTHLY: default: count = 12; stepMonths = 1; break;
+    }
+
+    const perInstallment = Math.round((totalAmount / count) * 100) / 100;
+    const months: TimelineMonth[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const d = new Date(startYear, startMonth - 1 + (i * stepMonths));
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      months.push({
+        month: m, year: y,
+        label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        amount: perInstallment,
+        isOverride: false,
+        isPast: y < currentY || (y === currentY && m < currentM),
+        isCurrent: y === currentY && m === currentM,
+      });
+    }
+    return months;
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.params['id'];
@@ -138,12 +252,67 @@ export class RecurringTimelineComponent implements OnInit {
       width: '400px',
     }).afterClosed().subscribe((result: RecurringOverrideDialogResult | undefined) => {
       if (!result) return;
-      this.overrideService.upsertOverride(this.expenseId(), m.year, m.month, result).subscribe({
-        next: o => this.overrides.update(list => {
-          const filtered = list.filter(x => !(x.month === m.month && x.year === m.year));
-          return [...filtered, o];
-        }),
-      });
+      const dto = { amount: result.amount, skipped: result.skipped };
+
+      if (result.scope === 'all_upcoming') {
+        const upcomingMonths = this.timeline().filter(t =>
+          t.year > m.year || (t.year === m.year && t.month >= m.month),
+        );
+        const batchItems: BatchOverrideItem[] = upcomingMonths.map(t => ({
+          year: t.year, month: t.month, amount: result.amount, skipped: result.skipped,
+        }));
+        if (batchItems.length > 0) {
+          this.overrideService.batchUpsertOverrides(this.expenseId(), { overrides: batchItems }).subscribe({
+            next: results => this.overrides.update(list => {
+              const keys = new Set(results.map(r => `${r.year}-${r.month}`));
+              const filtered = list.filter(x => !keys.has(`${x.year}-${x.month}`));
+              return [...filtered, ...results];
+            }),
+          });
+        }
+      } else {
+        this.overrideService.upsertOverride(this.expenseId(), m.year, m.month, dto).subscribe({
+          next: o => this.overrides.update(list => {
+            const filtered = list.filter(x => !(x.month === m.month && x.year === m.year));
+            return [...filtered, o];
+          }),
+        });
+      }
     });
+  }
+
+  undoOverride(m: TimelineMonth): void {
+    // Check if there are upcoming overrides beyond this month
+    const hasUpcoming = this.overrides().some(o =>
+      o.year > m.year || (o.year === m.year && o.month > m.month),
+    );
+
+    if (!hasUpcoming) {
+      // Only this month has an override, delete directly
+      this.overrideService.deleteOverride(this.expenseId(), m.year, m.month).subscribe({
+        next: () => this.overrides.update(list =>
+          list.filter(x => !(x.month === m.month && x.year === m.year)),
+        ),
+      });
+      return;
+    }
+
+    this.dialog.open(UndoScopeDialogComponent, { width: '350px' })
+      .afterClosed().subscribe((scope: 'single' | 'all_upcoming' | undefined) => {
+        if (!scope) return;
+        if (scope === 'all_upcoming') {
+          this.overrideService.deleteUpcomingOverrides(this.expenseId(), m.year, m.month).subscribe({
+            next: () => this.overrides.update(list =>
+              list.filter(x => x.year < m.year || (x.year === m.year && x.month < m.month)),
+            ),
+          });
+        } else {
+          this.overrideService.deleteOverride(this.expenseId(), m.year, m.month).subscribe({
+            next: () => this.overrides.update(list =>
+              list.filter(x => !(x.month === m.month && x.year === m.year)),
+            ),
+          });
+        }
+      });
   }
 }

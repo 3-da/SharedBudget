@@ -16,8 +16,8 @@ describe('HouseholdStore', () => {
 
   const mockOverview = {
     income: [], totalDefaultIncome: 0, totalCurrentIncome: 0,
-    expenses: { personalExpenses: [], sharedExpensesTotal: 0, totalHouseholdExpenses: 0 },
-    savings: { members: [], totalDefaultSavings: 0, totalCurrentSavings: 0 },
+    expenses: { personalExpenses: [], sharedExpensesTotal: 0, totalHouseholdExpenses: 0, remainingHouseholdExpenses: 0 },
+    savings: { members: [], totalPersonalSavings: 0, totalSharedSavings: 0, totalSavings: 0, totalRemainingBudget: 0 },
     settlement: { amount: 0, owedByUserId: null, owedByFirstName: null, owedToUserId: null, owedToFirstName: null, message: '', isSettled: false, month: 2, year: 2026 },
     pendingApprovalsCount: 0, month: 2, year: 2026,
   };

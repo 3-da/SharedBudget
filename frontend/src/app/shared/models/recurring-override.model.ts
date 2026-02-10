@@ -17,3 +17,18 @@ export interface UpsertOverrideRequest {
 export interface UpdateDefaultAmountRequest {
   amount: number;
 }
+
+export interface DeleteAllOverridesResponse {
+  message: string;
+}
+
+export interface BatchOverrideItem {
+  year: number;
+  month: number;
+  amount: number;
+  skipped?: boolean;
+}
+
+export interface BatchUpsertOverrideRequest {
+  overrides: BatchOverrideItem[];
+}

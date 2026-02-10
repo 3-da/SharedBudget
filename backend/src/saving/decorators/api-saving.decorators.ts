@@ -16,7 +16,7 @@ export function GetMySavingsEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -32,7 +32,7 @@ export function UpsertPersonalSavingEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -48,7 +48,7 @@ export function GetHouseholdSavingsEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -64,7 +64,7 @@ export function UpsertSharedSavingEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }

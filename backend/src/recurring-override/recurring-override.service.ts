@@ -4,6 +4,7 @@ import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
 import { UpsertOverrideDto } from './dto/upsert-override.dto';
 import { UpdateDefaultAmountDto } from './dto/update-default-amount.dto';
+import { BatchOverrideItemDto } from './dto/batch-upsert-override.dto';
 import { RecurringOverrideResponseDto } from './dto/recurring-override-response.dto';
 import { ExpenseCategory, ExpenseType } from '../generated/prisma/enums';
 
@@ -161,6 +162,204 @@ export class RecurringOverrideService {
         });
 
         return overrides.map((o) => this.mapToResponse(o));
+    }
+
+    /**
+     * Deletes a single override for a specific month, resetting to the default amount.
+     *
+     * Use case: Sam previously set a custom amount for July but now wants it
+     * back to the default. Sam clicks "Undo" to remove that month's override.
+     *
+     * @param userId - The authenticated user's ID
+     * @param expenseId - The recurring expense ID
+     * @param year - Year of the override to delete
+     * @param month - Month of the override to delete
+     * @returns Success message
+     * @throws {NotFoundException} If user is not in a household
+     * @throws {NotFoundException} If expense not found in the user's household
+     */
+    async deleteOverride(
+        userId: string,
+        expenseId: string,
+        year: number,
+        month: number,
+    ): Promise<{ message: string }> {
+        this.logger.debug(`Delete override for expense ${expenseId}: ${month}/${year}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const expense = await this.prismaService.expense.findFirst({
+            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+        });
+
+        if (!expense) {
+            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
+            throw new NotFoundException('Expense not found');
+        }
+
+        await this.prismaService.recurringOverride.deleteMany({
+            where: { expenseId, month, year },
+        });
+
+        await this.invalidateCache(userId, expense.type, membership.householdId);
+        this.logger.log(`Override deleted for expense ${expenseId}: ${month}/${year}`);
+        return { message: 'Override removed' };
+    }
+
+    /**
+     * Deletes all overrides for a recurring expense.
+     *
+     * Use case: When a user edits the base expense amount and wants to reset
+     * all per-month customizations back to the new default.
+     *
+     * Scenario: Sam updates the gym membership base price from 49.99 to 55 EUR.
+     * Sam then clears all existing overrides so every month uses the new price.
+     *
+     * @param userId - The authenticated user's ID
+     * @param expenseId - The recurring expense ID
+     * @returns Count of deleted overrides
+     * @throws {NotFoundException} If user is not in a household
+     * @throws {NotFoundException} If expense not found in the user's household
+     */
+    async deleteAllOverrides(
+        userId: string,
+        expenseId: string,
+    ): Promise<{ message: string }> {
+        this.logger.debug(`Delete all overrides for expense ${expenseId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const expense = await this.prismaService.expense.findFirst({
+            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+        });
+
+        if (!expense) {
+            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
+            throw new NotFoundException('Expense not found');
+        }
+
+        const { count } = await this.prismaService.recurringOverride.deleteMany({
+            where: { expenseId },
+        });
+
+        await this.invalidateCache(userId, expense.type, membership.householdId);
+        this.logger.log(`Deleted ${count} overrides for expense ${expenseId}`);
+        return { message: `Deleted ${count} override(s)` };
+    }
+
+    /**
+     * Creates or updates multiple overrides for a recurring expense in a single operation.
+     * Uses a Prisma transaction to ensure all overrides are applied atomically.
+     *
+     * Use case: When a user changes the amount for "all upcoming months" on the
+     * recurring timeline, the frontend sends all future month overrides in one batch
+     * instead of making individual requests that could hit rate limits.
+     *
+     * Scenario: Sam's gym increases the price from 49.99 to 55 EUR starting July.
+     * Sam selects "Apply to all upcoming" which sends overrides for Jul-Dec 2026
+     * in a single batch request.
+     *
+     * @param userId - The authenticated user's ID
+     * @param expenseId - The recurring expense ID
+     * @param overrides - Array of {year, month, amount, skipped} objects
+     * @returns Array of created/updated overrides
+     * @throws {NotFoundException} If user is not in a household
+     * @throws {NotFoundException} If expense not found in the user's household
+     * @throws {BadRequestException} If expense is not recurring
+     */
+    async batchUpsertOverrides(
+        userId: string,
+        expenseId: string,
+        overrides: BatchOverrideItemDto[],
+    ): Promise<RecurringOverrideResponseDto[]> {
+        this.logger.debug(`Batch upsert ${overrides.length} overrides for expense ${expenseId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const expense = await this.prismaService.expense.findFirst({
+            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+        });
+
+        if (!expense) {
+            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
+            throw new NotFoundException('Expense not found');
+        }
+
+        if (expense.category !== ExpenseCategory.RECURRING) {
+            this.logger.warn(`Non-recurring expense batch override attempt: ${expenseId}`);
+            throw new BadRequestException('Only recurring expenses can have overrides');
+        }
+
+        const results = await this.prismaService.$transaction(
+            overrides.map((o) =>
+                this.prismaService.recurringOverride.upsert({
+                    where: {
+                        expenseId_month_year: { expenseId, month: o.month, year: o.year },
+                    },
+                    create: {
+                        expenseId,
+                        month: o.month,
+                        year: o.year,
+                        amount: o.amount,
+                        skipped: o.skipped ?? false,
+                    },
+                    update: {
+                        amount: o.amount,
+                        skipped: o.skipped ?? false,
+                    },
+                }),
+            ),
+        );
+
+        await this.invalidateCache(userId, expense.type, membership.householdId);
+        this.logger.log(`Batch upserted ${results.length} overrides for expense ${expenseId}`);
+        return results.map((r) => this.mapToResponse(r));
+    }
+
+    /**
+     * Deletes all overrides for a recurring expense from a given month forward.
+     * Useful for undoing "all upcoming" overrides.
+     *
+     * Use case: Sam previously applied an override to all upcoming months but now
+     * wants to revert. Sam clicks "Undo all upcoming" which deletes overrides
+     * from the selected month onward.
+     *
+     * @param userId - The authenticated user's ID
+     * @param expenseId - The recurring expense ID
+     * @param fromYear - Starting year (inclusive)
+     * @param fromMonth - Starting month (inclusive, 1-12)
+     * @returns Count of deleted overrides
+     * @throws {NotFoundException} If user is not in a household
+     * @throws {NotFoundException} If expense not found in the user's household
+     */
+    async deleteUpcomingOverrides(
+        userId: string,
+        expenseId: string,
+        fromYear: number,
+        fromMonth: number,
+    ): Promise<{ message: string }> {
+        this.logger.debug(`Delete upcoming overrides for expense ${expenseId} from ${fromMonth}/${fromYear}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const expense = await this.prismaService.expense.findFirst({
+            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+        });
+
+        if (!expense) {
+            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
+            throw new NotFoundException('Expense not found');
+        }
+
+        const { count } = await this.prismaService.recurringOverride.deleteMany({
+            where: {
+                expenseId,
+                OR: [
+                    { year: { gt: fromYear } },
+                    { year: fromYear, month: { gte: fromMonth } },
+                ],
+            },
+        });
+
+        await this.invalidateCache(userId, expense.type, membership.householdId);
+        this.logger.log(`Deleted ${count} upcoming overrides for expense ${expenseId} from ${fromMonth}/${fromYear}`);
+        return { message: `Deleted ${count} upcoming override(s)` };
     }
 
     private async invalidateCache(userId: string, expenseType: ExpenseType, householdId: string): Promise<void> {

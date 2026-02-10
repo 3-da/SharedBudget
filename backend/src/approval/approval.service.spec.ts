@@ -28,6 +28,18 @@ describe('ApprovalService', () => {
         role: 'MEMBER',
     };
 
+    const mockRequestedByUser = {
+        id: mockUserId,
+        firstName: 'Sam',
+        lastName: 'Smith',
+    };
+
+    const mockReviewerUser = {
+        id: mockReviewerId,
+        firstName: 'Alex',
+        lastName: 'Jones',
+    };
+
     const mockPendingCreateApproval = {
         id: mockApprovalId,
         expenseId: null,
@@ -35,7 +47,9 @@ describe('ApprovalService', () => {
         action: ApprovalAction.CREATE,
         status: ApprovalStatus.PENDING,
         requestedById: mockUserId,
+        requestedBy: mockRequestedByUser,
         reviewedById: null,
+        reviewedBy: null,
         message: null,
         proposedData: {
             name: 'Monthly Rent',
@@ -60,7 +74,9 @@ describe('ApprovalService', () => {
         action: ApprovalAction.UPDATE,
         status: ApprovalStatus.PENDING,
         requestedById: mockUserId,
+        requestedBy: mockRequestedByUser,
         reviewedById: null,
+        reviewedBy: null,
         message: null,
         proposedData: { name: 'Updated Rent', amount: 850 },
         createdAt: new Date('2026-01-16'),
@@ -74,7 +90,9 @@ describe('ApprovalService', () => {
         action: ApprovalAction.DELETE,
         status: ApprovalStatus.PENDING,
         requestedById: mockUserId,
+        requestedBy: mockRequestedByUser,
         reviewedById: null,
+        reviewedBy: null,
         message: null,
         proposedData: null,
         createdAt: new Date('2026-01-17'),
@@ -85,6 +103,7 @@ describe('ApprovalService', () => {
         ...mockPendingCreateApproval,
         status: ApprovalStatus.ACCEPTED,
         reviewedById: mockReviewerId,
+        reviewedBy: mockReviewerUser,
         message: 'Looks good',
         reviewedAt: new Date('2026-01-16'),
     };
@@ -93,6 +112,7 @@ describe('ApprovalService', () => {
         ...mockPendingUpdateApproval,
         status: ApprovalStatus.REJECTED,
         reviewedById: mockReviewerId,
+        reviewedBy: mockReviewerUser,
         message: 'Too expensive',
         reviewedAt: new Date('2026-01-17'),
     };
@@ -163,6 +183,10 @@ describe('ApprovalService', () => {
                     status: ApprovalStatus.PENDING,
                 },
                 orderBy: { createdAt: 'desc' },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
             expect(result).toHaveLength(1);
             expect(result[0].id).toBe(mockApprovalId);
@@ -213,6 +237,10 @@ describe('ApprovalService', () => {
                     status: { in: [ApprovalStatus.ACCEPTED, ApprovalStatus.REJECTED] },
                 },
                 orderBy: { createdAt: 'desc' },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
             expect(result).toHaveLength(2);
         });
@@ -229,6 +257,10 @@ describe('ApprovalService', () => {
                     status: ApprovalStatus.ACCEPTED,
                 },
                 orderBy: { createdAt: 'desc' },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
             expect(result).toHaveLength(1);
             expect(result[0].status).toBe(ApprovalStatus.ACCEPTED);
@@ -246,6 +278,10 @@ describe('ApprovalService', () => {
                     status: ApprovalStatus.REJECTED,
                 },
                 orderBy: { createdAt: 'desc' },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
             expect(result).toHaveLength(1);
             expect(result[0].status).toBe(ApprovalStatus.REJECTED);
@@ -309,6 +345,10 @@ describe('ApprovalService', () => {
                     message: 'Approved',
                     reviewedAt: expect.any(Date),
                 },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
             expect(mockTxExpense.create).toHaveBeenCalledWith({
                 data: {
@@ -350,6 +390,10 @@ describe('ApprovalService', () => {
             expect(mockTxExpenseApproval.update).toHaveBeenCalledWith({
                 where: { id: mockApprovalId },
                 data: expect.objectContaining({ message: null }),
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
             expect(result.message).toBeNull();
         });
@@ -480,6 +524,10 @@ describe('ApprovalService', () => {
                     reviewedById: mockReviewerId,
                     message: 'Too expensive',
                     reviewedAt: expect.any(Date),
+                },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
                 },
             });
             expect(result.status).toBe(ApprovalStatus.REJECTED);

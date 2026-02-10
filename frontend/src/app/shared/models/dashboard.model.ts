@@ -23,26 +23,31 @@ export interface MemberExpenseSummary {
   firstName: string;
   lastName: string;
   personalExpensesTotal: number;
+  remainingExpenses: number;
 }
 
 export interface ExpenseSummary {
   personalExpenses: MemberExpenseSummary[];
   sharedExpensesTotal: number;
   totalHouseholdExpenses: number;
+  remainingHouseholdExpenses: number;
 }
 
 export interface MemberSavings {
   userId: string;
   firstName: string;
   lastName: string;
-  defaultSavings: number;
-  currentSavings: number;
+  personalSavings: number;
+  sharedSavings: number;
+  remainingBudget: number;
 }
 
 export interface SavingsResponse {
   members: MemberSavings[];
-  totalDefaultSavings: number;
-  totalCurrentSavings: number;
+  totalPersonalSavings: number;
+  totalSharedSavings: number;
+  totalSavings: number;
+  totalRemainingBudget: number;
 }
 
 export interface SettlementResponse {

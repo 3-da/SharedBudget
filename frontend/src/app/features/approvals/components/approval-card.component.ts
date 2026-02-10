@@ -14,10 +14,12 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
     <mat-card>
       <mat-card-header>
         <mat-card-title>{{ approval().action }} Expense</mat-card-title>
-        <mat-card-subtitle>
-          By {{ approval().requestedBy.firstName }} {{ approval().requestedBy.lastName }}
-          &middot; {{ approval().createdAt | relativeTime }}
-        </mat-card-subtitle>
+        @if (approval().requestedBy) {
+          <mat-card-subtitle>
+            By {{ approval().requestedBy.firstName }} {{ approval().requestedBy.lastName }}
+            &middot; {{ approval().createdAt | relativeTime }}
+          </mat-card-subtitle>
+        }
       </mat-card-header>
       <mat-card-content>
         <mat-chip-set>
@@ -40,12 +42,18 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
       </mat-card-content>
       @if (approval().status === 'PENDING') {
         <mat-card-actions>
-          <button mat-flat-button (click)="accept.emit(approval().id)">
-            <mat-icon>check</mat-icon> Accept
-          </button>
-          <button mat-button color="warn" (click)="reject.emit(approval().id)">
-            <mat-icon>close</mat-icon> Reject
-          </button>
+          @if (approval().requestedBy.id === currentUserId()) {
+            <button mat-button color="warn" (click)="cancel.emit(approval().id)">
+              <mat-icon>cancel</mat-icon> Cancel
+            </button>
+          } @else {
+            <button mat-flat-button (click)="accept.emit(approval().id)">
+              <mat-icon>check</mat-icon> Accept
+            </button>
+            <button mat-button color="warn" (click)="reject.emit(approval().id)">
+              <mat-icon>close</mat-icon> Reject
+            </button>
+          }
         </mat-card-actions>
       }
     </mat-card>
@@ -58,6 +66,8 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 })
 export class ApprovalCardComponent {
   readonly approval = input.required<Approval>();
+  readonly currentUserId = input<string | null>(null);
   readonly accept = output<string>();
   readonly reject = output<string>();
+  readonly cancel = output<string>();
 }

@@ -10,20 +10,29 @@ export class MemberSavingsDto {
     @ApiProperty({ example: 'Doe' })
     lastName: string;
 
-    @ApiProperty({ example: 2550.01, type: 'number', description: 'Default savings = default salary - personal expenses - share of shared expenses' })
-    defaultSavings: number;
+    @ApiProperty({ example: 500.0, type: 'number', description: 'Personal savings from Saving records (isShared=false)' })
+    personalSavings: number;
 
-    @ApiProperty({ example: 2250.01, type: 'number', description: 'Current savings = current salary - personal expenses - share of shared expenses' })
-    currentSavings: number;
+    @ApiProperty({ example: 200.0, type: 'number', description: 'Shared savings from Saving records (isShared=true)' })
+    sharedSavings: number;
+
+    @ApiProperty({ example: 1850.01, type: 'number', description: 'Remaining budget = salary - personal expenses - shared expense share - personal savings - shared savings' })
+    remainingBudget: number;
 }
 
 export class SavingsResponseDto {
     @ApiProperty({ type: [MemberSavingsDto], description: 'Savings breakdown per member' })
     members: MemberSavingsDto[];
 
-    @ApiProperty({ example: 4500.02, type: 'number', description: 'Combined household savings (sum of all member default savings)' })
-    totalDefaultSavings: number;
+    @ApiProperty({ example: 1000.0, type: 'number', description: 'Combined personal savings from all members (from Saving records)' })
+    totalPersonalSavings: number;
 
-    @ApiProperty({ example: 4000.02, type: 'number', description: 'Combined household savings (sum of all member current savings)' })
-    totalCurrentSavings: number;
+    @ApiProperty({ example: 400.0, type: 'number', description: 'Combined shared savings from all members (from Saving records)' })
+    totalSharedSavings: number;
+
+    @ApiProperty({ example: 1400.0, type: 'number', description: 'Total savings = totalPersonalSavings + totalSharedSavings' })
+    totalSavings: number;
+
+    @ApiProperty({ example: 3600.02, type: 'number', description: 'Combined remaining budget across all members' })
+    totalRemainingBudget: number;
 }

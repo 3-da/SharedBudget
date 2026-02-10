@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatRadioModule } from '@angular/material/radio';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 
 export interface RecurringOverrideDialogData {
@@ -16,12 +17,13 @@ export interface RecurringOverrideDialogData {
 export interface RecurringOverrideDialogResult {
   amount: number;
   skipped: boolean;
+  scope: 'single' | 'all_upcoming';
 }
 
 @Component({
   selector: 'app-recurring-override-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, ReactiveFormsModule],
+  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, MatRadioModule, ReactiveFormsModule],
   template: `
     <h2 mat-dialog-title>Override: {{ data.expenseName }}</h2>
     <mat-dialog-content>
@@ -32,6 +34,10 @@ export interface RecurringOverrideDialogResult {
           <input matInput type="number" formControlName="amount" min="0">
         </mat-form-field>
         <mat-checkbox formControlName="skipped">Skip this month</mat-checkbox>
+        <mat-radio-group formControlName="scope" class="scope-group">
+          <mat-radio-button value="single">This month only</mat-radio-button>
+          <mat-radio-button value="all_upcoming">All upcoming months</mat-radio-button>
+        </mat-radio-group>
       </form>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -39,7 +45,11 @@ export interface RecurringOverrideDialogResult {
       <button mat-flat-button [disabled]="form.invalid" (click)="onSave()">Save Override</button>
     </mat-dialog-actions>
   `,
-  styles: [`.full-width { width: 100%; } form { display: flex; flex-direction: column; gap: 8px; }`],
+  styles: [`
+    .full-width { width: 100%; }
+    form { display: flex; flex-direction: column; gap: 8px; }
+    .scope-group { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  `],
 })
 export class RecurringOverrideDialogComponent {
   readonly data = inject<RecurringOverrideDialogData>(MAT_DIALOG_DATA);
@@ -49,6 +59,7 @@ export class RecurringOverrideDialogComponent {
   form = this.fb.nonNullable.group({
     amount: [this.data.currentAmount, [Validators.required, Validators.min(0)]],
     skipped: [false],
+    scope: ['single' as 'single' | 'all_upcoming'],
   });
 
   readonly monthLabel = new Date(this.data.year, this.data.month - 1).toLocaleDateString('en-US', { month: 'long' });

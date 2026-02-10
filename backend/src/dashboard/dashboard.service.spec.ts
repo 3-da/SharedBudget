@@ -131,7 +131,9 @@ describe('DashboardService', () => {
         salary: { findMany: vi.fn() },
         expense: { findMany: vi.fn() },
         expenseApproval: { count: vi.fn() },
+        expensePaymentStatus: { findMany: vi.fn() },
         settlement: { findUnique: vi.fn(), create: vi.fn() },
+        saving: { findMany: vi.fn() },
     };
 
     const mockExpenseHelper = {
@@ -171,7 +173,9 @@ describe('DashboardService', () => {
         mockPrismaService.salary.findMany.mockResolvedValue(mockSalaries);
         mockPrismaService.expense.findMany.mockResolvedValue(mockExpenses);
         mockPrismaService.expenseApproval.count.mockResolvedValue(2);
+        mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([]);
         mockPrismaService.settlement.findUnique.mockResolvedValue(null);
+        mockPrismaService.saving.findMany.mockResolvedValue([]);
     });
 
     describe('getOverview', () => {
@@ -214,15 +218,38 @@ describe('DashboardService', () => {
 
             expect(result.expenses.sharedExpensesTotal).toBe(0);
             expect(result.expenses.totalHouseholdExpenses).toBe(0);
+            expect(result.expenses.remainingHouseholdExpenses).toBe(0);
             expect(result.expenses.personalExpenses[0].personalExpensesTotal).toBe(0);
         });
 
-        it('should include pending approvals count', async () => {
+        it('should compute remainingHouseholdExpenses as total minus paid', async () => {
+            // Mark exp-1 (Gym, €50) as PAID
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' },
+            ]);
+
+            const result = await service.getOverview(mockUserId);
+
+            // Total: Gym(50) + Hairdresser(30) + Rent(800) + Electricity(120) = 1000
+            expect(result.expenses.totalHouseholdExpenses).toBe(1000);
+            // Gym is paid → remaining = 1000 - 50 = 950
+            expect(result.expenses.remainingHouseholdExpenses).toBe(950);
+        });
+
+        it('should include pending approvals count excluding own approvals', async () => {
             mockPrismaService.expenseApproval.count.mockResolvedValue(5);
 
             const result = await service.getOverview(mockUserId);
 
             expect(result.pendingApprovalsCount).toBe(5);
+            // Verify the count call excludes the requesting user's own approvals
+            expect(mockPrismaService.expenseApproval.count).toHaveBeenCalledWith({
+                where: {
+                    householdId: mockHouseholdId,
+                    status: 'PENDING',
+                    requestedById: { not: mockUserId },
+                },
+            });
         });
 
         it('should return zero pending approvals when none exist', async () => {
@@ -232,38 +259,114 @@ describe('DashboardService', () => {
 
             expect(result.pendingApprovalsCount).toBe(0);
         });
+
+        it('should return yearly averaged data when mode is yearly', async () => {
+            const result = await service.getOverview(mockUserId, 'yearly');
+
+            // With consistent mock data across all 12 months, averages should equal monthly values
+            expect(result.income).toHaveLength(2);
+            expect(result.totalDefaultIncome).toBe(6000);
+            expect(result.totalCurrentIncome).toBe(5700);
+            expect(result.month).toBe(currentMonth);
+            expect(result.year).toBe(currentYear);
+        });
+
+        it('should compute savings from actual Saving records in overview', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, amount: { valueOf: () => 500 }, isShared: false },
+                { userId: mockUserId, amount: { valueOf: () => 200 }, isShared: true },
+            ]);
+
+            const result = await service.getOverview(mockUserId);
+
+            expect(result.savings.totalPersonalSavings).toBe(500);
+            expect(result.savings.totalSharedSavings).toBe(200);
+            expect(result.savings.totalSavings).toBe(700);
+        });
+
+        it('should compute totalRemainingBudget in overview', async () => {
+            // No savings, no paid expenses
+            // Alex: 3200 - 50 (personal) - 460 (shared/2) - 0 - 0 = 2690
+            // Sam: 2500 - 30 (personal) - 460 (shared/2) - 0 - 0 = 2010
+            // Total remaining budget = 2690 + 2010 = 4700
+            const result = await service.getOverview(mockUserId);
+
+            expect(result.savings.totalRemainingBudget).toBe(4700);
+        });
     });
 
     describe('getSavings', () => {
-        it('should return savings breakdown per member', async () => {
+        it('should return savings breakdown per member with zero actual savings when no records', async () => {
             const result = await service.getSavings(mockUserId);
 
             expect(result.members).toHaveLength(2);
 
-            // Alex: 3500 (default) - 50 (personal) - 460 (shared/2) = 2990
             const alexSavings = result.members.find((m) => m.userId === mockUserId);
             expect(alexSavings).toBeDefined();
-            expect(alexSavings!.defaultSavings).toBe(2990);
-            // Alex current: 3200 - 50 - 460 = 2690
-            expect(alexSavings!.currentSavings).toBe(2690);
+            // No saving records → personalSavings and sharedSavings are 0
+            expect(alexSavings!.personalSavings).toBe(0);
+            expect(alexSavings!.sharedSavings).toBe(0);
+            // Alex: remainingBudget = 3200 - 50 - 460 - 0 - 0 = 2690
+            expect(alexSavings!.remainingBudget).toBe(2690);
 
-            // Sam: 2500 (default) - 30 (personal) - 460 (shared/2) = 2010
             const samSavings = result.members.find((m) => m.userId === mockPartnerId);
             expect(samSavings).toBeDefined();
-            expect(samSavings!.defaultSavings).toBe(2010);
-            expect(samSavings!.currentSavings).toBe(2010);
+            expect(samSavings!.personalSavings).toBe(0);
+            expect(samSavings!.sharedSavings).toBe(0);
+            // Sam: remainingBudget = 2500 - 30 - 460 - 0 - 0 = 2010
+            expect(samSavings!.remainingBudget).toBe(2010);
         });
 
-        it('should calculate correct total household savings', async () => {
+        it('should return actual savings from Saving records', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, amount: { valueOf: () => 500 }, isShared: false },
+                { userId: mockUserId, amount: { valueOf: () => 200 }, isShared: true },
+                { userId: mockPartnerId, amount: { valueOf: () => 300 }, isShared: false },
+            ]);
+
             const result = await service.getSavings(mockUserId);
 
-            // Total default: 2990 + 2010 = 5000
-            expect(result.totalDefaultSavings).toBe(5000);
-            // Total current: 2690 + 2010 = 4700
-            expect(result.totalCurrentSavings).toBe(4700);
+            const alexSavings = result.members.find((m) => m.userId === mockUserId);
+            expect(alexSavings!.personalSavings).toBe(500);
+            expect(alexSavings!.sharedSavings).toBe(200);
+
+            const samSavings = result.members.find((m) => m.userId === mockPartnerId);
+            expect(samSavings!.personalSavings).toBe(300);
+            expect(samSavings!.sharedSavings).toBe(0);
+
+            expect(result.totalPersonalSavings).toBe(800);
+            expect(result.totalSharedSavings).toBe(200);
         });
 
-        it('should handle negative savings (expenses exceed income)', async () => {
+        it('should calculate correct totalSavings and totalRemainingBudget', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, amount: { valueOf: () => 500 }, isShared: false },
+                { userId: mockUserId, amount: { valueOf: () => 200 }, isShared: true },
+                { userId: mockPartnerId, amount: { valueOf: () => 300 }, isShared: false },
+            ]);
+
+            const result = await service.getSavings(mockUserId);
+
+            // Total savings = 500 + 200 + 300 = 1000
+            expect(result.totalSavings).toBe(1000);
+            // Alex remaining: 3200 - 50 - 460 - 500 - 200 = 1990
+            // Sam remaining: 2500 - 30 - 460 - 300 - 0 = 1710
+            // Total: 1990 + 1710 = 3700
+            expect(result.totalRemainingBudget).toBe(3700);
+        });
+
+        it('should calculate correct total household savings with no saving records', async () => {
+            const result = await service.getSavings(mockUserId);
+
+            // No saving records → totalSavings = 0
+            expect(result.totalPersonalSavings).toBe(0);
+            expect(result.totalSharedSavings).toBe(0);
+            expect(result.totalSavings).toBe(0);
+            // Remaining budget = total income - total expenses - 0 savings
+            expect(result.totalRemainingBudget).toBe(4700);
+        });
+
+        it('should handle negative remaining budget (expenses + savings exceed income)', async () => {
             mockPrismaService.salary.findMany.mockResolvedValue([
                 { ...mockSalaries[0], defaultAmount: { valueOf: () => 100 }, currentAmount: { valueOf: () => 100 } },
                 { ...mockSalaries[1], defaultAmount: { valueOf: () => 100 }, currentAmount: { valueOf: () => 100 } },
@@ -272,8 +375,8 @@ describe('DashboardService', () => {
             const result = await service.getSavings(mockUserId);
 
             const alexSavings = result.members.find((m) => m.userId === mockUserId);
-            // 100 - 50 - 460 = -410
-            expect(alexSavings!.defaultSavings).toBe(-410);
+            // 100 - 50 - 460 - 0 - 0 = -410
+            expect(alexSavings!.remainingBudget).toBe(-410);
         });
 
         it('should throw NotFoundException when user is not in a household', async () => {
@@ -290,9 +393,20 @@ describe('DashboardService', () => {
             const result = await service.getSavings(mockUserId);
 
             const samSavings = result.members.find((m) => m.userId === mockPartnerId);
-            // 0 - 30 - 460 = -490
-            expect(samSavings!.defaultSavings).toBe(-490);
-            expect(samSavings!.currentSavings).toBe(-490);
+            // 0 - 30 - 460 - 0 - 0 = -490
+            expect(samSavings!.remainingBudget).toBe(-490);
+        });
+
+        it('should subtract savings from remaining budget', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, amount: { valueOf: () => 1000 }, isShared: false },
+            ]);
+
+            const result = await service.getSavings(mockUserId);
+
+            const alexSavings = result.members.find((m) => m.userId === mockUserId);
+            // 3200 - 50 - 460 - 1000 - 0 = 1690
+            expect(alexSavings!.remainingBudget).toBe(1690);
         });
     });
 
@@ -368,7 +482,7 @@ describe('DashboardService', () => {
             await expect(service.getSettlement(mockUserId)).rejects.toThrow('You must be in a household to manage expenses');
         });
 
-        it('should handle yearly expenses with monthly equivalent in settlement', async () => {
+        it('should handle yearly FULL expense only in payment month for settlement', async () => {
             const yearlyExpense = {
                 id: 'exp-yearly',
                 householdId: mockHouseholdId,
@@ -381,7 +495,7 @@ describe('DashboardService', () => {
                 paidByUserId: mockUserId, // Alex pays full
                 yearlyPaymentStrategy: 'FULL',
                 installmentFrequency: null,
-                paymentMonth: 6,
+                paymentMonth: currentMonth, // use current month so it triggers
                 month: null,
                 year: null,
                 deletedAt: null,
@@ -391,12 +505,40 @@ describe('DashboardService', () => {
 
             const result = await service.getSettlement(mockUserId);
 
-            // €1200/12 = €100/month, Alex pays all, fair share = 50 each
-            // Alex: paid 100, fair share 50 → balance +50
-            // Sam: paid 0, fair share 50 → balance -50
-            expect(result.amount).toBe(50);
+            // FULL in payment month: full €1200, Alex pays all, fair share = 600 each
+            // Alex: paid 1200, fair share 600 → balance +600
+            // Sam: paid 0, fair share 600 → balance -600
+            expect(result.amount).toBe(600);
             expect(result.owedByUserId).toBe(mockPartnerId);
             expect(result.owedToUserId).toBe(mockUserId);
+        });
+
+        it('should return zero settlement for yearly FULL expense outside payment month', async () => {
+            const otherMonth = currentMonth === 6 ? 7 : 6;
+            const yearlyExpense = {
+                id: 'exp-yearly',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Insurance',
+                amount: { valueOf: () => 1200 },
+                type: 'SHARED',
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                paidByUserId: mockUserId,
+                yearlyPaymentStrategy: 'FULL',
+                installmentFrequency: null,
+                paymentMonth: otherMonth, // NOT current month
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([yearlyExpense]);
+
+            const result = await service.getSettlement(mockUserId);
+
+            // Not in payment month → amount is 0 → no settlement
+            expect(result.amount).toBe(0);
         });
 
         it('should handle one-time expenses only in their specific month', async () => {
@@ -521,6 +663,263 @@ describe('DashboardService', () => {
         });
     });
 
+    describe('getMonthlyAmount logic (via getOverview)', () => {
+        it('should return full amount for YEARLY+FULL in payment month', async () => {
+            const expense = {
+                id: 'exp-yearly-full',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Annual Fee',
+                amount: { valueOf: () => 1200 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'FULL',
+                installmentFrequency: null,
+                paymentMonth: currentMonth,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(1200);
+        });
+
+        it('should return 0 for YEARLY+FULL NOT in payment month', async () => {
+            const otherMonth = currentMonth === 6 ? 7 : 6;
+            const expense = {
+                id: 'exp-yearly-full-other',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Annual Fee',
+                amount: { valueOf: () => 1200 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'FULL',
+                installmentFrequency: null,
+                paymentMonth: otherMonth,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(0);
+        });
+
+        it('should return amount/12 for YEARLY+INSTALLMENTS+MONTHLY', async () => {
+            const expense = {
+                id: 'exp-yearly-monthly',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Insurance Monthly',
+                amount: { valueOf: () => 1200 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'MONTHLY',
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(100);
+        });
+
+        it('should return amount/4 for YEARLY+INSTALLMENTS+QUARTERLY in quarter month', async () => {
+            // Use month 1 which is always a quarter month (1 % 3 === 1)
+            const expense = {
+                id: 'exp-yearly-quarterly',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Insurance Quarterly',
+                amount: { valueOf: () => 1200 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'QUARTERLY',
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+
+            // We need to test with a specific month. Since getOverview uses current month,
+            // we verify based on whether current month is a quarter month.
+            const result = await service.getOverview(mockUserId);
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+
+            if (currentMonth % 3 === 1) {
+                expect(alexExpense!.personalExpensesTotal).toBe(300);
+            } else {
+                expect(alexExpense!.personalExpensesTotal).toBe(0);
+            }
+        });
+
+        it('should return amount/2 for YEARLY+INSTALLMENTS+SEMI_ANNUAL in Jan or Jul', async () => {
+            const expense = {
+                id: 'exp-yearly-semi',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Insurance Semi-Annual',
+                amount: { valueOf: () => 1200 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'SEMI_ANNUAL',
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+
+            const result = await service.getOverview(mockUserId);
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+
+            if (currentMonth === 1 || currentMonth === 7) {
+                expect(alexExpense!.personalExpensesTotal).toBe(600);
+            } else {
+                expect(alexExpense!.personalExpensesTotal).toBe(0);
+            }
+        });
+
+        it('should return full amount for ONE_TIME in matching month/year', async () => {
+            const expense = {
+                id: 'exp-onetime',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'New Laptop',
+                amount: { valueOf: () => 1500 },
+                type: 'PERSONAL',
+                category: 'ONE_TIME',
+                frequency: 'MONTHLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: currentMonth,
+                year: currentYear,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(1500);
+        });
+
+        it('should return 0 for ONE_TIME in different month', async () => {
+            const differentMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+            const expense = {
+                id: 'exp-onetime-diff',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Old Laptop',
+                amount: { valueOf: () => 1500 },
+                type: 'PERSONAL',
+                category: 'ONE_TIME',
+                frequency: 'MONTHLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: differentMonth,
+                year: currentYear,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(0);
+        });
+
+        it('should return amount for MONTHLY recurring expense', async () => {
+            const expense = {
+                id: 'exp-monthly',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Gym',
+                amount: { valueOf: () => 50 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'MONTHLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(50);
+        });
+    });
+
+    describe('remaining expenses', () => {
+        it('should calculate per-member remaining expenses (unpaid)', async () => {
+            // Mark exp-1 (Gym, €50 by Alex) as paid
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' },
+            ]);
+
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockUserId);
+            // Alex has Gym €50 (paid) → remaining = 0
+            expect(alexExpense!.remainingExpenses).toBe(0);
+
+            const samExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockPartnerId);
+            // Sam has Hairdresser €30 (unpaid) → remaining = 30
+            expect(samExpense!.remainingExpenses).toBe(30);
+        });
+
+        it('should return all expenses as remaining when nothing is paid', async () => {
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockUserId);
+            expect(alexExpense!.remainingExpenses).toBe(50);
+
+            const samExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockPartnerId);
+            expect(samExpense!.remainingExpenses).toBe(30);
+
+            // All household expenses unpaid
+            expect(result.expenses.remainingHouseholdExpenses).toBe(1000);
+        });
+    });
+
     describe('edge cases', () => {
         it('should handle a single-member household', async () => {
             mockPrismaService.householdMember.findMany.mockResolvedValue([mockMembers[0]]);
@@ -547,7 +946,7 @@ describe('DashboardService', () => {
             expect(result.settlement.amount).toBe(0);
         });
 
-        it('should correctly normalize yearly expenses to monthly equivalent', async () => {
+        it('should correctly handle yearly INSTALLMENTS QUARTERLY expense in quarter month', async () => {
             const yearlyExpense = {
                 id: 'exp-yearly',
                 householdId: mockHouseholdId,
@@ -570,9 +969,14 @@ describe('DashboardService', () => {
 
             const result = await service.getOverview(mockUserId);
 
-            // €1200 / 12 = €100/month
             const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
-            expect(alexExpense!.personalExpensesTotal).toBe(100);
+            // Quarter months: 1, 4, 7, 10 → returns 1200/4 = 300
+            // Non-quarter months → returns 0
+            if (currentMonth % 3 === 1) {
+                expect(alexExpense!.personalExpensesTotal).toBe(300);
+            } else {
+                expect(alexExpense!.personalExpensesTotal).toBe(0);
+            }
         });
 
         it('should round financial amounts to 2 decimal places', async () => {

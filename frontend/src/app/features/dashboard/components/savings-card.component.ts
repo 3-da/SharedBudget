@@ -14,7 +14,7 @@ import { CurrencyDisplayComponent } from '../../../shared/components/currency-di
         @for (m of members(); track m.userId) {
           <div class="row">
             <span>{{ m.firstName }} {{ m.lastName }}</span>
-            <app-currency-display [amount]="m.currentSavings" [colorize]="true" />
+            <app-currency-display [amount]="m.personalSavings + m.sharedSavings" [colorize]="true" />
           </div>
         }
       </mat-card-content>

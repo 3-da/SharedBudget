@@ -7,14 +7,17 @@ import { authInterceptor } from './core/auth/auth.interceptor';
 import { GlobalErrorHandler } from './core/error/error-handler.service';
 import { AuthService } from './core/auth/auth.service';
 import { TokenService } from './core/auth/token.service';
-import { catchError, of } from 'rxjs';
+import { catchError, of, switchMap } from 'rxjs';
 
 function initializeAuth(): void {
   const authService = inject(AuthService);
   const tokenService = inject(TokenService);
 
   if (tokenService.getRefreshToken()) {
-    authService.loadCurrentUser().pipe(
+    // On reload, access token is lost (in-memory). Refresh first to get a new one,
+    // then load the user profile with the fresh token.
+    authService.refresh().pipe(
+      switchMap(() => authService.loadCurrentUser()),
       catchError(() => of(null)),
     ).subscribe();
   }

@@ -45,6 +45,10 @@ export class ApprovalService {
                     status: ApprovalStatus.PENDING,
                 },
                 orderBy: { createdAt: 'desc' },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
 
             return approvals.map((approval) => mapToApprovalResponse(approval));
@@ -80,6 +84,10 @@ export class ApprovalService {
             const approvals = await this.prismaService.expenseApproval.findMany({
                 where,
                 orderBy: { createdAt: 'desc' },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
             });
 
             return approvals.map((approval) => mapToApprovalResponse(approval));
@@ -137,6 +145,10 @@ export class ApprovalService {
                     reviewedById: userId,
                     message: dto.message ?? null,
                     reviewedAt: now,
+                },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
                 },
             });
 
@@ -221,6 +233,10 @@ export class ApprovalService {
                 reviewedById: userId,
                 message: dto.message,
                 reviewedAt: new Date(),
+            },
+            include: {
+                requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                reviewedBy: { select: { id: true, firstName: true, lastName: true } },
             },
         });
 

@@ -25,7 +25,11 @@ export class SharedExpenseStore {
         this.loading.set(false);
         e.forEach(exp => this.loadPaymentStatus(exp.id));
       },
-      error: () => { this.expenses.set([]); this.loading.set(false); },
+      error: err => {
+        this.error.set(err.error?.message ?? 'Failed to load expenses');
+        this.expenses.set([]);
+        this.loading.set(false);
+      },
     });
   }
 
@@ -94,7 +98,10 @@ export class SharedExpenseStore {
       next: statuses => {
         if (statuses.length > 0) this.updatePaymentMap(expenseId, statuses[0].status);
       },
-      error: () => {},
+      error: err => {
+        console.error(`Failed to load payment status for ${expenseId}:`, err);
+        this.snackBar.open('Failed to load payment status', '', { duration: 4000 });
+      },
     });
   }
 

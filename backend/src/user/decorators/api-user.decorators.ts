@@ -15,7 +15,7 @@ export function GetProfileEndpoint() {
         ApiResponse({ status: 200, description: 'Profile returned.', type: UserProfileResponseDto }),
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }

@@ -16,7 +16,7 @@ export function MarkPaidEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'Expense not found or user not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -33,7 +33,7 @@ export function UndoPaidEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'Expense or payment status not found.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -50,7 +50,7 @@ export function CancelExpenseEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'Expense not found or user not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }
@@ -66,7 +66,7 @@ export function GetPaymentStatusEndpoint() {
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'Expense not found or user not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
-        Throttle({ default: { limit: 10, ttl: 60000 } }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
         HttpCode(HttpStatus.OK),
     );
 }

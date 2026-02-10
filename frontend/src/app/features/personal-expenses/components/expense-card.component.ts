@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Expense } from '../../../shared/models/expense.model';
-import { ExpenseCategory } from '../../../shared/models/enums';
+import { ExpenseCategory, YearlyPaymentStrategy } from '../../../shared/models/enums';
 import { PaymentStatus } from '../../../shared/models/enums';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
@@ -40,7 +40,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
             <mat-icon>check_circle</mat-icon>
           </button>
         }
-        @if (isRecurring()) {
+        @if (hasTimeline()) {
           <button mat-icon-button (click)="viewTimeline.emit(expense().id)" matTooltip="Timeline">
             <mat-icon>timeline</mat-icon>
           </button>
@@ -67,5 +67,10 @@ export class ExpenseCardComponent {
   readonly viewTimeline = output<string>();
 
   readonly isPaid = computed(() => this.paymentStatus() === PaymentStatus.PAID);
-  readonly isRecurring = computed(() => this.expense().category === ExpenseCategory.RECURRING);
+  readonly hasTimeline = computed(() => {
+    const e = this.expense();
+    if (e.category === ExpenseCategory.RECURRING) return true;
+    if (e.category === ExpenseCategory.ONE_TIME && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) return true;
+    return false;
+  });
 }

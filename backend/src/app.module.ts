@@ -35,7 +35,7 @@ import { SavingModule } from './saving/saving.module';
             imports: [RedisModule],
             inject: [REDIS_CLIENT],
             useFactory: (redis: Redis) => ({
-                throttlers: [{ ttl: 60000, limit: 10 }],
+                throttlers: [{ ttl: 60000, limit: 100 }],
                 storage: new ThrottlerRedisStorage(redis),
             }),
         }),

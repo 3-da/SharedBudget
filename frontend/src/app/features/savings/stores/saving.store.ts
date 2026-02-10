@@ -37,7 +37,7 @@ export class SavingStore {
   upsertPersonal(dto: UpsertSavingRequest): void {
     this.loading.set(true);
     this.service.upsertPersonal(dto).subscribe({
-      next: () => { this.snackBar.open('Personal savings updated', '', { duration: 3000 }); this.loading.set(false); this.loadMySavings(); },
+      next: () => { this.snackBar.open('Personal savings updated', '', { duration: 3000 }); this.loading.set(false); this.loadMySavings(); this.loadHouseholdSavings(); },
       error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); this.loading.set(false); },
     });
   }

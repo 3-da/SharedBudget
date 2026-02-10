@@ -35,6 +35,8 @@ export class ApprovalStore {
 
   accept(id: string, message?: string): void {
     this.loading.set(true);
+    // Optimistically remove from pending list immediately
+    this.pending.update(list => list.filter(a => a.id !== id));
     this.service.accept(id, message ? { message } : undefined).subscribe({
       next: () => {
         this.loading.set(false);
@@ -42,7 +44,11 @@ export class ApprovalStore {
         this.loadHistory();
         this.invalidateRelatedStores();
       },
-      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => {
+        this.error.set(err.error?.message);
+        this.loading.set(false);
+        this.loadPending(); // Reload to restore if optimistic update was wrong
+      },
     });
   }
 

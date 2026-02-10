@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { SavingStore } from '../stores/saving.store';
+import { HouseholdStore } from '../../household/stores/household.store';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
@@ -66,6 +67,27 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
             <div class="current-amount large">{{ store.totalHousehold() | currencyEur }}</div>
           </mat-card-content>
         </mat-card>
+
+        @if (householdStore.overview(); as ov) {
+          <mat-card class="summary-card">
+            <mat-card-header>
+              <mat-icon matCardAvatar>people</mat-icon>
+              <mat-card-title>Per-Member Breakdown</mat-card-title>
+              <mat-card-subtitle>Shared savings by household member</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              @for (member of ov.savings.members; track member.userId) {
+                <div class="member-row">
+                  <span class="member-name">{{ member.firstName }} {{ member.lastName }}</span>
+                  <div class="member-amounts">
+                    <span class="amount-label">Personal: {{ member.personalSavings | currencyEur }}</span>
+                    <span class="amount-label">Shared: {{ member.sharedSavings | currencyEur }}</span>
+                  </div>
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
+        }
       </div>
     }
   `,
@@ -82,11 +104,20 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       border-radius: 50%; width: 40px; height: 40px;
       display: flex; align-items: center; justify-content: center; font-size: 24px;
     }
+    .member-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    .member-row:last-child { border-bottom: none; }
+    .member-name { font-weight: 500; }
+    .member-amounts { display: flex; gap: 16px; }
+    .amount-label { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; }
     @media (max-width: 768px) { .savings-layout { grid-template-columns: 1fr; } }
   `],
 })
 export class SavingsOverviewComponent implements OnInit {
   readonly store = inject(SavingStore);
+  readonly householdStore = inject(HouseholdStore);
   private readonly fb = inject(FormBuilder);
 
   personalForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0)]] });
@@ -95,15 +126,20 @@ export class SavingsOverviewComponent implements OnInit {
   ngOnInit(): void {
     this.store.loadMySavings();
     this.store.loadHouseholdSavings();
+    if (!this.householdStore.overview()) {
+      this.householdStore.loadOverview();
+    }
   }
 
   savePersonal(): void {
     if (this.personalForm.invalid) return;
     this.store.upsertPersonal({ amount: this.personalForm.getRawValue().amount });
+    this.householdStore.loadOverview();
   }
 
   saveShared(): void {
     if (this.sharedForm.invalid) return;
     this.store.upsertShared({ amount: this.sharedForm.getRawValue().amount });
+    this.householdStore.loadOverview();
   }
 }
