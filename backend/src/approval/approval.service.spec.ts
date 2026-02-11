@@ -586,4 +586,121 @@ describe('ApprovalService', () => {
         });
     });
     //#endregion
+
+    //#region cancelApproval
+    describe('cancelApproval', () => {
+        it('should cancel a pending approval by the original requester', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
+            const updatedApproval = {
+                ...mockPendingCreateApproval,
+                status: ApprovalStatus.REJECTED,
+                reviewedById: mockUserId,
+                reviewedBy: mockRequestedByUser,
+                message: 'Cancelled by requester',
+                reviewedAt: expect.any(Date),
+            };
+            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+
+            const result = await service.cancelApproval(mockUserId, mockApprovalId);
+
+            expect(mockExpenseHelper.requireMembership).toHaveBeenCalledWith(mockUserId);
+            expect(mockPrismaService.expenseApproval.findFirst).toHaveBeenCalledWith({
+                where: { id: mockApprovalId, householdId: mockHouseholdId },
+            });
+            expect(mockPrismaService.expenseApproval.update).toHaveBeenCalledWith({
+                where: { id: mockApprovalId },
+                data: {
+                    status: ApprovalStatus.REJECTED,
+                    reviewedById: mockUserId,
+                    message: 'Cancelled by requester',
+                    reviewedAt: expect.any(Date),
+                },
+                include: {
+                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+                },
+            });
+            expect(result.status).toBe(ApprovalStatus.REJECTED);
+            expect(result.reviewedById).toBe(mockUserId);
+            expect(result.message).toBe('Cancelled by requester');
+        });
+
+        it('should invalidate approval caches after cancellation', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
+            const updatedApproval = {
+                ...mockPendingCreateApproval,
+                status: ApprovalStatus.REJECTED,
+                reviewedById: mockUserId,
+                reviewedBy: mockRequestedByUser,
+                message: 'Cancelled by requester',
+                reviewedAt: new Date(),
+            };
+            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+
+            await service.cancelApproval(mockUserId, mockApprovalId);
+
+            expect(mockCacheService.invalidateApprovals).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateHousehold).not.toHaveBeenCalled();
+        });
+
+        it('should not use a transaction (no expense changes)', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
+            const updatedApproval = {
+                ...mockPendingCreateApproval,
+                status: ApprovalStatus.REJECTED,
+                reviewedById: mockUserId,
+                reviewedBy: mockRequestedByUser,
+                message: 'Cancelled by requester',
+                reviewedAt: new Date(),
+            };
+            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+
+            await service.cancelApproval(mockUserId, mockApprovalId);
+
+            expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
+        });
+
+        it('should throw NotFoundException if user has no household', async () => {
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
+
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow(NotFoundException);
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow('You must be in a household to manage expenses');
+        });
+
+        it('should throw NotFoundException if approval does not exist', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(null);
+
+            await expect(service.cancelApproval(mockUserId, 'nonexistent')).rejects.toThrow(NotFoundException);
+            await expect(service.cancelApproval(mockUserId, 'nonexistent')).rejects.toThrow('Approval not found');
+        });
+
+        it('should throw ConflictException if approval is already accepted', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockAcceptedApproval);
+
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow(ConflictException);
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow('This approval has already been reviewed');
+        });
+
+        it('should throw ConflictException if approval is already rejected', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockRejectedApproval);
+
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow(ConflictException);
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow('This approval has already been reviewed');
+        });
+
+        it('should throw ForbiddenException if user is not the original requester', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
+
+            await expect(service.cancelApproval(mockReviewerId, mockApprovalId)).rejects.toThrow(ForbiddenException);
+            await expect(service.cancelApproval(mockReviewerId, mockApprovalId)).rejects.toThrow('Only the requester can cancel their own approval');
+        });
+    });
+    //#endregion
 });

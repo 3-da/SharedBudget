@@ -238,6 +238,7 @@ export class CacheService {
     async invalidateHousehold(householdId: string): Promise<void> {
         await this.invalidatePattern(`cache:*:*:${householdId}:*`);
         await this.invalidatePattern(`cache:*:${householdId}:*`);
+        await this.invalidatePattern(`cache:*:${householdId}`);
         this.logger.log(`All caches invalidated for household: ${householdId}`);
     }
 

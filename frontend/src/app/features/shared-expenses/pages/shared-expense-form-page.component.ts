@@ -23,7 +23,7 @@ import { CreateExpenseRequest } from '../../../shared/models/expense.model';
             <app-expense-form
               [expense]="store.selectedExpense()"
               [loading]="store.loading()"
-              [showPaidBy]="true"
+              [showPaidBy]="false"
               (save)="onSave($event)" />
           }
         </mat-card-content>

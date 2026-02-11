@@ -248,6 +248,64 @@ export class ApprovalService {
         return mapToApprovalResponse(updatedApproval);
     }
 
+    /**
+     * Cancels a pending approval that was requested by the authenticated user.
+     * Sets the status to REJECTED with the reviewer being the requester themselves.
+     * No expense changes are applied.
+     *
+     * Use case: A requester changes their mind about a proposed expense change
+     * and wants to withdraw it before anyone reviews it.
+     *
+     * Scenario: Sam proposed adding "Monthly Rent" as a shared expense, but
+     * realises the amount was wrong. Instead of waiting for Alex to reject it,
+     * Sam cancels the approval directly.
+     *
+     * @param userId - The authenticated user's ID (must be the original requester)
+     * @param approvalId - The approval to cancel
+     * @returns The updated approval record with status REJECTED
+     * @throws {NotFoundException} If the user is not a member of any household
+     * @throws {NotFoundException} If the approval does not exist or belongs to a different household
+     * @throws {ConflictException} If the approval is not in PENDING status
+     * @throws {ForbiddenException} If the user is not the original requester
+     */
+    async cancelApproval(userId: string, approvalId: string): Promise<ApprovalResponseDto> {
+        this.logger.log(`Cancel approval: ${approvalId} by user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const approval = await this.findApprovalOrFail(approvalId, membership.householdId);
+
+        if (approval.status !== ApprovalStatus.PENDING) {
+            this.logger.warn(`Approval not pending: ${approvalId}, status: ${approval.status}`);
+            throw new ConflictException('This approval has already been reviewed');
+        }
+
+        if (approval.requestedById !== userId) {
+            this.logger.warn(`Non-requester cancel attempt: user ${userId} on approval ${approvalId}`);
+            throw new ForbiddenException('Only the requester can cancel their own approval');
+        }
+
+        const updatedApproval = await this.prismaService.expenseApproval.update({
+            where: { id: approvalId },
+            data: {
+                status: ApprovalStatus.REJECTED,
+                reviewedById: userId,
+                message: 'Cancelled by requester',
+                reviewedAt: new Date(),
+            },
+            include: {
+                requestedBy: { select: { id: true, firstName: true, lastName: true } },
+                reviewedBy: { select: { id: true, firstName: true, lastName: true } },
+            },
+        });
+
+        this.logger.log(`Approval cancelled: ${approvalId}`);
+
+        // Only invalidate approval caches (no expense change)
+        await this.cacheService.invalidateApprovals(approval.householdId);
+
+        return mapToApprovalResponse(updatedApproval);
+    }
+
     private async findApprovalOrFail(approvalId: string, householdId: string) {
         const approval = await this.prismaService.expenseApproval.findFirst({
             where: { id: approvalId, householdId },

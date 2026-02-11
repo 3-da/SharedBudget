@@ -9,6 +9,7 @@ import { ListApprovalsQueryDto } from './dto/list-approvals-query.dto';
 import { ApprovalResponseDto } from './dto/approval-response.dto';
 import {
     AcceptApprovalEndpoint,
+    CancelApprovalEndpoint,
     ListApprovalHistoryEndpoint,
     ListPendingApprovalsEndpoint,
     RejectApprovalEndpoint,
@@ -39,5 +40,10 @@ export class ApprovalController {
     @RejectApprovalEndpoint()
     async rejectApproval(@CurrentUser('id') userId: string, @Param('id') approvalId: string, @Body() dto: RejectApprovalDto): Promise<ApprovalResponseDto> {
         return this.approvalService.rejectApproval(userId, approvalId, dto);
+    }
+
+    @CancelApprovalEndpoint()
+    async cancelApproval(@CurrentUser('id') userId: string, @Param('id') approvalId: string): Promise<ApprovalResponseDto> {
+        return this.approvalService.cancelApproval(userId, approvalId);
     }
 }
