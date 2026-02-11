@@ -42,11 +42,20 @@ describe('ApprovalController', () => {
         reviewedAt: new Date(),
     };
 
+    const mockCancelledApproval: ApprovalResponseDto = {
+        ...mockPendingApproval,
+        status: 'REJECTED',
+        reviewedById: 'user-other',
+        message: 'Cancelled by requester',
+        reviewedAt: new Date(),
+    };
+
     const mockapprovalService = {
         listPendingApprovals: vi.fn(() => Promise.resolve([mockPendingApproval])),
         listApprovalHistory: vi.fn(() => Promise.resolve([mockAcceptedApproval, mockRejectedApproval])),
         acceptApproval: vi.fn(() => Promise.resolve(mockAcceptedApproval)),
         rejectApproval: vi.fn(() => Promise.resolve(mockRejectedApproval)),
+        cancelApproval: vi.fn(() => Promise.resolve(mockCancelledApproval)),
     };
 
     beforeEach(async () => {
@@ -113,6 +122,16 @@ describe('ApprovalController', () => {
             expect(service.rejectApproval).toHaveBeenCalledWith(mockUserId, mockApprovalId, dto);
             expect(result.status).toBe('REJECTED');
             expect(result.message).toBe('Too expensive');
+        });
+    });
+
+    describe('cancelApproval', () => {
+        it('should call service.cancelApproval with userId and approvalId', async () => {
+            const result = await controller.cancelApproval(mockUserId, mockApprovalId);
+
+            expect(service.cancelApproval).toHaveBeenCalledWith(mockUserId, mockApprovalId);
+            expect(result.status).toBe('REJECTED');
+            expect(result.message).toBe('Cancelled by requester');
         });
     });
 });

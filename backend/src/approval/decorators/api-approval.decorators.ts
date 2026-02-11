@@ -73,3 +73,21 @@ export function RejectApprovalEndpoint() {
         HttpCode(HttpStatus.OK),
     );
 }
+
+export function CancelApprovalEndpoint() {
+    return applyDecorators(
+        Put(':id/cancel'),
+        ApiOperation({
+            summary: 'Cancel own pending approval',
+            description: 'Cancels a pending approval that was requested by the current user. Only the original requester can cancel.',
+        }),
+        ApiResponse({ status: 200, description: 'Approval cancelled.', type: ApprovalResponseDto }),
+        ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
+        ApiResponse({ status: 403, description: 'Only the requester can cancel.', type: ErrorResponseDto }),
+        ApiResponse({ status: 404, description: 'Approval not found.', type: ErrorResponseDto }),
+        ApiResponse({ status: 409, description: 'Approval already reviewed.', type: ErrorResponseDto }),
+        ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
+        Throttle({ default: { limit: 5, ttl: 60000 } }),
+        HttpCode(HttpStatus.OK),
+    );
+}

@@ -65,6 +65,24 @@ export class ApprovalStore {
     });
   }
 
+  cancel(id: string): void {
+    this.loading.set(true);
+    this.pending.update(list => list.filter(a => a.id !== id));
+    this.service.cancel(id).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.loadPending();
+        this.loadHistory();
+        this.invalidateRelatedStores();
+      },
+      error: err => {
+        this.error.set(err.error?.message);
+        this.loading.set(false);
+        this.loadPending();
+      },
+    });
+  }
+
   private invalidateRelatedStores(): void {
     this.sharedExpenseStore.loadExpenses();
     this.dashboardStore.loadAll();

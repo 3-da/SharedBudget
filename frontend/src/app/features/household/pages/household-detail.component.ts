@@ -125,7 +125,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     }
     .charts-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 3fr 2fr;
       gap: var(--space-md);
     }
     @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }

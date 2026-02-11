@@ -70,6 +70,6 @@ export class ApprovalListComponent implements OnInit {
   }
 
   onCancel(id: string): void {
-    this.store.reject(id, 'Cancelled by requester');
+    this.store.cancel(id);
   }
 }

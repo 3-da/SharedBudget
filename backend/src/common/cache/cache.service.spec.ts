@@ -181,13 +181,14 @@ describe('CacheService', () => {
     });
 
     describe('invalidateHousehold', () => {
-        it('should invalidate all household-related patterns', async () => {
+        it('should invalidate all household-related patterns including keys ending with householdId', async () => {
             const invalidatePatternSpy = vi.spyOn(cacheService, 'invalidatePattern').mockResolvedValue();
 
             await cacheService.invalidateHousehold('household-123');
 
             expect(invalidatePatternSpy).toHaveBeenCalledWith('cache:*:*:household-123:*');
             expect(invalidatePatternSpy).toHaveBeenCalledWith('cache:*:household-123:*');
+            expect(invalidatePatternSpy).toHaveBeenCalledWith('cache:*:household-123');
         });
     });
 

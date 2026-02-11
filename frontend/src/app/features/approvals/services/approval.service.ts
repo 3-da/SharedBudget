@@ -22,4 +22,8 @@ export class ApprovalService {
   reject(id: string, dto: RejectApprovalRequest): Observable<Approval> {
     return this.api.put<Approval>(`/approvals/${id}/reject`, dto);
   }
+
+  cancel(id: string): Observable<Approval> {
+    return this.api.put<Approval>(`/approvals/${id}/cancel`, {});
+  }
 }

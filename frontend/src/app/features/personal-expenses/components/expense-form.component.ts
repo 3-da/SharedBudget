@@ -77,6 +77,23 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
       }
 
       @if (form.get('category')?.value === 'ONE_TIME') {
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>Expense Month</mat-label>
+            <mat-select formControlName="month">
+              @for (m of months; track m.value) {
+                <mat-option [value]="m.value">{{ m.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>The month when this expense occurs</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Expense Year</mat-label>
+            <input matInput type="number" formControlName="year" min="2020" max="2099">
+            <mat-hint>The year when this expense occurs</mat-hint>
+          </mat-form-field>
+        </div>
+
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Payment Type</mat-label>
           <mat-select formControlName="yearlyPaymentStrategy">
@@ -84,25 +101,6 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
             <mat-option value="INSTALLMENTS">Installments</mat-option>
           </mat-select>
         </mat-form-field>
-
-        @if (form.get('yearlyPaymentStrategy')?.value === 'FULL') {
-          <div class="row">
-            <mat-form-field appearance="outline">
-              <mat-label>Expense Month</mat-label>
-              <mat-select formControlName="month">
-                @for (m of months; track m.value) {
-                  <mat-option [value]="m.value">{{ m.label }}</mat-option>
-                }
-              </mat-select>
-              <mat-hint>The month when this expense occurs</mat-hint>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Expense Year</mat-label>
-              <input matInput type="number" formControlName="year" min="2020" max="2099">
-              <mat-hint>The year when this expense occurs</mat-hint>
-            </mat-form-field>
-          </div>
-        }
 
         @if (form.get('yearlyPaymentStrategy')?.value === 'INSTALLMENTS') {
           <mat-form-field appearance="outline" class="full-width">
@@ -212,13 +210,12 @@ export class ExpenseFormComponent {
       name: val.name, amount: val.amount, category: val.category, frequency: val.frequency,
     };
     if (val.category === 'ONE_TIME') {
-      // ONE_TIME uses yearlyPaymentStrategy for FULL vs INSTALLMENTS
+      dto.frequency = 'MONTHLY' as ExpenseFrequency;
+      dto.month = val.month ?? new Date().getMonth() + 1;
+      dto.year = val.year ?? new Date().getFullYear();
       if (val.yearlyPaymentStrategy) {
         dto.yearlyPaymentStrategy = val.yearlyPaymentStrategy;
-        if (val.yearlyPaymentStrategy === 'FULL') {
-          dto.month = val.month ?? undefined;
-          dto.year = val.year ?? undefined;
-        } else if (val.yearlyPaymentStrategy === 'INSTALLMENTS' && val.installmentFrequency) {
+        if (val.yearlyPaymentStrategy === 'INSTALLMENTS' && val.installmentFrequency) {
           dto.installmentFrequency = val.installmentFrequency;
         }
       }
