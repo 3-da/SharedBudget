@@ -1,10 +1,11 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { PersonalExpenseStore } from '../stores/personal-expense.store';
 import { ExpenseCardComponent } from '../components/expense-card.component';
+import { MonthPickerComponent } from '../../../shared/components/month-picker.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
@@ -14,15 +15,15 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
 @Component({
   selector: 'app-personal-expense-list',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, ExpenseCardComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent, CurrencyEurPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatButtonModule, MatIconModule, ExpenseCardComponent, MonthPickerComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent, CurrencyEurPipe],
   template: `
     <app-page-header title="My Expenses" [subtitle]="'Total: ' + (store.totalMonthly() | currencyEur)">
       <div class="actions">
-        <div class="month-nav">
-          <button mat-icon-button (click)="prevMonth()"><mat-icon>chevron_left</mat-icon></button>
-          <span>{{ monthLabel() }}</span>
-          <button mat-icon-button (click)="nextMonth()"><mat-icon>chevron_right</mat-icon></button>
-        </div>
+        <app-month-picker
+          [selectedMonth]="month()"
+          [selectedYear]="year()"
+          (monthChange)="onMonthChange($event)" />
         <button mat-flat-button (click)="router.navigate(['/expenses/personal/new'])">
           <mat-icon>add</mat-icon> Add Expense
         </button>
@@ -56,9 +57,9 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
     }
   `,
   styles: [`
-    .actions { display: flex; align-items: center; gap: 16px; }
-    .month-nav { display: flex; align-items: center; gap: 8px; }
-    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    @media (max-width: 600px) { .expense-grid { grid-template-columns: 1fr; } }
     .budget-bar {
       display: flex; justify-content: space-between; align-items: center;
       padding: 8px 16px; margin-bottom: 16px; border-radius: 8px;
@@ -75,21 +76,12 @@ export class PersonalExpenseListComponent implements OnInit {
 
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
-  readonly monthLabel = computed(() =>
-    new Date(this.year(), this.month() - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-  );
 
   ngOnInit(): void { this.load(); }
 
-  prevMonth(): void {
-    if (this.month() === 1) { this.month.set(12); this.year.update(y => y - 1); }
-    else this.month.update(m => m - 1);
-    this.load();
-  }
-
-  nextMonth(): void {
-    if (this.month() === 12) { this.month.set(1); this.year.update(y => y + 1); }
-    else this.month.update(m => m + 1);
+  onMonthChange(event: { month: number; year: number }): void {
+    this.month.set(event.month);
+    this.year.set(event.year);
     this.load();
   }
 

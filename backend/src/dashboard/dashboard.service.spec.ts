@@ -733,6 +733,7 @@ describe('DashboardService', () => {
                 paymentMonth: null,
                 month: null,
                 year: null,
+                createdAt: new Date('2025-01-15'),
                 deletedAt: null,
             };
 
@@ -744,7 +745,7 @@ describe('DashboardService', () => {
         });
 
         it('should return amount/4 for YEARLY+INSTALLMENTS+QUARTERLY in quarter month', async () => {
-            // Use month 1 which is always a quarter month (1 % 3 === 1)
+            // Anchor to current month so it always falls on an installment month
             const expense = {
                 id: 'exp-yearly-quarterly',
                 householdId: mockHouseholdId,
@@ -760,24 +761,21 @@ describe('DashboardService', () => {
                 paymentMonth: null,
                 month: null,
                 year: null,
+                createdAt: now, // anchor to current month so isInstallmentMonth always matches
                 deletedAt: null,
             };
 
             mockPrismaService.expense.findMany.mockResolvedValue([expense]);
 
-            // We need to test with a specific month. Since getOverview uses current month,
-            // we verify based on whether current month is a quarter month.
             const result = await service.getOverview(mockUserId);
             const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
 
-            if (currentMonth % 3 === 1) {
-                expect(alexExpense!.personalExpensesTotal).toBe(300);
-            } else {
-                expect(alexExpense!.personalExpensesTotal).toBe(0);
-            }
+            // Anchor month = currentMonth, so currentMonth is always an installment month
+            expect(alexExpense!.personalExpensesTotal).toBe(300);
         });
 
-        it('should return amount/2 for YEARLY+INSTALLMENTS+SEMI_ANNUAL in Jan or Jul', async () => {
+        it('should return amount/2 for YEARLY+INSTALLMENTS+SEMI_ANNUAL in anchor month', async () => {
+            // Anchor to current month so it always falls on an installment month
             const expense = {
                 id: 'exp-yearly-semi',
                 householdId: mockHouseholdId,
@@ -793,6 +791,7 @@ describe('DashboardService', () => {
                 paymentMonth: null,
                 month: null,
                 year: null,
+                createdAt: now, // anchor to current month so isInstallmentMonth always matches
                 deletedAt: null,
             };
 
@@ -801,11 +800,8 @@ describe('DashboardService', () => {
             const result = await service.getOverview(mockUserId);
             const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
 
-            if (currentMonth === 1 || currentMonth === 7) {
-                expect(alexExpense!.personalExpensesTotal).toBe(600);
-            } else {
-                expect(alexExpense!.personalExpensesTotal).toBe(0);
-            }
+            // Anchor month = currentMonth, so currentMonth is always an installment month
+            expect(alexExpense!.personalExpensesTotal).toBe(600);
         });
 
         it('should return full amount for ONE_TIME in matching month/year', async () => {
@@ -859,6 +855,93 @@ describe('DashboardService', () => {
 
             const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
             expect(alexExpense!.personalExpensesTotal).toBe(0);
+        });
+
+        it('should return amount/installmentCount for ONE_TIME+INSTALLMENTS+MONTHLY in matching month', async () => {
+            // ONE_TIME expense of 1200 spread across 24 monthly installments starting current month
+            const expense = {
+                id: 'exp-onetime-inst',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Laptop Installments',
+                amount: { valueOf: () => 1200 },
+                type: 'PERSONAL',
+                category: 'ONE_TIME',
+                frequency: 'MONTHLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'MONTHLY',
+                installmentCount: 24,
+                paymentMonth: null,
+                month: currentMonth,
+                year: currentYear,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(50); // 1200 / 24
+        });
+
+        it('should return 0 for ONE_TIME+INSTALLMENTS before start month', async () => {
+            // Expense starts next month
+            const nextD = new Date(currentYear, currentMonth); // next month (0-indexed)
+            const nextMonth = nextD.getMonth() + 1;
+            const nextYear = nextD.getFullYear();
+            const expense = {
+                id: 'exp-onetime-future',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Future Installments',
+                amount: { valueOf: () => 600 },
+                type: 'PERSONAL',
+                category: 'ONE_TIME',
+                frequency: 'MONTHLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'MONTHLY',
+                installmentCount: 12,
+                paymentMonth: null,
+                month: nextMonth,
+                year: nextYear,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(0); // not started yet
+        });
+
+        it('should return amount/installmentCount for ONE_TIME+INSTALLMENTS+QUARTERLY in matching quarter', async () => {
+            // 800 over 8 quarterly installments starting current month
+            const expense = {
+                id: 'exp-onetime-quarterly',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Quarterly Installments',
+                amount: { valueOf: () => 800 },
+                type: 'PERSONAL',
+                category: 'ONE_TIME',
+                frequency: 'MONTHLY',
+                paidByUserId: null,
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'QUARTERLY',
+                installmentCount: 8,
+                paymentMonth: null,
+                month: currentMonth,
+                year: currentYear,
+                deletedAt: null,
+            };
+
+            mockPrismaService.expense.findMany.mockResolvedValue([expense]);
+            const result = await service.getOverview(mockUserId);
+
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(100); // 800 / 8 = 100 (first quarter is current month)
         });
 
         it('should return amount for MONTHLY recurring expense', async () => {
@@ -947,6 +1030,7 @@ describe('DashboardService', () => {
         });
 
         it('should correctly handle yearly INSTALLMENTS QUARTERLY expense in quarter month', async () => {
+            // Anchor to current month so it always falls on an installment month
             const yearlyExpense = {
                 id: 'exp-yearly',
                 householdId: mockHouseholdId,
@@ -962,6 +1046,7 @@ describe('DashboardService', () => {
                 paymentMonth: null,
                 month: null,
                 year: null,
+                createdAt: now, // anchor to current month so isInstallmentMonth always matches
                 deletedAt: null,
             };
 
@@ -970,13 +1055,8 @@ describe('DashboardService', () => {
             const result = await service.getOverview(mockUserId);
 
             const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
-            // Quarter months: 1, 4, 7, 10 → returns 1200/4 = 300
-            // Non-quarter months → returns 0
-            if (currentMonth % 3 === 1) {
-                expect(alexExpense!.personalExpensesTotal).toBe(300);
-            } else {
-                expect(alexExpense!.personalExpensesTotal).toBe(0);
-            }
+            // Anchor month = currentMonth, so currentMonth is always a quarterly installment month
+            expect(alexExpense!.personalExpensesTotal).toBe(300);
         });
 
         it('should round financial amounts to 2 decimal places', async () => {
@@ -1004,6 +1084,160 @@ describe('DashboardService', () => {
 
             // 100/12 = 8.333... → should be rounded to 8.33
             expect(result.expenses.sharedExpensesTotal).toBe(8.33);
+        });
+    });
+
+    describe('custom month/year parameters', () => {
+        it('should use provided month and year in getOverview instead of current date', async () => {
+            const result = await service.getOverview(mockUserId, 'monthly', 3, 2025);
+
+            expect(result.month).toBe(3);
+            expect(result.year).toBe(2025);
+        });
+
+        it('should default to current month/year when params are omitted in getOverview', async () => {
+            const result = await service.getOverview(mockUserId);
+
+            expect(result.month).toBe(currentMonth);
+            expect(result.year).toBe(currentYear);
+        });
+
+        it('should use provided month and year in getSavings', async () => {
+            // Setup specific salary for the target month
+            mockPrismaService.salary.findMany.mockResolvedValue([]);
+
+            const result = await service.getSavings(mockUserId, 1, 2025);
+
+            // Verify the salary query used the specified month/year
+            expect(mockPrismaService.salary.findMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({ month: 1, year: 2025 }),
+                }),
+            );
+        });
+
+        it('should use provided month and year in getSettlement', async () => {
+            const result = await service.getSettlement(mockUserId, 6, 2025);
+
+            expect(result.month).toBe(6);
+            expect(result.year).toBe(2025);
+        });
+
+        it('should default to current month/year when params are omitted in getSettlement', async () => {
+            const result = await service.getSettlement(mockUserId);
+
+            expect(result.month).toBe(currentMonth);
+            expect(result.year).toBe(currentYear);
+        });
+    });
+
+    describe('getSavingsHistory', () => {
+        it('should return 12 months of savings data ordered chronologically', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([]);
+
+            const result = await service.getSavingsHistory(mockUserId);
+
+            expect(result).toHaveLength(12);
+            // First element should be 11 months ago, last should be current month
+            const lastItem = result[11];
+            expect(lastItem.month).toBe(currentMonth);
+            expect(lastItem.year).toBe(currentYear);
+        });
+
+        it('should correctly aggregate personal and shared savings per month', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, householdId: mockHouseholdId, amount: { valueOf: () => 500 }, month: currentMonth, year: currentYear, isShared: false },
+                { userId: mockPartnerId, householdId: mockHouseholdId, amount: { valueOf: () => 300 }, month: currentMonth, year: currentYear, isShared: false },
+                { userId: mockUserId, householdId: mockHouseholdId, amount: { valueOf: () => 200 }, month: currentMonth, year: currentYear, isShared: true },
+                { userId: mockPartnerId, householdId: mockHouseholdId, amount: { valueOf: () => 150 }, month: currentMonth, year: currentYear, isShared: true },
+            ]);
+
+            const result = await service.getSavingsHistory(mockUserId);
+
+            const currentMonthItem = result[11];
+            expect(currentMonthItem.personalSavings).toBe(800); // 500 + 300
+            expect(currentMonthItem.sharedSavings).toBe(350);   // 200 + 150
+        });
+
+        it('should return zero savings for months with no saving records', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([]);
+
+            const result = await service.getSavingsHistory(mockUserId);
+
+            for (const item of result) {
+                expect(item.personalSavings).toBe(0);
+                expect(item.sharedSavings).toBe(0);
+            }
+        });
+
+        it('should throw NotFoundException when user is not in a household', async () => {
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
+
+            await expect(service.getSavingsHistory(mockUserId)).rejects.toThrow(NotFoundException);
+            await expect(service.getSavingsHistory(mockUserId)).rejects.toThrow('You must be in a household to manage expenses');
+        });
+
+        it('should query Prisma with correct household and month/year filters', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([]);
+
+            await service.getSavingsHistory(mockUserId);
+
+            expect(mockPrismaService.saving.findMany).toHaveBeenCalledWith({
+                where: {
+                    householdId: mockHouseholdId,
+                    OR: expect.arrayContaining([
+                        expect.objectContaining({ month: currentMonth, year: currentYear }),
+                    ]),
+                },
+            });
+
+            // Verify all 12 months are included
+            const call = mockPrismaService.saving.findMany.mock.calls[0][0];
+            expect(call.where.OR).toHaveLength(12);
+        });
+
+        it('should handle savings spread across multiple months', async () => {
+            // Calculate a month that is 2 months ago
+            const twoMonthsAgo = new Date(currentYear, currentMonth - 1 - 2);
+            const pastMonth = twoMonthsAgo.getMonth() + 1;
+            const pastYear = twoMonthsAgo.getFullYear();
+
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, householdId: mockHouseholdId, amount: { valueOf: () => 100 }, month: pastMonth, year: pastYear, isShared: false },
+                { userId: mockUserId, householdId: mockHouseholdId, amount: { valueOf: () => 200 }, month: currentMonth, year: currentYear, isShared: true },
+            ]);
+
+            const result = await service.getSavingsHistory(mockUserId);
+
+            // Find the items for the specific months
+            const pastItem = result.find(r => r.month === pastMonth && r.year === pastYear);
+            const currentItem = result.find(r => r.month === currentMonth && r.year === currentYear);
+
+            expect(pastItem!.personalSavings).toBe(100);
+            expect(pastItem!.sharedSavings).toBe(0);
+            expect(currentItem!.personalSavings).toBe(0);
+            expect(currentItem!.sharedSavings).toBe(200);
+        });
+
+        it('should correctly handle year boundary (months spanning two calendar years)', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([]);
+
+            const result = await service.getSavingsHistory(mockUserId);
+
+            // Verify that months are ordered chronologically
+            for (let i = 1; i < result.length; i++) {
+                const prev = result[i - 1].year * 12 + result[i - 1].month;
+                const curr = result[i].year * 12 + result[i].month;
+                expect(curr).toBeGreaterThan(prev);
+            }
+        });
+
+        it('should call expenseHelper.requireMembership with the correct userId', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([]);
+
+            await service.getSavingsHistory(mockUserId);
+
+            expect(mockExpenseHelper.requireMembership).toHaveBeenCalledWith(mockUserId);
         });
     });
 });

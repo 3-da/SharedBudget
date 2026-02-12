@@ -127,6 +127,7 @@ describe('CreateSharedExpenseDto', () => {
             frequency: ExpenseFrequency.YEARLY,
             yearlyPaymentStrategy: YearlyPaymentStrategy.INSTALLMENTS,
             installmentFrequency: InstallmentFrequency.QUARTERLY,
+            installmentCount: 4,
         });
         const errors = await validate(dto);
         expect(errors.length).toBe(0);
@@ -187,6 +188,24 @@ describe('CreateSharedExpenseDto', () => {
         });
         const errors = await validate(dto);
         expect(errors.length).toBeGreaterThan(0);
+    });
+    //#endregion
+
+    //#region Bug fix: ONE_TIME + FULL should not require paymentMonth
+    it('should not require paymentMonth when category is ONE_TIME even with FULL strategy', async () => {
+        const dto = plainToInstance(CreateSharedExpenseDto, {
+            ...validDto,
+            category: ExpenseCategory.ONE_TIME,
+            frequency: ExpenseFrequency.YEARLY,
+            yearlyPaymentStrategy: YearlyPaymentStrategy.FULL,
+            month: 3,
+            year: 2026,
+            // paymentMonth intentionally omitted — ONE_TIME uses month/year, not paymentMonth
+        });
+        const errors = await validate(dto);
+        const paymentMonthError = errors.find((e) => e.property === 'paymentMonth');
+        expect(paymentMonthError).toBeUndefined();
+        expect(errors.length).toBe(0);
     });
     //#endregion
 });

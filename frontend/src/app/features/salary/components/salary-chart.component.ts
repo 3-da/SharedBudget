@@ -1,14 +1,13 @@
-import { Component, input, computed } from '@angular/core';
-import { ChartConfiguration } from 'chart.js';
-import { BaseChartComponent } from '../../../shared/components/base-chart.component';
-import { SalaryResponse } from '../../../shared/models/salary.model';
+import {Component, computed, input} from '@angular/core';
+import {ChartConfiguration} from 'chart.js';
+import {BaseChartComponent} from '../../../shared/components/base-chart.component';
+import {SalaryResponse} from '../../../shared/models/salary.model';
 
 @Component({
   selector: 'app-salary-chart',
   standalone: true,
   imports: [BaseChartComponent],
   template: `<app-base-chart [config]="chartConfig()" />`,
-  styles: [`:host { display: block; height: 300px; }`],
 })
 export class SalaryChartComponent {
   readonly salaries = input.required<SalaryResponse[]>();

@@ -119,11 +119,8 @@ export class RecurringTimelineComponent implements OnInit {
     const amount = Number(e.amount);
     // For yearly installments, show per-installment amount
     if (e.frequency === ExpenseFrequency.YEARLY && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
-      switch (e.installmentFrequency) {
-        case InstallmentFrequency.MONTHLY: return Math.round((amount / 12) * 100) / 100;
-        case InstallmentFrequency.QUARTERLY: return Math.round((amount / 4) * 100) / 100;
-        case InstallmentFrequency.SEMI_ANNUAL: return Math.round((amount / 2) * 100) / 100;
-      }
+      const count = e.installmentCount ?? this.getDefaultInstallmentCount(e.installmentFrequency);
+      return Math.round((amount / count) * 100) / 100;
     }
     return amount;
   });
@@ -197,20 +194,30 @@ export class RecurringTimelineComponent implements OnInit {
     return months;
   }
 
+  private getDefaultInstallmentCount(freq: InstallmentFrequency | null | undefined): number {
+    switch (freq) {
+      case InstallmentFrequency.QUARTERLY: return 4;
+      case InstallmentFrequency.SEMI_ANNUAL: return 2;
+      case InstallmentFrequency.MONTHLY: default: return 12;
+    }
+  }
+
+  private getStepMonths(freq: InstallmentFrequency | null | undefined): number {
+    switch (freq) {
+      case InstallmentFrequency.QUARTERLY: return 3;
+      case InstallmentFrequency.SEMI_ANNUAL: return 6;
+      case InstallmentFrequency.MONTHLY: default: return 1;
+    }
+  }
+
   private buildInstallmentTimeline(expense: any, currentM: number, currentY: number): TimelineMonth[] {
     const startMonth = expense.month ?? currentM;
     const startYear = expense.year ?? currentY;
     const freq = expense.installmentFrequency;
     const totalAmount = Number(expense.amount);
 
-    // Determine installment count and step based on frequency
-    let count: number;
-    let stepMonths: number;
-    switch (freq) {
-      case InstallmentFrequency.QUARTERLY: count = 4; stepMonths = 3; break;
-      case InstallmentFrequency.SEMI_ANNUAL: count = 2; stepMonths = 6; break;
-      case InstallmentFrequency.MONTHLY: default: count = 12; stepMonths = 1; break;
-    }
+    const count = expense.installmentCount ?? this.getDefaultInstallmentCount(freq);
+    const stepMonths = this.getStepMonths(freq);
 
     const perInstallment = Math.round((totalAmount / count) * 100) / 100;
     const months: TimelineMonth[] = [];

@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, computed } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,7 +23,15 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
       </mat-card-header>
       <mat-card-content>
         <mat-chip-set>
-          <mat-chip [highlighted]="approval().status === 'PENDING'">{{ approval().status }}</mat-chip>
+          @if (isCancelled()) {
+            <mat-chip class="status-cancelled">CANCELLED</mat-chip>
+          } @else {
+            <mat-chip [highlighted]="approval().status === 'PENDING'"
+              [class.status-accepted]="approval().status === 'ACCEPTED'"
+              [class.status-rejected]="approval().status === 'REJECTED'">
+              {{ approval().status }}
+            </mat-chip>
+          }
           <mat-chip>{{ approval().action }}</mat-chip>
         </mat-chip-set>
         @if (approval().proposedData) {
@@ -36,7 +44,7 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
             }
           </div>
         }
-        @if (approval().message) {
+        @if (approval().message && !isCancelled()) {
           <p class="message">{{ approval().message }}</p>
         }
       </mat-card-content>
@@ -59,9 +67,15 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
     </mat-card>
   `,
   styles: [`
-    .proposed-data { margin: 12px 0; }
-    .message { font-style: italic; color: var(--mat-sys-on-surface-variant); }
-    mat-card-actions { display: flex; gap: 8px; }
+    :host { display: block; min-width: 0; }
+    mat-card { overflow: hidden; }
+    .proposed-data { margin: 12px 0; word-break: break-word; }
+    .message { font-style: italic; color: var(--mat-sys-on-surface-variant); word-break: break-word; }
+    mat-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    mat-chip-set { flex-wrap: wrap; }
+    .status-accepted { --mdc-chip-elevated-container-color: #2e7d32; --mdc-chip-label-text-color: #fff; }
+    .status-rejected { --mdc-chip-elevated-container-color: #c62828; --mdc-chip-label-text-color: #fff; }
+    .status-cancelled { --mdc-chip-elevated-container-color: #757575; --mdc-chip-label-text-color: #fff; }
   `],
 })
 export class ApprovalCardComponent {
@@ -70,4 +84,9 @@ export class ApprovalCardComponent {
   readonly accept = output<string>();
   readonly reject = output<string>();
   readonly cancel = output<string>();
+
+  readonly isCancelled = computed(() => {
+    const msg = this.approval().message;
+    return msg?.toLowerCase().includes('cancelled') ?? false;
+  });
 }

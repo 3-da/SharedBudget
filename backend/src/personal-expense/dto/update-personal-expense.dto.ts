@@ -36,6 +36,12 @@ export class UpdatePersonalExpenseDto {
     @IsEnum(InstallmentFrequency)
     installmentFrequency?: InstallmentFrequency | null;
 
+    @ApiPropertyOptional({ example: 24, description: 'Total number of installments', minimum: 1 })
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    installmentCount?: number | null;
+
     @ApiPropertyOptional({ example: 6, minimum: 1, maximum: 12 })
     @IsOptional()
     @IsInt()

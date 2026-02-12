@@ -31,6 +31,9 @@ export class SharedExpenseResponseDto {
     @ApiPropertyOptional({ example: 'QUARTERLY' })
     installmentFrequency?: string | null;
 
+    @ApiPropertyOptional({ example: 24, description: 'Total number of installments' })
+    installmentCount: number | null;
+
     @ApiPropertyOptional({ example: 6 })
     paymentMonth?: number | null;
 

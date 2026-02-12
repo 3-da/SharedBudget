@@ -189,6 +189,31 @@ export class ExpensePaymentService {
     }
 
     /**
+     * Returns payment statuses for all expenses belonging to the user's household
+     * for a given month/year. Single query replaces N individual getPaymentStatuses calls.
+     *
+     * @param userId - The authenticated user's ID
+     * @param month - Month (1-12)
+     * @param year - Year
+     * @returns Payment statuses for all household expenses in the given period
+     */
+    async getBatchPaymentStatuses(userId: string, month: number, year: number): Promise<ExpensePaymentResponseDto[]> {
+        this.logger.debug(`Get batch payment statuses for ${month}/${year} by user ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+
+        const statuses = await this.prismaService.expensePaymentStatus.findMany({
+            where: {
+                month,
+                year,
+                expense: { householdId: membership.householdId, deletedAt: null },
+            },
+        });
+
+        return statuses.map((s) => this.mapToResponse(s));
+    }
+
+    /**
      * Finds an expense within the user's household, or throws NotFoundException.
      * Only returns non-deleted expenses.
      */

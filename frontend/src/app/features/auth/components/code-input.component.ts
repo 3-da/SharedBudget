@@ -1,8 +1,9 @@
-import { Component, output, signal, viewChildren, ElementRef, AfterViewInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, output, signal, viewChildren, ElementRef, AfterViewInit } from '@angular/core';
 
 @Component({
   selector: 'app-code-input',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="code-container">
       @for (i of digits; track i) {

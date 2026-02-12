@@ -3,6 +3,7 @@ import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { DashboardResponseDto } from '../dto/dashboard-response.dto';
 import { SavingsResponseDto } from '../dto/member-savings.dto';
+import { SavingsHistoryItemDto } from '../dto/savings-history.dto';
 import { SettlementResponseDto } from '../dto/settlement-response.dto';
 import { MarkSettlementPaidResponseDto } from '../dto/mark-settlement-paid-response.dto';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
@@ -47,6 +48,22 @@ export function GetSettlementEndpoint() {
             description: 'Calculates who owes whom based on shared expenses. Returns the net amount, direction, and a human-readable message.',
         }),
         ApiResponse({ status: 200, description: 'Settlement calculation returned.', type: SettlementResponseDto }),
+        ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
+        ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
+        ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
+        HttpCode(HttpStatus.OK),
+    );
+}
+
+export function GetSavingsHistoryEndpoint() {
+    return applyDecorators(
+        Get('savings-history'),
+        ApiOperation({
+            summary: 'Get savings history for past 12 months',
+            description: 'Returns monthly savings data (personal and shared) for the past 12 months, ordered chronologically. Useful for line chart visualizations.',
+        }),
+        ApiResponse({ status: 200, description: 'Savings history returned.', type: [SavingsHistoryItemDto] }),
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
         ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
         ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),

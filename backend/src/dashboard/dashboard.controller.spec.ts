@@ -5,6 +5,7 @@ import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
 import { SavingsResponseDto } from './dto/member-savings.dto';
+import { SavingsHistoryItemDto } from './dto/savings-history.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
 import { MarkSettlementPaidResponseDto } from './dto/mark-settlement-paid-response.dto';
 
@@ -88,9 +89,14 @@ describe('DashboardController', () => {
         paidAt: now,
     };
 
+    const mockSavingsHistoryResponse: SavingsHistoryItemDto[] = [
+        { month: currentMonth, year: currentYear, personalSavings: 800, sharedSavings: 350 },
+    ];
+
     const mockDashboardService = {
         getOverview: vi.fn(() => Promise.resolve(mockDashboardResponse)),
         getSavings: vi.fn(() => Promise.resolve(mockSavingsResponse)),
+        getSavingsHistory: vi.fn(() => Promise.resolve(mockSavingsHistoryResponse)),
         getSettlement: vi.fn(() => Promise.resolve(mockSettlementResponse)),
         markSettlementPaid: vi.fn(() => Promise.resolve(mockMarkPaidResponse)),
     };
@@ -111,22 +117,34 @@ describe('DashboardController', () => {
         it('should call dashboardService.getOverview and return dashboard', async () => {
             const result = await controller.getOverview(mockUserId);
 
-            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly');
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly', undefined, undefined);
             expect(result.totalDefaultIncome).toBe(6000);
             expect(result.income).toHaveLength(2);
             expect(result.pendingApprovalsCount).toBe(2);
         });
 
         it('should pass yearly mode when mode query param is yearly', async () => {
-            const result = await controller.getOverview(mockUserId, 'yearly');
+            await controller.getOverview(mockUserId, 'yearly');
 
-            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'yearly');
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'yearly', undefined, undefined);
         });
 
         it('should default to monthly for unknown mode values', async () => {
             await controller.getOverview(mockUserId, 'invalid');
 
-            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly');
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly', undefined, undefined);
+        });
+
+        it('should pass month and year query params to service', async () => {
+            await controller.getOverview(mockUserId, undefined, { month: 3, year: 2025 });
+
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly', 3, 2025);
+        });
+
+        it('should pass only month when year is not provided', async () => {
+            await controller.getOverview(mockUserId, undefined, { month: 6 });
+
+            expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly', 6, undefined);
         });
 
         it('should propagate NotFoundException from service', async () => {
@@ -141,9 +159,15 @@ describe('DashboardController', () => {
         it('should call dashboardService.getSavings and return savings', async () => {
             const result = await controller.getSavings(mockUserId);
 
-            expect(dashboardService.getSavings).toHaveBeenCalledWith(mockUserId);
+            expect(dashboardService.getSavings).toHaveBeenCalledWith(mockUserId, undefined, undefined);
             expect(result.members).toHaveLength(2);
             expect(result.totalDefaultSavings).toBe(5000);
+        });
+
+        it('should pass month and year query params to service', async () => {
+            await controller.getSavings(mockUserId, { month: 1, year: 2025 });
+
+            expect(dashboardService.getSavings).toHaveBeenCalledWith(mockUserId, 1, 2025);
         });
 
         it('should propagate NotFoundException from service', async () => {
@@ -154,14 +178,38 @@ describe('DashboardController', () => {
         });
     });
 
+    describe('getSavingsHistory', () => {
+        it('should call dashboardService.getSavingsHistory and return savings history', async () => {
+            const result = await controller.getSavingsHistory(mockUserId);
+
+            expect(dashboardService.getSavingsHistory).toHaveBeenCalledWith(mockUserId);
+            expect(result).toHaveLength(1);
+            expect(result[0].personalSavings).toBe(800);
+            expect(result[0].sharedSavings).toBe(350);
+        });
+
+        it('should propagate NotFoundException from service', async () => {
+            mockDashboardService.getSavingsHistory.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
+
+            await expect(controller.getSavingsHistory(mockUserId)).rejects.toThrow(NotFoundException);
+            await expect(controller.getSavingsHistory(mockUserId)).rejects.toThrow('You must be in a household to manage expenses');
+        });
+    });
+
     describe('getSettlement', () => {
         it('should call dashboardService.getSettlement and return settlement', async () => {
             const result = await controller.getSettlement(mockUserId);
 
-            expect(dashboardService.getSettlement).toHaveBeenCalledWith(mockUserId);
+            expect(dashboardService.getSettlement).toHaveBeenCalledWith(mockUserId, undefined, undefined);
             expect(result.amount).toBe(60);
             expect(result.owedByUserId).toBe('user-sam');
             expect(result.message).toBe('Sam owes you €60.00');
+        });
+
+        it('should pass month and year query params to service', async () => {
+            await controller.getSettlement(mockUserId, { month: 11, year: 2025 });
+
+            expect(dashboardService.getSettlement).toHaveBeenCalledWith(mockUserId, 11, 2025);
         });
 
         it('should propagate NotFoundException from service', async () => {

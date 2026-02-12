@@ -62,6 +62,13 @@ export interface SettlementResponse {
   year: number;
 }
 
+export interface SavingsHistoryItem {
+  month: number;
+  year: number;
+  personalSavings: number;
+  sharedSavings: number;
+}
+
 export interface MarkSettlementPaidResponse {
   id: string;
   householdId: string;

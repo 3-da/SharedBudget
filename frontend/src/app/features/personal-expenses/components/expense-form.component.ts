@@ -77,23 +77,6 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
       }
 
       @if (form.get('category')?.value === 'ONE_TIME') {
-        <div class="row">
-          <mat-form-field appearance="outline">
-            <mat-label>Expense Month</mat-label>
-            <mat-select formControlName="month">
-              @for (m of months; track m.value) {
-                <mat-option [value]="m.value">{{ m.label }}</mat-option>
-              }
-            </mat-select>
-            <mat-hint>The month when this expense occurs</mat-hint>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Expense Year</mat-label>
-            <input matInput type="number" formControlName="year" min="2020" max="2099">
-            <mat-hint>The year when this expense occurs</mat-hint>
-          </mat-form-field>
-        </div>
-
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Payment Type</mat-label>
           <mat-select formControlName="yearlyPaymentStrategy">
@@ -102,7 +85,42 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
           </mat-select>
         </mat-form-field>
 
+        @if (form.get('yearlyPaymentStrategy')?.value === 'FULL' || !form.get('yearlyPaymentStrategy')?.value) {
+          <div class="row">
+            <mat-form-field appearance="outline">
+              <mat-label>Expense Month</mat-label>
+              <mat-select formControlName="month">
+                @for (m of months; track m.value) {
+                  <mat-option [value]="m.value">{{ m.label }}</mat-option>
+                }
+              </mat-select>
+              <mat-hint>The month when this expense occurs</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Expense Year</mat-label>
+              <input matInput type="number" formControlName="year" min="2020" max="2099">
+              <mat-hint>The year when this expense occurs</mat-hint>
+            </mat-form-field>
+          </div>
+        }
+
         @if (form.get('yearlyPaymentStrategy')?.value === 'INSTALLMENTS') {
+          <div class="row">
+            <mat-form-field appearance="outline">
+              <mat-label>Start Month</mat-label>
+              <mat-select formControlName="month">
+                @for (m of months; track m.value) {
+                  <mat-option [value]="m.value">{{ m.label }}</mat-option>
+                }
+              </mat-select>
+              <mat-hint>First installment month</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Start Year</mat-label>
+              <input matInput type="number" formControlName="year" min="2020" max="2099">
+              <mat-hint>First installment year</mat-hint>
+            </mat-form-field>
+          </div>
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Installment Frequency</mat-label>
             <mat-select formControlName="installmentFrequency">
@@ -217,11 +235,29 @@ export class ExpenseFormComponent {
         dto.yearlyPaymentStrategy = val.yearlyPaymentStrategy;
         if (val.yearlyPaymentStrategy === 'INSTALLMENTS' && val.installmentFrequency) {
           dto.installmentFrequency = val.installmentFrequency;
+          // Calculate total installment count from frequency × years
+          const years = val.installmentYears ?? 1;
+          let perYear: number;
+          switch (val.installmentFrequency) {
+            case 'MONTHLY': perYear = 12; break;
+            case 'QUARTERLY': perYear = 4; break;
+            case 'SEMI_ANNUAL': perYear = 2; break;
+            default: perYear = 12;
+          }
+          dto.installmentCount = perYear * years;
         }
       }
     } else if (val.frequency === 'YEARLY' && val.yearlyPaymentStrategy) {
       dto.yearlyPaymentStrategy = val.yearlyPaymentStrategy;
-      if (val.yearlyPaymentStrategy === 'INSTALLMENTS' && val.installmentFrequency) dto.installmentFrequency = val.installmentFrequency;
+      if (val.yearlyPaymentStrategy === 'INSTALLMENTS' && val.installmentFrequency) {
+        dto.installmentFrequency = val.installmentFrequency;
+        // Recurring yearly: installment count is per year
+        switch (val.installmentFrequency) {
+          case 'QUARTERLY': dto.installmentCount = 4; break;
+          case 'SEMI_ANNUAL': dto.installmentCount = 2; break;
+          default: dto.installmentCount = 12; break;
+        }
+      }
       if (val.yearlyPaymentStrategy === 'FULL' && val.paymentMonth) dto.paymentMonth = val.paymentMonth;
     }
     if (val.paidByUserId) dto.paidByUserId = val.paidByUserId;

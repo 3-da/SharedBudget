@@ -21,6 +21,8 @@ export class HouseholdStore {
   readonly overviewLoading = signal(false);
   readonly error = signal<string | null>(null);
   readonly viewMode = signal<'monthly' | 'yearly'>('monthly');
+  readonly selectedMonth = signal(new Date().getMonth() + 1);
+  readonly selectedYear = signal(new Date().getFullYear());
 
   readonly hasHousehold = computed(() => !!this.household());
   readonly members = computed(() => this.household()?.members ?? []);
@@ -51,7 +53,7 @@ export class HouseholdStore {
 
   loadOverview(): void {
     this.overviewLoading.set(true);
-    this.dashboardService.getOverview(this.viewMode()).subscribe({
+    this.dashboardService.getOverview(this.viewMode(), this.selectedMonth(), this.selectedYear()).subscribe({
       next: o => { this.overview.set(o); this.overviewLoading.set(false); },
       error: () => { this.overview.set(null); this.overviewLoading.set(false); },
     });
@@ -59,6 +61,12 @@ export class HouseholdStore {
 
   setViewMode(mode: 'monthly' | 'yearly'): void {
     this.viewMode.set(mode);
+    this.loadOverview();
+  }
+
+  setMonth(month: number, year: number): void {
+    this.selectedMonth.set(month);
+    this.selectedYear.set(year);
     this.loadOverview();
   }
 

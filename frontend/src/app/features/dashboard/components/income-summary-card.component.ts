@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MemberIncome } from '../../../shared/models/dashboard.model';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
@@ -6,6 +6,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 @Component({
   selector: 'app-income-summary-card',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, CurrencyEurPipe],
   template: `
     <mat-card>
