@@ -22,4 +22,8 @@ export class ExpensePaymentService {
   getStatus(expenseId: string): Observable<ExpensePayment[]> {
     return this.api.get<ExpensePayment[]>(`/expenses/${expenseId}/payment-status`);
   }
+
+  getBatchStatuses(month: number, year: number): Observable<ExpensePayment[]> {
+    return this.api.get<ExpensePayment[]>(`/expenses/payment-status/batch?month=${month}&year=${year}`);
+  }
 }

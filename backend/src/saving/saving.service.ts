@@ -25,14 +25,14 @@ export class SavingService {
      * @returns List of savings (personal and shared) for current month
      * @throws {NotFoundException} If user is not a member of any household
      */
-    async getMySavings(userId: string): Promise<SavingResponseDto[]> {
+    async getMySavings(userId: string, reqMonth?: number, reqYear?: number): Promise<SavingResponseDto[]> {
         this.logger.debug(`Get savings for user: ${userId}`);
 
         await this.expenseHelper.requireMembership(userId);
 
         const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const month = reqMonth ?? now.getMonth() + 1;
+        const year = reqYear ?? now.getFullYear();
 
         const savings = await this.prismaService.saving.findMany({
             where: { userId, month, year },
@@ -107,14 +107,14 @@ export class SavingService {
      * @returns All savings in the household for current month
      * @throws {NotFoundException} If user is not a member of any household
      */
-    async getHouseholdSavings(userId: string): Promise<SavingResponseDto[]> {
+    async getHouseholdSavings(userId: string, reqMonth?: number, reqYear?: number): Promise<SavingResponseDto[]> {
         this.logger.debug(`Get household savings for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
 
         const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const month = reqMonth ?? now.getMonth() + 1;
+        const year = reqYear ?? now.getFullYear();
 
         const cacheKey = this.cacheService.savingsKey(membership.householdId, year, month);
 

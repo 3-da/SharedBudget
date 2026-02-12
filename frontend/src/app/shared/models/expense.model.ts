@@ -15,6 +15,7 @@ export interface Expense {
   frequency: ExpenseFrequency;
   yearlyPaymentStrategy: YearlyPaymentStrategy | null;
   installmentFrequency: InstallmentFrequency | null;
+  installmentCount: number | null;
   paymentMonth: number | null;
   paidByUserId: string | null;
   month: number | null;
@@ -30,6 +31,7 @@ export interface CreateExpenseRequest {
   frequency: ExpenseFrequency;
   yearlyPaymentStrategy?: YearlyPaymentStrategy;
   installmentFrequency?: InstallmentFrequency;
+  installmentCount?: number;
   paymentMonth?: number;
   paidByUserId?: string;
   month?: number;
@@ -43,6 +45,7 @@ export interface UpdateExpenseRequest {
   frequency?: ExpenseFrequency;
   yearlyPaymentStrategy?: YearlyPaymentStrategy | null;
   installmentFrequency?: InstallmentFrequency | null;
+  installmentCount?: number | null;
   paymentMonth?: number | null;
   paidByUserId?: string | null;
   month?: number | null;

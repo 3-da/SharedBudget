@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +7,8 @@ import { MatInputModule } from '@angular/material/input';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { SavingStore } from '../stores/saving.store';
 import { HouseholdStore } from '../../household/stores/household.store';
+import { SavingsHistoryChartComponent } from '../components/savings-history-chart.component';
+import { MonthPickerComponent } from '../../../shared/components/month-picker.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
@@ -14,9 +16,15 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 @Component({
   selector: 'app-savings-overview',
   standalone: true,
-  imports: [MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule, MonthPickerComponent, SavingsHistoryChartComponent, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
   template: `
-    <app-page-header title="Savings" subtitle="Manage your personal and shared savings" />
+    <app-page-header title="Savings" subtitle="Manage your personal and shared savings">
+      <app-month-picker
+        [selectedMonth]="month()"
+        [selectedYear]="year()"
+        (monthChange)="onMonthChange($event)" />
+    </app-page-header>
 
     @if (store.loading()) {
       <app-loading-spinner />
@@ -88,14 +96,16 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
             </mat-card-content>
           </mat-card>
         }
+
+        <app-savings-history-chart class="summary-card" [items]="store.savingsHistory()" />
       </div>
     }
   `,
   styles: [`
     .savings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 900px; margin: 0 auto; }
     .summary-card { grid-column: 1 / -1; }
-    .current-amount { font-size: 1.8rem; font-weight: 500; margin-bottom: 16px; }
-    .current-amount.large { font-size: 2.4rem; text-align: center; }
+    .current-amount { font-size: 1.8rem; font-weight: 500; margin-bottom: 12px; }
+    .current-amount.large { font-size: 2.2rem; text-align: center; }
     .full-width { width: 100%; }
     form { display: flex; gap: 8px; align-items: start; }
     mat-icon[matCardAvatar] {
@@ -109,10 +119,18 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       padding: 8px 0; border-bottom: 1px solid var(--mat-sys-outline-variant);
     }
     .member-row:last-child { border-bottom: none; }
-    .member-name { font-weight: 500; }
-    .member-amounts { display: flex; gap: 16px; }
-    .amount-label { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; }
-    @media (max-width: 768px) { .savings-layout { grid-template-columns: 1fr; } }
+    .member-name { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .member-amounts { display: flex; gap: 16px; flex-shrink: 0; }
+    .amount-label { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; white-space: nowrap; }
+    @media (max-width: 768px) {
+      .savings-layout { grid-template-columns: 1fr; }
+      .current-amount { font-size: 1.4rem; }
+      .current-amount.large { font-size: 1.6rem; }
+      .member-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+      .member-amounts { gap: 12px; }
+      .amount-label { font-size: 0.8rem; }
+      mat-icon[matCardAvatar] { width: 32px; height: 32px; font-size: 20px; }
+    }
   `],
 })
 export class SavingsOverviewComponent implements OnInit {
@@ -120,26 +138,45 @@ export class SavingsOverviewComponent implements OnInit {
   readonly householdStore = inject(HouseholdStore);
   private readonly fb = inject(FormBuilder);
 
+  readonly month = signal(new Date().getMonth() + 1);
+  readonly year = signal(new Date().getFullYear());
+
   personalForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0)]] });
   sharedForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0)]] });
 
   ngOnInit(): void {
-    this.store.loadMySavings();
-    this.store.loadHouseholdSavings();
+    this.load();
+    this.store.loadSavingsHistory();
     if (!this.householdStore.overview()) {
       this.householdStore.loadOverview();
     }
   }
 
+  onMonthChange(event: { month: number; year: number }): void {
+    this.month.set(event.month);
+    this.year.set(event.year);
+    this.load();
+    this.householdStore.setMonth(event.month, event.year);
+  }
+
   savePersonal(): void {
     if (this.personalForm.invalid) return;
-    this.store.upsertPersonal({ amount: this.personalForm.getRawValue().amount });
-    this.householdStore.loadOverview();
+    this.store.upsertPersonal(
+      { amount: this.personalForm.getRawValue().amount, month: this.month(), year: this.year() },
+      () => this.householdStore.loadOverview(),
+    );
   }
 
   saveShared(): void {
     if (this.sharedForm.invalid) return;
-    this.store.upsertShared({ amount: this.sharedForm.getRawValue().amount });
-    this.householdStore.loadOverview();
+    this.store.upsertShared(
+      { amount: this.sharedForm.getRawValue().amount, month: this.month(), year: this.year() },
+      () => this.householdStore.loadOverview(),
+    );
+  }
+
+  private load(): void {
+    this.store.loadMySavings(this.month(), this.year());
+    this.store.loadHouseholdSavings(this.month(), this.year());
   }
 }

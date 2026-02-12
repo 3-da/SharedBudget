@@ -17,6 +17,10 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
         <mat-card-subtitle>{{ monthLabel() }}</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
+        <div class="settlement-info">
+          <mat-icon>info_outline</mat-icon>
+          <span>Calculates who owes whom based on shared expenses where one member paid more than their fair share.</span>
+        </div>
         @if (settlement(); as s) {
           <p class="message">{{ s.message }}</p>
           @if (s.amount > 0) {
@@ -49,6 +53,18 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       align-items: center;
       justify-content: center;
     }
+    .settlement-info {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+      margin-bottom: 12px;
+    }
+    .settlement-info mat-icon { font-size: 18px; width: 18px; height: 18px; margin-top: 1px; }
     .message { margin: var(--space-sm) 0; }
     .amount { font: var(--mat-sys-headline-small); font-weight: 600; margin: var(--space-sm) 0; }
     .settled-badge {

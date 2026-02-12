@@ -46,7 +46,12 @@ import { AuthService } from '../../../core/auth/auth.service';
       </mat-tab-group>
     }
   `,
-  styles: [`.approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 12px; padding: 16px 0; }`],
+  styles: [`
+    .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; padding: 16px 0; }
+    @media (max-width: 600px) {
+      .approval-grid { grid-template-columns: 1fr; }
+    }
+  `],
 })
 export class ApprovalListComponent implements OnInit {
   readonly store = inject(ApprovalStore);

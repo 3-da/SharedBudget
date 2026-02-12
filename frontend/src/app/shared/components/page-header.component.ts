@@ -1,8 +1,9 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 @Component({
   selector: 'app-page-header',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-header">
       <div>
@@ -27,7 +28,11 @@ import { Component, input } from '@angular/core';
     }
     h1 { margin: 0; font-size: 1.75rem; font-weight: 500; }
     .subtitle { margin: var(--space-xs) 0 0; color: var(--mat-sys-on-surface-variant); }
-    .actions { display: flex; gap: var(--space-sm); }
+    .actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
+    @media (max-width: 600px) {
+      h1 { font-size: 1.4rem; }
+      .subtitle { font-size: 0.85rem; }
+    }
   `],
 })
 export class PageHeaderComponent {

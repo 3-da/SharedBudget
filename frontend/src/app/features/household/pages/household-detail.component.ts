@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -6,6 +6,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { RouterLink } from '@angular/router';
 import { HouseholdStore } from '../stores/household.store';
+import { ApprovalStore } from '../../approvals/stores/approval.store';
 import { CreateHouseholdFormComponent } from '../components/create-household-form.component';
 import { JoinByCodeFormComponent } from '../components/join-by-code-form.component';
 import { FinancialSummaryComponent } from '../components/financial-summary.component';
@@ -14,19 +15,21 @@ import { SettlementSummaryComponent } from '../components/settlement-summary.com
 import { HouseholdManagementComponent } from '../components/household-management.component';
 import { IncomeExpenseChartComponent } from '../components/income-expense-chart.component';
 import { SavingsChartComponent } from '../components/savings-chart.component';
+import { MonthPickerComponent } from '../../../shared/components/month-picker.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 
 @Component({
   selector: 'app-household-detail',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule, MatIconModule, MatBadgeModule, MatTabsModule, MatButtonToggleModule, RouterLink,
     CreateHouseholdFormComponent, JoinByCodeFormComponent,
     FinancialSummaryComponent, MemberFinanceCardComponent,
     SettlementSummaryComponent, HouseholdManagementComponent,
     IncomeExpenseChartComponent, SavingsChartComponent,
-    PageHeaderComponent, LoadingSpinnerComponent,
+    MonthPickerComponent, PageHeaderComponent, LoadingSpinnerComponent,
   ],
   template: `
     @if (store.loading()) {
@@ -50,12 +53,19 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     } @else {
       <app-page-header [title]="store.household()!.name" [subtitle]="store.monthLabel()">
         <div class="header-actions">
+          <app-month-picker
+            [selectedMonth]="store.selectedMonth()"
+            [selectedYear]="store.selectedYear()"
+            (monthChange)="store.setMonth($event.month, $event.year)" />
           <mat-button-toggle-group [value]="store.viewMode()" (change)="store.setViewMode($event.value)">
             <mat-button-toggle value="monthly">This Month</mat-button-toggle>
             <mat-button-toggle value="yearly">Yearly Average</mat-button-toggle>
           </mat-button-toggle-group>
-          @if (store.overview()?.pendingApprovalsCount; as count) {
-            <button mat-stroked-button routerLink="/approvals" [matBadge]="count" matBadgeColor="warn">
+          @if (approvalStore.pendingCount() > 0) {
+            <button mat-stroked-button routerLink="/approvals"
+              class="has-pending"
+              [matBadge]="approvalStore.pendingCount()"
+              matBadgeColor="warn">
               <mat-icon>pending_actions</mat-icon> Approvals
             </button>
           }
@@ -111,7 +121,11 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   styles: [`
     .setup-container { max-width: 480px; margin: 32px auto; }
     .tab-content { padding: 24px 0; }
-    .header-actions { display: flex; align-items: center; gap: var(--space-md); }
+    .header-actions { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
+    @media (max-width: 600px) {
+      .header-actions { gap: var(--space-sm); }
+      .header-actions ::ng-deep .mat-button-toggle-group { font-size: 0.8rem; }
+    }
     .section { margin-bottom: var(--space-lg); }
     .section-title {
       font: var(--mat-sys-title-medium);
@@ -127,15 +141,41 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
       display: grid;
       grid-template-columns: 3fr 2fr;
       gap: var(--space-md);
+      overflow: hidden;
     }
-    @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+    .charts-grid ::ng-deep mat-card {
+      overflow: hidden;
+    }
+    .charts-grid ::ng-deep app-base-chart {
+      display: block;
+      height: 300px;
+    }
+    @media (max-width: 1024px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .charts-grid ::ng-deep app-base-chart { height: 280px; }
+    }
+    @media (max-width: 768px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .charts-grid ::ng-deep app-base-chart { height: 240px; }
+    }
+    .has-pending {
+      border-color: var(--mat-sys-error);
+      color: var(--mat-sys-error);
+      animation: pulse-border 2s ease-in-out infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 transparent; }
+      50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--mat-sys-error) 25%, transparent); }
+    }
   `],
 })
 export class HouseholdDetailComponent implements OnInit {
   readonly store = inject(HouseholdStore);
+  readonly approvalStore = inject(ApprovalStore);
 
   ngOnInit(): void {
     this.store.loadHousehold();
+    this.approvalStore.loadPending();
   }
 
   getExpenseForMember(userId: string) {

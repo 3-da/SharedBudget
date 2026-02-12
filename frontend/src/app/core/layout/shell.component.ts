@@ -1,4 +1,4 @@
-import { Component, inject, viewChild, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, viewChild, signal } from '@angular/core';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { RouterOutlet } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
@@ -10,6 +10,7 @@ import { map } from 'rxjs';
 @Component({
   selector: 'app-shell',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, MatSidenavModule, ToolbarComponent, SidenavComponent],
   template: `
     <app-toolbar (menuToggle)="sidenavEl()?.toggle()" />
@@ -36,6 +37,9 @@ import { map } from 'rxjs';
       padding: var(--space-lg);
       max-width: var(--content-max-width);
       margin: 0 auto;
+    }
+    @media (max-width: 600px) {
+      .content-wrapper { padding: var(--space-md) var(--space-sm); }
     }
   `],
 })

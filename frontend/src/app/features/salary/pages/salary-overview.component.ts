@@ -1,13 +1,13 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { SalaryStore } from '../stores/salary.store';
-import { SalaryFormComponent } from '../components/salary-form.component';
-import { SalaryChartComponent } from '../components/salary-chart.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
-import { PageHeaderComponent } from '../../../shared/components/page-header.component';
-import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
+import {Component, inject, OnInit, signal} from '@angular/core';
+import {MatCardModule} from '@angular/material/card';
+import {MatButtonModule} from '@angular/material/button';
+import {MatIconModule} from '@angular/material/icon';
+import {SalaryStore} from '../stores/salary.store';
+import {SalaryFormComponent} from '../components/salary-form.component';
+import {SalaryChartComponent} from '../components/salary-chart.component';
+import {LoadingSpinnerComponent} from '../../../shared/components/loading-spinner.component';
+import {PageHeaderComponent} from '../../../shared/components/page-header.component';
+import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
   selector: 'app-salary-overview',
@@ -52,9 +52,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     }
   `,
   styles: [`
-    .salary-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; max-width: 1100px; margin: 0 auto; }
+    .salary-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; max-width: 1100px; margin: 0 auto; align-items: start; }
     .year-nav { display: flex; align-items: center; gap: 8px; }
-    .stats-row { display: flex; gap: 24px; margin-bottom: 16px; }
+    .stats-row { display: flex; gap: 24px; margin-bottom: 12px; }
     .stat { display: flex; flex-direction: column; }
     .stat-label { font-size: 0.85rem; opacity: 0.7; }
     @media (max-width: 768px) { .salary-layout { grid-template-columns: 1fr; } }

@@ -70,3 +70,18 @@ export function GetPaymentStatusEndpoint() {
         HttpCode(HttpStatus.OK),
     );
 }
+
+export function GetBatchPaymentStatusEndpoint() {
+    return applyDecorators(
+        Get('payment-status/batch'),
+        ApiOperation({
+            summary: 'Get payment statuses for all expenses in a month',
+            description: 'Returns payment statuses for all user expenses in the specified month/year. Eliminates N+1 API calls.',
+        }),
+        ApiResponse({ status: 200, description: 'Batch payment statuses returned.', type: [ExpensePaymentResponseDto] }),
+        ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
+        ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
+        HttpCode(HttpStatus.OK),
+    );
+}

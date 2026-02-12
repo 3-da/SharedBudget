@@ -1,15 +1,17 @@
-import { Body, Controller, Param, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ExpensePaymentService } from './expense-payment.service';
 import { MarkPaidDto } from './dto/mark-paid.dto';
 import { ExpensePaymentResponseDto } from './dto/expense-payment-response.dto';
+import { DashboardQueryDto } from '../dashboard/dto/dashboard-query.dto';
 import {
     MarkPaidEndpoint,
     UndoPaidEndpoint,
     CancelExpenseEndpoint,
     GetPaymentStatusEndpoint,
+    GetBatchPaymentStatusEndpoint,
 } from './decorators/api-expense-payment.decorators';
 
 @ApiTags('Expense Payments')
@@ -18,6 +20,17 @@ import {
 @Controller('expenses')
 export class ExpensePaymentController {
     constructor(private readonly expensePaymentService: ExpensePaymentService) {}
+
+    @GetBatchPaymentStatusEndpoint()
+    async getBatchPaymentStatus(
+        @CurrentUser('id') userId: string,
+        @Query() query: DashboardQueryDto,
+    ): Promise<ExpensePaymentResponseDto[]> {
+        const now = new Date();
+        const month = query.month ?? now.getMonth() + 1;
+        const year = query.year ?? now.getFullYear();
+        return this.expensePaymentService.getBatchPaymentStatuses(userId, month, year);
+    }
 
     @MarkPaidEndpoint()
     async markPaid(

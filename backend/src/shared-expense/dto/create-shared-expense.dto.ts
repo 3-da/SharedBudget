@@ -39,8 +39,14 @@ export class CreateSharedExpenseDto {
     @IsEnum(InstallmentFrequency)
     installmentFrequency?: InstallmentFrequency;
 
+    @ApiPropertyOptional({ example: 24, description: 'Total number of installments. Required if strategy is INSTALLMENTS', minimum: 1 })
+    @ValidateIf((o) => o.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS)
+    @IsInt()
+    @Min(1)
+    installmentCount?: number;
+
     @ApiPropertyOptional({ example: 6, description: 'Month to pay in full (1-12). Required if strategy is FULL', minimum: 1, maximum: 12 })
-    @ValidateIf((o) => o.yearlyPaymentStrategy === YearlyPaymentStrategy.FULL)
+    @ValidateIf((o) => o.yearlyPaymentStrategy === YearlyPaymentStrategy.FULL && o.category !== ExpenseCategory.ONE_TIME)
     @IsInt()
     @Min(1)
     @Max(12)

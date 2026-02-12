@@ -52,7 +52,7 @@ describe('SavingController', () => {
         it('should call service.getMySavings with userId', async () => {
             const result = await controller.getMySavings(mockUserId);
 
-            expect(service.getMySavings).toHaveBeenCalledWith(mockUserId);
+            expect(service.getMySavings).toHaveBeenCalledWith(mockUserId, undefined, undefined);
             expect(result).toHaveLength(2);
             expect(result[0].isShared).toBe(false);
             expect(result[1].isShared).toBe(true);
@@ -82,7 +82,7 @@ describe('SavingController', () => {
         it('should call service.getHouseholdSavings with userId', async () => {
             const result = await controller.getHouseholdSavings(mockUserId);
 
-            expect(service.getHouseholdSavings).toHaveBeenCalledWith(mockUserId);
+            expect(service.getHouseholdSavings).toHaveBeenCalledWith(mockUserId, undefined, undefined);
             expect(result).toHaveLength(1);
         });
 

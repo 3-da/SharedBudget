@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { SharedExpenseStore } from '../stores/shared-expense.store';
 import { ApprovalStore } from '../../approvals/stores/approval.store';
 import { SharedExpenseCardComponent } from '../components/shared-expense-card.component';
+import { MonthPickerComponent } from '../../../shared/components/month-picker.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
@@ -14,15 +15,15 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
 @Component({
   selector: 'app-shared-expense-list',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, SharedExpenseCardComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatButtonModule, MatIconModule, SharedExpenseCardComponent, MonthPickerComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
   template: `
     <app-page-header title="Shared Expenses" subtitle="Expenses shared across the household">
       <div class="actions">
-        <div class="month-nav">
-          <button mat-icon-button (click)="prevMonth()"><mat-icon>chevron_left</mat-icon></button>
-          <span>{{ monthLabel() }}</span>
-          <button mat-icon-button (click)="nextMonth()"><mat-icon>chevron_right</mat-icon></button>
-        </div>
+        <app-month-picker
+          [selectedMonth]="month()"
+          [selectedYear]="year()"
+          (monthChange)="onMonthChange($event)" />
         <button mat-flat-button (click)="router.navigate(['/expenses/shared/new'])">
           <mat-icon>add</mat-icon> Propose Expense
         </button>
@@ -50,15 +51,16 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
             (edit)="onEdit($event)"
             (remove)="onDelete($event)"
             (markPaid)="onMarkPaid($event)"
-            (undoPaid)="onUndoPaid($event)" />
+            (undoPaid)="onUndoPaid($event)"
+            (viewTimeline)="onTimeline($event)" />
         }
       </div>
     }
   `,
   styles: [`
-    .actions { display: flex; align-items: center; gap: 16px; }
-    .month-nav { display: flex; align-items: center; gap: 8px; }
-    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    @media (max-width: 600px) { .expense-grid { grid-template-columns: 1fr; } }
     .error-banner {
       display: flex; align-items: center; gap: 8px;
       padding: 12px 16px; margin-bottom: 16px;
@@ -76,21 +78,12 @@ export class SharedExpenseListComponent implements OnInit {
 
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
-  readonly monthLabel = computed(() =>
-    new Date(this.year(), this.month() - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-  );
 
   ngOnInit(): void { this.load(); this.approvalStore.loadPending(); }
 
-  prevMonth(): void {
-    if (this.month() === 1) { this.month.set(12); this.year.update(y => y - 1); }
-    else this.month.update(m => m - 1);
-    this.load();
-  }
-
-  nextMonth(): void {
-    if (this.month() === 12) { this.month.set(1); this.year.update(y => y + 1); }
-    else this.month.update(m => m + 1);
+  onMonthChange(event: { month: number; year: number }): void {
+    this.month.set(event.month);
+    this.year.set(event.year);
     this.load();
   }
 
@@ -108,6 +101,10 @@ export class SharedExpenseListComponent implements OnInit {
 
   onUndoPaid(id: string): void {
     this.store.undoPaid(id, this.month(), this.year());
+  }
+
+  onTimeline(id: string): void {
+    this.router.navigate(['/expenses/shared', id, 'timeline']);
   }
 
   private load(): void { this.store.loadExpenses(this.month(), this.year()); }

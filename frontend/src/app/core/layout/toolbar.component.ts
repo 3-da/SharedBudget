@@ -1,4 +1,4 @@
-import { Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,7 @@ import { AuthService } from '../auth/auth.service';
 @Component({
   selector: 'app-toolbar',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, MatToolbarModule, MatIconModule, MatButtonModule, MatMenuModule],
   template: `
     <mat-toolbar color="primary" class="toolbar">

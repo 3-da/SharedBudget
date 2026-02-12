@@ -1,15 +1,15 @@
-import { Component, input, computed } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
-import { ChartConfiguration } from 'chart.js';
-import { BaseChartComponent } from '../../../shared/components/base-chart.component';
-import { DashboardOverview } from '../../../shared/models/dashboard.model';
+import {Component, computed, input} from '@angular/core';
+import {MatCardModule} from '@angular/material/card';
+import {ChartConfiguration} from 'chart.js';
+import {BaseChartComponent} from '../../../shared/components/base-chart.component';
+import {DashboardOverview} from '../../../shared/models/dashboard.model';
 
 @Component({
   selector: 'app-income-expense-chart',
   standalone: true,
   imports: [MatCardModule, BaseChartComponent],
   template: `
-    <mat-card>
+    <mat-card style="height: 100%">
       <mat-card-header>
         <mat-card-title>Income vs Expenses</mat-card-title>
         <mat-card-subtitle>Current month breakdown</mat-card-subtitle>
@@ -65,7 +65,7 @@ export class IncomeExpenseChartComponent {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: { position: 'bottom' },
         },

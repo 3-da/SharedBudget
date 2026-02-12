@@ -19,11 +19,14 @@ export class SharedExpenseStore {
 
   loadExpenses(month?: number, year?: number): void {
     this.loading.set(true);
-    this.service.list(month, year).subscribe({
+    const now = new Date();
+    const m = month ?? now.getMonth() + 1;
+    const y = year ?? now.getFullYear();
+    this.service.list(m, y).subscribe({
       next: e => {
         this.expenses.set(e);
         this.loading.set(false);
-        e.forEach(exp => this.loadPaymentStatus(exp.id));
+        this.loadBatchPaymentStatuses(m, y);
       },
       error: err => {
         this.error.set(err.error?.message ?? 'Failed to load expenses');
@@ -93,15 +96,16 @@ export class SharedExpenseStore {
     });
   }
 
-  private loadPaymentStatus(expenseId: string): void {
-    this.paymentService.getStatus(expenseId).subscribe({
+  private loadBatchPaymentStatuses(month: number, year: number): void {
+    this.paymentService.getBatchStatuses(month, year).subscribe({
       next: statuses => {
-        if (statuses.length > 0) this.updatePaymentMap(expenseId, statuses[0].status);
+        const map = new Map<string, PaymentStatus>();
+        for (const s of statuses) {
+          map.set(s.expenseId, s.status);
+        }
+        this.paymentStatuses.set(map);
       },
-      error: err => {
-        console.error(`Failed to load payment status for ${expenseId}:`, err);
-        this.snackBar.open('Failed to load payment status', '', { duration: 4000 });
-      },
+      error: () => {},
     });
   }
 

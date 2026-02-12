@@ -13,6 +13,7 @@ import {
 import { Expense } from '../generated/dto/expense/expense.entity';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
 import { SavingsResponseDto, MemberSavingsDto } from './dto/member-savings.dto';
+import { SavingsHistoryItemDto } from './dto/savings-history.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
 import { MarkSettlementPaidResponseDto } from './dto/mark-settlement-paid-response.dto';
 import { MemberIncomeDto } from './dto/member-income.dto';
@@ -43,14 +44,14 @@ export class DashboardService {
      * @returns Complete household financial overview for the current month
      * @throws {NotFoundException} If the user is not a member of any household
      */
-    async getOverview(userId: string, mode: 'monthly' | 'yearly' = 'monthly'): Promise<DashboardResponseDto> {
+    async getOverview(userId: string, mode: 'monthly' | 'yearly' = 'monthly', reqMonth?: number, reqYear?: number): Promise<DashboardResponseDto> {
         this.logger.debug(`Get dashboard overview for user: ${userId}, mode: ${mode}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const { householdId } = membership;
         const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const month = reqMonth ?? now.getMonth() + 1;
+        const year = reqYear ?? now.getFullYear();
 
         const cacheKey = this.cacheService.dashboardKey(householdId, year, month) + `:${mode}`;
 
@@ -218,18 +219,72 @@ export class DashboardService {
         };
     }
 
-    async getSavings(userId: string): Promise<SavingsResponseDto> {
+    async getSavings(userId: string, reqMonth?: number, reqYear?: number): Promise<SavingsResponseDto> {
         this.logger.debug(`Get savings for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const month = reqMonth ?? now.getMonth() + 1;
+        const year = reqYear ?? now.getFullYear();
 
         const cacheKey = this.cacheService.savingsKey(membership.householdId, year, month);
 
         return this.cacheService.getOrSet(cacheKey, this.cacheService.summaryTTL, async () => {
             return this.calculateSavings(membership.householdId, month, year);
+        });
+    }
+
+    /**
+     * Returns monthly savings totals (personal and shared) for the past 12 months.
+     * Data is aggregated at the household level, not per member.
+     *
+     * Use case: User views a line chart on the dashboard showing how household
+     * savings have trended over the past year.
+     *
+     * Scenario: Alex opens the savings history chart and sees that personal savings
+     * peaked in March at EUR 800 and shared savings have been steadily growing
+     * since September.
+     *
+     * @param userId - The authenticated user's ID
+     * @returns Array of 12 monthly savings items ordered chronologically (oldest first)
+     * @throws {NotFoundException} If the user is not a member of any household
+     */
+    async getSavingsHistory(userId: string): Promise<SavingsHistoryItemDto[]> {
+        this.logger.debug(`Get savings history for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const { householdId } = membership;
+
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+
+        // Generate list of 12 months to query (oldest first)
+        const months: { month: number; year: number }[] = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(currentYear, currentMonth - 1 - i);
+            months.push({ month: d.getMonth() + 1, year: d.getFullYear() });
+        }
+
+        const savings = await this.prismaService.saving.findMany({
+            where: {
+                householdId,
+                OR: months.map(m => ({ month: m.month, year: m.year })),
+            },
+        });
+
+        return months.map(m => {
+            const monthSavings = savings.filter(s => s.month === m.month && s.year === m.year);
+            return {
+                month: m.month,
+                year: m.year,
+                personalSavings: monthSavings
+                    .filter(s => !s.isShared)
+                    .reduce((sum, s) => sum + Number(s.amount), 0),
+                sharedSavings: monthSavings
+                    .filter(s => s.isShared)
+                    .reduce((sum, s) => sum + Number(s.amount), 0),
+            };
         });
     }
 
@@ -248,13 +303,13 @@ export class DashboardService {
      * @returns Settlement calculation with amount, direction, and message
      * @throws {NotFoundException} If the user is not a member of any household
      */
-    async getSettlement(userId: string): Promise<SettlementResponseDto> {
+    async getSettlement(userId: string, reqMonth?: number, reqYear?: number): Promise<SettlementResponseDto> {
         this.logger.debug(`Get settlement for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const month = reqMonth ?? now.getMonth() + 1;
+        const year = reqYear ?? now.getFullYear();
 
         const cacheKey = this.cacheService.settlementKey(membership.householdId, year, month);
 
@@ -591,17 +646,22 @@ export class DashboardService {
     }
 
     /**
-     * Returns the monthly-equivalent amount for an expense.
-     * - MONTHLY expenses: return amount directly
-     * - YEARLY expenses with FULL payment: return amount only in the designated payment month
-     * - YEARLY expenses with INSTALLMENTS: return amount/installmentCount only in installment months
-     * - ONE_TIME expenses: return amount only if it falls in the given month/year, else 0
+     * Returns the monthly-equivalent amount for an expense in a given month/year.
+     * - MONTHLY recurring: return amount directly
+     * - YEARLY FULL payment: return amount only in the designated payment month
+     * - YEARLY INSTALLMENTS: return amount/installmentsPerYear in installment months (anchored to creation month)
+     * - ONE_TIME FULL: return amount only in the specific month/year
+     * - ONE_TIME INSTALLMENTS: return amount/installmentCount in each installment month within range
      */
     private getMonthlyAmount(expense: Expense, month: number, year: number): number {
         const amount = Number(expense.amount);
 
         if (expense.category === ExpenseCategory.ONE_TIME) {
-            // One-time expenses only count in their specific month/year
+            // ONE_TIME with INSTALLMENTS: spread across multiple months starting from expense month/year
+            if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS && expense.installmentCount && expense.installmentFrequency) {
+                return this.getOneTimeInstallmentAmount(expense, amount, month, year);
+            }
+            // ONE_TIME FULL payment or no strategy: only in specific month/year
             if (expense.month === month && expense.year === year) {
                 return amount;
             }
@@ -615,17 +675,17 @@ export class DashboardService {
                 return expense.paymentMonth === month ? amount : 0;
             }
 
-            // Installment strategy
+            // Installment strategy — anchor to creation month instead of fixed calendar months
             if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
+                const anchorMonth = expense.createdAt.getMonth() + 1; // 1-based month from creation date
+
                 switch (expense.installmentFrequency) {
                     case InstallmentFrequency.MONTHLY:
                         return amount / 12;
                     case InstallmentFrequency.QUARTERLY:
-                        // Every 3 months: Jan(1), Apr(4), Jul(7), Oct(10)
-                        return month % 3 === 1 ? amount / 4 : 0;
+                        return this.isInstallmentMonth(month, anchorMonth, 3) ? amount / 4 : 0;
                     case InstallmentFrequency.SEMI_ANNUAL:
-                        // Every 6 months: Jan(1) and Jul(7)
-                        return month === 1 || month === 7 ? amount / 2 : 0;
+                        return this.isInstallmentMonth(month, anchorMonth, 6) ? amount / 2 : 0;
                     default:
                         return amount / 12;
                 }
@@ -637,6 +697,49 @@ export class DashboardService {
 
         // Monthly recurring
         return amount;
+    }
+
+    /**
+     * Calculates the installment amount for a ONE_TIME expense with installments.
+     * Returns the per-installment amount if (month, year) falls on an installment date
+     * within the total installment count range; otherwise returns 0.
+     */
+    private getOneTimeInstallmentAmount(expense: Expense, amount: number, month: number, year: number): number {
+        const startMonth = expense.month!;
+        const startYear = expense.year!;
+        const count = expense.installmentCount!;
+        const stepMonths = this.getStepMonths(expense.installmentFrequency!);
+
+        // Convert to absolute month index for comparison
+        const startTotal = startYear * 12 + startMonth;
+        const currentTotal = year * 12 + month;
+        const diff = currentTotal - startTotal;
+
+        // Must be on or after start, on an installment step, and within count
+        if (diff < 0) return 0;
+        if (diff % stepMonths !== 0) return 0;
+        const installmentIndex = diff / stepMonths;
+        if (installmentIndex >= count) return 0;
+
+        return Math.round((amount / count) * 100) / 100;
+    }
+
+    /**
+     * Checks if a given month aligns with installment schedule anchored to a starting month.
+     * E.g., anchorMonth=2 (Feb), stepMonths=3 → installment months are Feb, May, Aug, Nov.
+     */
+    private isInstallmentMonth(month: number, anchorMonth: number, stepMonths: number): boolean {
+        return ((month - anchorMonth) % stepMonths + stepMonths) % stepMonths === 0;
+    }
+
+    /** Returns the number of months between installments for a given frequency. */
+    private getStepMonths(freq: InstallmentFrequency): number {
+        switch (freq) {
+            case InstallmentFrequency.MONTHLY: return 1;
+            case InstallmentFrequency.QUARTERLY: return 3;
+            case InstallmentFrequency.SEMI_ANNUAL: return 6;
+            default: return 1;
+        }
     }
 
     /**

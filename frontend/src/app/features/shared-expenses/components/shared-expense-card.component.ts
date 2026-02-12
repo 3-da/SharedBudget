@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Expense } from '../../../shared/models/expense.model';
-import { PaymentStatus } from '../../../shared/models/enums';
+import { ExpenseCategory, PaymentStatus, YearlyPaymentStrategy } from '../../../shared/models/enums';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
@@ -43,6 +43,11 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
             <mat-icon>check_circle</mat-icon>
           </button>
         }
+        @if (hasTimeline()) {
+          <button mat-icon-button (click)="viewTimeline.emit(expense().id)" matTooltip="Timeline">
+            <mat-icon>timeline</mat-icon>
+          </button>
+        }
         <button mat-icon-button (click)="edit.emit(expense().id)" [disabled]="hasPendingApproval()"><mat-icon>edit</mat-icon></button>
         <button mat-icon-button (click)="remove.emit(expense().id)" [disabled]="hasPendingApproval()"><mat-icon>delete</mat-icon></button>
       </mat-card-actions>
@@ -64,6 +69,13 @@ export class SharedExpenseCardComponent {
   readonly remove = output<string>();
   readonly markPaid = output<string>();
   readonly undoPaid = output<string>();
+  readonly viewTimeline = output<string>();
 
   readonly isPaid = computed(() => this.paymentStatus() === PaymentStatus.PAID);
+  readonly hasTimeline = computed(() => {
+    const e = this.expense();
+    if (e.category === ExpenseCategory.RECURRING) return true;
+    if (e.category === ExpenseCategory.ONE_TIME && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) return true;
+    return false;
+  });
 }

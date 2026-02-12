@@ -14,6 +14,7 @@ function mapBaseExpenseFields(expense: any) {
         frequency: expense.frequency,
         yearlyPaymentStrategy: expense.yearlyPaymentStrategy ?? null,
         installmentFrequency: expense.installmentFrequency ?? null,
+        installmentCount: expense.installmentCount != null ? Number(expense.installmentCount) : null,
         paymentMonth: expense.paymentMonth ?? null,
         month: expense.month ?? null,
         year: expense.year ?? null,
@@ -62,6 +63,7 @@ export const EXPENSE_FIELDS = [
     'frequency',
     'yearlyPaymentStrategy',
     'installmentFrequency',
+    'installmentCount',
     'paymentMonth',
     'month',
     'year',
@@ -72,6 +74,7 @@ export function buildExpenseNullableFields(dto: any) {
     return {
         yearlyPaymentStrategy: dto.yearlyPaymentStrategy ?? null,
         installmentFrequency: dto.installmentFrequency ?? null,
+        installmentCount: dto.installmentCount ?? null,
         paymentMonth: dto.paymentMonth ?? null,
         month: dto.month ?? null,
         year: dto.year ?? null,

@@ -325,6 +325,10 @@ model Expense {
   yearlyPaymentStrategy YearlyPaymentStrategy?
   /// Installment payment frequency
   installmentFrequency  InstallmentFrequency?
+  /// Total number of installments (e.g., 24 for 2 years monthly)
+  /// @minimum 1
+  /// @Min(1)
+  installmentCount      Int?
   /// Month to pay in full (1-12, null if not FULL strategy)
   /// @minimum 1
   /// @maximum 12

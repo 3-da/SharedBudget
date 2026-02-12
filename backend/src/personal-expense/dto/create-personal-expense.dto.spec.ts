@@ -135,6 +135,7 @@ describe('CreatePersonalExpenseDto', () => {
                 frequency: ExpenseFrequency.YEARLY,
                 yearlyPaymentStrategy: YearlyPaymentStrategy.INSTALLMENTS,
                 installmentFrequency: InstallmentFrequency.QUARTERLY,
+                installmentCount: 4,
             });
             const errors = await validate(dto);
             expect(errors.length).toBe(0);
@@ -308,6 +309,109 @@ describe('CreatePersonalExpenseDto', () => {
                 year: 2000,
             });
             const errors = await validate(dto);
+            expect(errors.length).toBe(0);
+        });
+    });
+    //#endregion
+
+    //#region installmentCount validation
+    describe('installmentCount', () => {
+        it('should accept installmentCount when strategy is INSTALLMENTS', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, {
+                ...validMonthly,
+                frequency: ExpenseFrequency.YEARLY,
+                yearlyPaymentStrategy: YearlyPaymentStrategy.INSTALLMENTS,
+                installmentFrequency: InstallmentFrequency.QUARTERLY,
+                installmentCount: 4,
+            });
+            const errors = await validate(dto);
+            expect(errors.length).toBe(0);
+        });
+
+        it('should accept installmentCount for ONE_TIME installments', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, {
+                ...validMonthly,
+                category: ExpenseCategory.ONE_TIME,
+                yearlyPaymentStrategy: YearlyPaymentStrategy.INSTALLMENTS,
+                installmentFrequency: InstallmentFrequency.MONTHLY,
+                installmentCount: 24,
+                month: 3,
+                year: 2026,
+            });
+            const errors = await validate(dto);
+            expect(errors.length).toBe(0);
+        });
+
+        it('should reject installmentCount less than 1', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, {
+                ...validMonthly,
+                frequency: ExpenseFrequency.YEARLY,
+                yearlyPaymentStrategy: YearlyPaymentStrategy.INSTALLMENTS,
+                installmentFrequency: InstallmentFrequency.QUARTERLY,
+                installmentCount: 0,
+            });
+            const errors = await validate(dto);
+            const countError = errors.find((e) => e.property === 'installmentCount');
+            expect(countError).toBeDefined();
+            expect(countError!.constraints).toHaveProperty('min');
+        });
+
+        it('should accept installmentCount at boundary min (1)', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, {
+                ...validMonthly,
+                frequency: ExpenseFrequency.YEARLY,
+                yearlyPaymentStrategy: YearlyPaymentStrategy.INSTALLMENTS,
+                installmentFrequency: InstallmentFrequency.QUARTERLY,
+                installmentCount: 1,
+            });
+            const errors = await validate(dto);
+            expect(errors.length).toBe(0);
+        });
+
+        it('should not require installmentCount when strategy is FULL', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, {
+                ...validMonthly,
+                frequency: ExpenseFrequency.YEARLY,
+                yearlyPaymentStrategy: YearlyPaymentStrategy.FULL,
+                paymentMonth: 6,
+            });
+            const errors = await validate(dto);
+            const countError = errors.find((e) => e.property === 'installmentCount');
+            expect(countError).toBeUndefined();
+            expect(errors.length).toBe(0);
+        });
+
+        it('should reject non-integer installmentCount', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, {
+                ...validMonthly,
+                frequency: ExpenseFrequency.YEARLY,
+                yearlyPaymentStrategy: YearlyPaymentStrategy.INSTALLMENTS,
+                installmentFrequency: InstallmentFrequency.QUARTERLY,
+                installmentCount: 4.5,
+            });
+            const errors = await validate(dto);
+            const countError = errors.find((e) => e.property === 'installmentCount');
+            expect(countError).toBeDefined();
+            expect(countError!.constraints).toHaveProperty('isInt');
+        });
+    });
+    //#endregion
+
+    //#region Bug fix: ONE_TIME + FULL should not require paymentMonth
+    describe('ONE_TIME with FULL payment strategy', () => {
+        it('should not require paymentMonth when category is ONE_TIME even with FULL strategy', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, {
+                ...validMonthly,
+                category: ExpenseCategory.ONE_TIME,
+                frequency: ExpenseFrequency.YEARLY,
+                yearlyPaymentStrategy: YearlyPaymentStrategy.FULL,
+                month: 3,
+                year: 2026,
+                // paymentMonth intentionally omitted — ONE_TIME uses month/year, not paymentMonth
+            });
+            const errors = await validate(dto);
+            const paymentMonthError = errors.find((e) => e.property === 'paymentMonth');
+            expect(paymentMonthError).toBeUndefined();
             expect(errors.length).toBe(0);
         });
     });
