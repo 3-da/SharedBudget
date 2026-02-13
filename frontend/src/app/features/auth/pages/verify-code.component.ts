@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
+import { switchMap, interval } from 'rxjs';
 import { CodeInputComponent } from '../components/code-input.component';
 import { AuthService } from '../../../core/auth/auth.service';
 
@@ -60,11 +62,12 @@ import { AuthService } from '../../../core/auth/auth.service';
     .timer.expired { color: var(--mat-sys-error); }
   `],
 })
-export class VerifyCodeComponent implements OnInit, OnDestroy {
+export class VerifyCodeComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   email = signal('');
   loading = signal(false);
@@ -78,24 +81,18 @@ export class VerifyCodeComponent implements OnInit, OnDestroy {
     return `${min}:${sec.toString().padStart(2, '0')}`;
   });
 
-  private timerId: ReturnType<typeof setInterval> | null = null;
-
   ngOnInit(): void {
     this.email.set(this.route.snapshot.queryParams['email'] || '');
     this.startTimers();
   }
 
-  ngOnDestroy(): void {
-    if (this.timerId) clearInterval(this.timerId);
-  }
-
   onCodeComplete(code: string): void {
     this.loading.set(true);
-    this.authService.verifyCode({ email: this.email(), code }).subscribe({
-      next: () => {
-        this.authService.loadCurrentUser().subscribe();
-        this.router.navigate(['/household']);
-      },
+    this.authService.verifyCode({ email: this.email(), code }).pipe(
+      switchMap(() => this.authService.loadCurrentUser()),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => this.router.navigate(['/household']),
       error: err => {
         this.loading.set(false);
         const msg = err.status === 429
@@ -107,10 +104,12 @@ export class VerifyCodeComponent implements OnInit, OnDestroy {
   }
 
   resendCode(): void {
-    this.authService.resendCode({ email: this.email() }).subscribe({
+    this.authService.resendCode({ email: this.email() }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: res => {
         this.snackBar.open(res.message, 'OK', { duration: 3000, panelClass: 'success-snackbar' });
-        this.codeExpiry.set(600); // Reset expiry timer
+        this.codeExpiry.set(600);
         this.resendCooldown.set(60);
       },
       error: err => {
@@ -123,14 +122,14 @@ export class VerifyCodeComponent implements OnInit, OnDestroy {
   }
 
   private startTimers(): void {
-    this.timerId = setInterval(() => {
-      // Tick down code expiry
+    interval(1000).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => {
       const expiry = this.codeExpiry();
       if (expiry > 0) this.codeExpiry.set(expiry - 1);
 
-      // Tick down resend cooldown
       const cooldown = this.resendCooldown();
       if (cooldown > 0) this.resendCooldown.set(cooldown - 1);
-    }, 1000);
+    });
   }
 }

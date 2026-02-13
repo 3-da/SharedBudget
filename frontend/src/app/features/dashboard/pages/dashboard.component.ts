@@ -42,15 +42,15 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     }
   `,
   styles: [`
-    .header-actions { display: flex; align-items: center; gap: 16px; }
+    .header-actions { display: flex; align-items: center; gap: var(--space-md); }
     .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
+      gap: var(--space-md);
       max-width: 1000px;
       margin: 0 auto;
     }
-    @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; gap: var(--space-sm); } }
   `],
 })
 export class DashboardComponent implements OnInit {

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -58,6 +59,7 @@ export class ResetPasswordComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
   loading = signal(false);
   private token = '';
 
@@ -73,7 +75,9 @@ export class ResetPasswordComponent implements OnInit {
   onSubmit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
-    this.authService.resetPassword({ token: this.token, password: this.form.getRawValue().password }).subscribe({
+    this.authService.resetPassword({ token: this.token, password: this.form.getRawValue().password }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: () => {
         this.snackBar.open('Password reset successful. Please log in.', 'OK', { duration: 5000, panelClass: 'success-snackbar' });
         this.router.navigate(['/auth/login']);

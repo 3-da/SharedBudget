@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -58,12 +59,12 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
     }
   `,
   styles: [`
-    .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-    @media (max-width: 600px) { .expense-grid { grid-template-columns: 1fr; } }
+    .actions { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
+    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md); }
+    @media (max-width: 600px) { .expense-grid { grid-template-columns: 1fr; gap: var(--space-sm); } }
     .error-banner {
-      display: flex; align-items: center; gap: 8px;
-      padding: 12px 16px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md); margin-bottom: var(--space-md);
       border-radius: 8px;
       background: color-mix(in srgb, var(--mat-sys-error) 10%, transparent);
       color: var(--mat-sys-error);
@@ -75,6 +76,7 @@ export class SharedExpenseListComponent implements OnInit {
   readonly approvalStore = inject(ApprovalStore);
   readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
@@ -92,7 +94,9 @@ export class SharedExpenseListComponent implements OnInit {
   onDelete(id: string): void {
     this.dialog.open(ConfirmDialogComponent, {
       data: { title: 'Propose Deletion', message: 'This will submit a deletion proposal for approval. Continue?', confirmText: 'Propose Delete', color: 'warn' } as ConfirmDialogData,
-    }).afterClosed().subscribe(ok => { if (ok) this.store.proposeDelete(id, this.month(), this.year()); });
+    }).afterClosed().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(ok => { if (ok) this.store.proposeDelete(id, this.month(), this.year()); });
   }
 
   onMarkPaid(id: string): void {

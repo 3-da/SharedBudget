@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ChartConfiguration } from 'chart.js';
 import { BaseChartComponent } from '../../../shared/components/base-chart.component';
 import { SavingsHistoryItem } from '../../../shared/models/dashboard.model';
+import { cssVar } from '../../../shared/utils/chart-colors';
 
 @Component({
   selector: 'app-savings-history-chart',
@@ -34,7 +35,7 @@ import { SavingsHistoryItem } from '../../../shared/models/dashboard.model';
       display: flex; align-items: center; justify-content: center; font-size: 24px;
     }
     app-base-chart { height: 300px; }
-    .no-data { text-align: center; color: var(--mat-sys-on-surface-variant); padding: 32px 0; }
+    .no-data { text-align: center; color: var(--mat-sys-on-surface-variant); padding: var(--space-xl) 0; }
   `],
 })
 export class SavingsHistoryChartComponent {
@@ -55,8 +56,8 @@ export class SavingsHistoryChartComponent {
           {
             label: 'Personal',
             data: data.map(d => d.personalSavings),
-            borderColor: 'rgba(0, 188, 212, 0.8)',
-            backgroundColor: 'rgba(0, 188, 212, 0.1)',
+            borderColor: cssVar('--chart-line-1'),
+            backgroundColor: cssVar('--chart-line-1-fill'),
             fill: true,
             tension: 0.3,
             pointRadius: 4,
@@ -65,8 +66,8 @@ export class SavingsHistoryChartComponent {
           {
             label: 'Shared',
             data: data.map(d => d.sharedSavings),
-            borderColor: 'rgba(255, 152, 0, 0.8)',
-            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+            borderColor: cssVar('--chart-line-2'),
+            backgroundColor: cssVar('--chart-line-2-fill'),
             fill: true,
             tension: 0.3,
             pointRadius: 4,
@@ -84,7 +85,7 @@ export class SavingsHistoryChartComponent {
           y: {
             beginAtZero: true,
             ticks: {
-              callback: (value) => `${value} EUR`,
+              callback: (value) => `€${value}`,
             },
           },
         },

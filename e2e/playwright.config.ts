@@ -4,6 +4,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:4200';
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://127.0.0.1:3000/api/v1';
 
 export default defineConfig({
+  globalSetup: './global-setup.ts',
   testDir: './tests',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

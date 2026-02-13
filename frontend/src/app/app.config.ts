@@ -2,25 +2,27 @@ import { ApplicationConfig, ErrorHandler, provideZonelessChangeDetection, provid
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { Observable, catchError, of, switchMap } from 'rxjs';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { GlobalErrorHandler } from './core/error/error-handler.service';
 import { AuthService } from './core/auth/auth.service';
 import { TokenService } from './core/auth/token.service';
-import { catchError, of, switchMap } from 'rxjs';
 
-function initializeAuth(): void {
+function initializeAuth(): Observable<unknown> {
   const authService = inject(AuthService);
   const tokenService = inject(TokenService);
 
   if (tokenService.getRefreshToken()) {
     // On reload, access token is lost (in-memory). Refresh first to get a new one,
     // then load the user profile with the fresh token.
-    authService.refresh().pipe(
+    // Returning the Observable makes Angular wait before rendering components.
+    return authService.refresh().pipe(
       switchMap(() => authService.loadCurrentUser()),
       catchError(() => of(null)),
-    ).subscribe();
+    );
   }
+  return of(null);
 }
 
 export const appConfig: ApplicationConfig = {

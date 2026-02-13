@@ -1,16 +1,19 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, output, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../auth/auth.service';
+import { ThemeService } from '../theme/theme.service';
 
 @Component({
   selector: 'app-toolbar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, MatToolbarModule, MatIconModule, MatButtonModule, MatMenuModule],
+  imports: [RouterLink, MatToolbarModule, MatIconModule, MatButtonModule, MatMenuModule, MatTooltipModule],
   template: `
     <mat-toolbar color="primary" class="toolbar">
       <button mat-icon-button (click)="menuToggle.emit()">
@@ -18,7 +21,10 @@ import { AuthService } from '../auth/auth.service';
       </button>
       <span class="app-name">SharedBudget</span>
       <span class="spacer"></span>
-      <button mat-icon-button [matMenuTriggerFor]="userMenu">
+      <button mat-icon-button (click)="themeService.toggle()" [matTooltip]="themeTooltip()">
+        <mat-icon>{{ themeIcon() }}</mat-icon>
+      </button>
+      <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
         <mat-icon>account_circle</mat-icon>
       </button>
       <mat-menu #userMenu="matMenu">
@@ -47,11 +53,29 @@ import { AuthService } from '../auth/auth.service';
 })
 export class ToolbarComponent {
   readonly authService = inject(AuthService);
+  readonly themeService = inject(ThemeService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   menuToggle = output();
 
+  readonly themeIcon = computed(() => {
+    const mode = this.themeService.mode();
+    if (mode === 'light') return 'light_mode';
+    if (mode === 'dark') return 'dark_mode';
+    return 'brightness_auto';
+  });
+
+  readonly themeTooltip = computed(() => {
+    const mode = this.themeService.mode();
+    if (mode === 'light') return 'Switch to dark mode';
+    if (mode === 'dark') return 'Switch to system';
+    return 'Switch to light mode';
+  });
+
   onLogout(): void {
-    this.authService.logout().subscribe({
+    this.authService.logout().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       error: () => {
         this.authService.clearAuth();
         this.router.navigate(['/auth/login']);

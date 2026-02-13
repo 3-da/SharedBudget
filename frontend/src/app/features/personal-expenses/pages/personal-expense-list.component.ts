@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -57,22 +58,23 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
     }
   `,
   styles: [`
-    .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-    @media (max-width: 600px) { .expense-grid { grid-template-columns: 1fr; } }
+    .actions { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
+    .expense-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md); }
+    @media (max-width: 600px) { .expense-grid { grid-template-columns: 1fr; gap: var(--space-sm); } }
     .budget-bar {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 16px; margin-bottom: 16px; border-radius: 8px;
+      padding: var(--space-sm) var(--space-md); margin-bottom: var(--space-md); border-radius: 8px;
       background: var(--mat-sys-surface-container);
     }
     .budget-label { font-size: 1rem; }
-    .budget-paid { font-size: 0.85rem; opacity: 0.7; }
+    .budget-paid { font-size: 0.85rem; color: var(--mat-sys-on-surface-variant); }
   `],
 })
 export class PersonalExpenseListComponent implements OnInit {
   readonly store = inject(PersonalExpenseStore);
   readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
@@ -90,7 +92,9 @@ export class PersonalExpenseListComponent implements OnInit {
   onDelete(id: string): void {
     this.dialog.open(ConfirmDialogComponent, {
       data: { title: 'Delete Expense', message: 'Delete this expense permanently?', confirmText: 'Delete', color: 'warn' } as ConfirmDialogData,
-    }).afterClosed().subscribe(ok => { if (ok) this.store.deleteExpense(id, this.month(), this.year()); });
+    }).afterClosed().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(ok => { if (ok) this.store.deleteExpense(id, this.month(), this.year()); });
   }
 
   onMarkPaid(id: string): void {

@@ -1,7 +1,8 @@
-import {Component, computed, input} from '@angular/core';
-import {ChartConfiguration} from 'chart.js';
-import {BaseChartComponent} from '../../../shared/components/base-chart.component';
-import {SalaryResponse} from '../../../shared/models/salary.model';
+import { Component, computed, input } from '@angular/core';
+import { ChartConfiguration } from 'chart.js';
+import { BaseChartComponent } from '../../../shared/components/base-chart.component';
+import { SalaryResponse } from '../../../shared/models/salary.model';
+import { cssVar } from '../../../shared/utils/chart-colors';
 
 @Component({
   selector: 'app-salary-chart',
@@ -26,8 +27,8 @@ export class SalaryChartComponent {
       data: {
         labels,
         datasets: [
-          { label: 'Default', data: defaults, backgroundColor: 'rgba(0,188,212,0.6)' },
-          { label: 'Current', data: currents, backgroundColor: 'rgba(255,152,0,0.6)' },
+          { label: 'Default', data: defaults, backgroundColor: cssVar('--chart-line-1') },
+          { label: 'Current', data: currents, backgroundColor: cssVar('--chart-line-2') },
         ],
       },
       options: {

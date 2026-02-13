@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -59,6 +60,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 export class ForgotPasswordComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
   loading = signal(false);
   sent = signal(false);
 
@@ -69,7 +71,9 @@ export class ForgotPasswordComponent {
   onSubmit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
-    this.authService.forgotPassword(this.form.getRawValue()).subscribe({
+    this.authService.forgotPassword(this.form.getRawValue()).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: () => { this.loading.set(false); this.sent.set(true); },
       error: () => { this.loading.set(false); this.sent.set(true); },
     });
