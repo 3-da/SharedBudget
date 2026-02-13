@@ -119,12 +119,11 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     }
   `,
   styles: [`
-    .setup-container { max-width: 480px; margin: 32px auto; }
-    .tab-content { padding: 24px 0; }
+    .setup-container { max-width: 480px; margin: var(--space-xl) auto; }
+    .tab-content { padding: var(--space-lg) 0; }
     .header-actions { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; }
     @media (max-width: 600px) {
       .header-actions { gap: var(--space-sm); }
-      .header-actions ::ng-deep .mat-button-toggle-group { font-size: 0.8rem; }
     }
     .section { margin-bottom: var(--space-lg); }
     .section-title {
@@ -134,7 +133,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     }
     .members-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: var(--space-md);
     }
     .charts-grid {
@@ -143,20 +142,8 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
       gap: var(--space-md);
       overflow: hidden;
     }
-    .charts-grid ::ng-deep mat-card {
-      overflow: hidden;
-    }
-    .charts-grid ::ng-deep app-base-chart {
-      display: block;
-      height: 300px;
-    }
     @media (max-width: 1024px) {
       .charts-grid { grid-template-columns: 1fr; }
-      .charts-grid ::ng-deep app-base-chart { height: 280px; }
-    }
-    @media (max-width: 768px) {
-      .charts-grid { grid-template-columns: 1fr; }
-      .charts-grid ::ng-deep app-base-chart { height: 240px; }
     }
     .has-pending {
       border-color: var(--mat-sys-error);

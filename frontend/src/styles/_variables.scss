@@ -1,9 +1,39 @@
 :root {
-  --color-positive: #00897b;
-  --color-negative: #e53935;
-  --color-warning: #f9a825;
-  --color-info: #1e88e5;
+  // Semantic status colors — light theme (WCAG AA compliant)
+  --color-positive: #00796b;
+  --color-positive-container: rgba(0, 121, 107, 0.12);
+  --color-negative: #c62828;
+  --color-negative-container: rgba(198, 40, 40, 0.12);
+  --color-warning: #e65100;
+  --color-warning-container: rgba(230, 81, 0, 0.12);
+  --color-info: #1565c0;
+  --color-info-container: rgba(21, 101, 192, 0.12);
 
+  // Chart palette — light theme
+  --chart-1: rgba(0, 121, 107, 0.75);
+  --chart-2: rgba(198, 40, 40, 0.75);
+  --chart-3: rgba(230, 81, 0, 0.75);
+  --chart-4: rgba(21, 101, 192, 0.75);
+  --chart-1-border: rgb(0, 121, 107);
+  --chart-2-border: rgb(198, 40, 40);
+  --chart-3-border: rgb(230, 81, 0);
+  --chart-4-border: rgb(21, 101, 192);
+  --chart-line-1: rgba(0, 188, 212, 0.85);
+  --chart-line-1-fill: rgba(0, 188, 212, 0.1);
+  --chart-line-2: rgba(255, 152, 0, 0.85);
+  --chart-line-2-fill: rgba(255, 152, 0, 0.1);
+
+  // Chip status colors
+  --chip-accepted-bg: #2e7d32;
+  --chip-accepted-text: #fff;
+  --chip-rejected-bg: #c62828;
+  --chip-rejected-text: #fff;
+  --chip-cancelled-bg: #616161;
+  --chip-cancelled-text: #fff;
+  --chip-paid-bg: #2e7d32;
+  --chip-paid-text: #fff;
+
+  // Spacing
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -11,11 +41,49 @@
   --space-xl: 32px;
   --space-2xl: 48px;
 
+  // Breakpoints
   --bp-mobile: 768px;
   --bp-tablet: 1024px;
   --bp-desktop: 1280px;
 
+  // Layout
   --sidenav-width: 260px;
   --toolbar-height: 64px;
   --content-max-width: 1200px;
+}
+
+// Dark theme overrides
+.dark-theme {
+  --color-positive: #4db6ac;
+  --color-positive-container: rgba(77, 182, 172, 0.15);
+  --color-negative: #ef5350;
+  --color-negative-container: rgba(239, 83, 80, 0.15);
+  --color-warning: #ffb74d;
+  --color-warning-container: rgba(255, 183, 77, 0.15);
+  --color-info: #42a5f5;
+  --color-info-container: rgba(66, 165, 245, 0.15);
+
+  // Chart palette — dark theme (brighter for dark bg)
+  --chart-1: rgba(77, 182, 172, 0.8);
+  --chart-2: rgba(239, 83, 80, 0.8);
+  --chart-3: rgba(255, 183, 77, 0.8);
+  --chart-4: rgba(66, 165, 245, 0.8);
+  --chart-1-border: rgb(77, 182, 172);
+  --chart-2-border: rgb(239, 83, 80);
+  --chart-3-border: rgb(255, 183, 77);
+  --chart-4-border: rgb(66, 165, 245);
+  --chart-line-1: rgba(77, 208, 225, 0.9);
+  --chart-line-1-fill: rgba(77, 208, 225, 0.15);
+  --chart-line-2: rgba(255, 183, 77, 0.9);
+  --chart-line-2-fill: rgba(255, 183, 77, 0.15);
+
+  // Chip status colors — dark theme
+  --chip-accepted-bg: #388e3c;
+  --chip-accepted-text: #fff;
+  --chip-rejected-bg: #d32f2f;
+  --chip-rejected-text: #fff;
+  --chip-cancelled-bg: #757575;
+  --chip-cancelled-text: #fff;
+  --chip-paid-bg: #388e3c;
+  --chip-paid-text: #fff;
 }

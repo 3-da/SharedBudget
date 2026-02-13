@@ -3,8 +3,9 @@
 This file contains **process rules** for Claude Code when working on this project.
 
 > **Related documentation (read only when needed for the current task):**
-> - `SPEC.md` — Business requirements, user stories, feature specs, API endpoints
-> - `ARCHITECTURE.md` — Tech stack, data model, project structure, caching, Docker, CI/CD
+> - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
+> - `SPEC.md` — Business requirements, user stories, feature specs
+> - `ARCHITECTURE.md` — Tech stack, data model, caching, auth flow, infrastructure
 > - `docs/CONCEPTS.md` — Educational guide: Logger, Redis, Swagger explained
 
 ---
@@ -271,119 +272,5 @@ These are **not blockers for development** but **must be resolved before product
 
 ## Quick Reference
 
-### Redis Key Patterns
-| Pattern                  | Purpose                      | TTL                             |
-|--------------------------|------------------------------|---------------------------------|
-| `verify:{email}`         | Email verification code      | 10 min                          |
-| `reset:{token}`          | Password reset token         | 1 hour                          |
-| `refresh:{token}`        | Refresh token → userId       | 7 days                          |
-| `user_sessions:{userId}` | Set of user's refresh tokens | 7 days (refreshed on new token) |
-
-### Environment Variables
-```env
-# Auth TTLs (seconds)
-AUTH_VERIFICATION_CODE_TTL=600      # 10 min
-AUTH_REFRESH_TOKEN_TTL=604800       # 7 days
-AUTH_RESET_TOKEN_TTL=3600           # 1 hour
-
-# JWT
-JWT_ACCESS_SECRET=<secret>
-JWT_ACCESS_EXPIRATION=15m
-JWT_REFRESH_SECRET=<secret>
-
-# Argon2
-ARGON2_MEMORY_COST=65536
-ARGON2_TIME_COST=3
-ARGON2_PARALLELISM=1
-
-# Household
-HOUSEHOLD_MAX_MEMBERS=2
-INVITE_CODE_LENGTH=8
-```
-
-### Project Structure
-```
-backend/src/
-├── auth/
-│   ├── decorators/     # Custom decorators (endpoint, param)
-│   ├── dto/            # Request/Response DTOs (8 DTOs)
-│   ├── guards/         # Auth guards (JWT)
-│   ├── strategies/     # Passport strategies (JWT)
-│   ├── auth.controller.ts
-│   ├── auth.controller.spec.ts
-│   ├── auth.service.ts
-│   ├── auth.service.spec.ts
-│   └── auth.module.ts
-├── household/
-│   ├── decorators/     # Composite endpoint decorators (10 decorators)
-│   ├── dto/            # Request/Response DTOs (7 DTOs)
-│   ├── household.controller.ts
-│   ├── household.controller.spec.ts
-│   ├── household.service.ts               # CRUD + membership (join by code, leave, remove, transfer)
-│   ├── household.service.spec.ts
-│   ├── household-invitation.service.ts    # Email invitation lifecycle (invite, respond, cancel)
-│   ├── household-invitation.service.spec.ts
-│   └── household.module.ts
-├── user/
-│   ├── decorators/     # Composite endpoint decorators (3 decorators)
-│   ├── dto/            # DTOs (update-profile, change-password, user-profile-response)
-│   ├── user.controller.ts                 # 3 endpoints (get profile, update, change password)
-│   ├── user.controller.spec.ts
-│   ├── user.service.ts
-│   ├── user.service.spec.ts
-│   └── user.module.ts
-├── salary/
-│   ├── decorators/     # Composite endpoint decorators (4 decorators)
-│   ├── dto/            # DTOs (upsert-salary, salary-response)
-│   ├── salary.controller.ts               # 4 endpoints (get my, upsert, household, by month)
-│   ├── salary.controller.spec.ts
-│   ├── salary.service.ts
-│   ├── salary.service.spec.ts
-│   └── salary.module.ts
-├── personal-expense/
-│   ├── decorators/     # Composite endpoint decorators (5 decorators)
-│   ├── dto/            # DTOs (create, update, list-query, response)
-│   ├── personal-expense.controller.ts     # 5 endpoints (list, create, get, update, delete)
-│   ├── personal-expense.controller.spec.ts
-│   ├── personal-expense.service.ts
-│   ├── personal-expense.service.spec.ts
-│   └── personal-expense.module.ts
-├── shared-expense/
-│   ├── decorators/     # Composite endpoint decorators (5 decorators)
-│   ├── dto/            # DTOs (create, update, list-query, response)
-│   ├── shared-expense.controller.ts       # 5 endpoints (list, get, propose create/update/delete)
-│   ├── shared-expense.controller.spec.ts
-│   ├── shared-expense.service.ts
-│   ├── shared-expense.service.spec.ts
-│   └── shared-expense.module.ts
-├── approval/
-│   ├── decorators/     # Composite endpoint decorators (4 decorators)
-│   ├── dto/            # DTOs (accept, reject, list-query, response)
-│   ├── approval.controller.ts             # 4 endpoints (list pending, history, accept, reject)
-│   ├── approval.controller.spec.ts
-│   ├── approval.service.ts                # Approval review logic (accept with transaction, reject)
-│   ├── approval.service.spec.ts
-│   └── approval.module.ts
-├── dashboard/
-│   ├── decorators/     # Composite endpoint decorators (4 decorators)
-│   ├── dto/            # DTOs (dashboard-response, expense-summary, member-income, member-savings, settlement-response, mark-settlement-paid-response)
-│   ├── dashboard.controller.ts            # 4 endpoints (overview, savings, settlement, mark-paid)
-│   ├── dashboard.controller.spec.ts
-│   ├── dashboard.service.ts               # Financial aggregation, settlement calc, mark-paid
-│   ├── dashboard.service.spec.ts
-│   └── dashboard.module.ts
-├── session/
-│   ├── session.service.ts                 # Redis session ops (store, get, remove, invalidate all)
-│   ├── session.service.spec.ts
-│   └── session.module.ts
-├── mail/               # Email service (placeholder — logs in dev)
-├── prisma/             # PrismaService with @prisma/adapter-pg
-├── redis/              # Redis module + throttler storage
-├── generated/          # Auto-generated Prisma client + DTOs (DO NOT EDIT)
-└── common/
-    ├── dto/            # Shared DTOs (ErrorResponseDto, MessageResponseDto)
-    ├── expense/        # Shared expense utilities (ExpenseHelperService, mappers)
-    ├── filters/        # Global exception filter (HttpExceptionFilter)
-    ├── logger/         # Pino logger config with sensitive data redaction
-    └── utils/          # Utility functions (pickDefined)
-```
+> For project structure, API endpoints, and commands see [`PROJECT_INDEX.md`](./PROJECT_INDEX.md).
+> For data model, environment variables, and Redis key patterns see [`ARCHITECTURE.md`](./ARCHITECTURE.md).

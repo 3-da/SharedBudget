@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -85,6 +86,7 @@ export class RegisterComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
   loading = signal(false);
 
   form = this.fb.nonNullable.group({
@@ -99,7 +101,9 @@ export class RegisterComponent {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
     const { confirmPassword, ...dto } = this.form.getRawValue();
-    this.authService.register(dto).subscribe({
+    this.authService.register(dto).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: () => {
         this.snackBar.open('Verification code sent!', 'OK', { duration: 3000, panelClass: 'success-snackbar' });
         this.router.navigate(['/auth/verify-code'], { queryParams: { email: dto.email } });

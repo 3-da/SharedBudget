@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { switchMap } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiService } from '../../../core/api/api.service';
 import { ProfileFormComponent } from '../components/profile-form.component';
@@ -43,13 +45,16 @@ export class SettingsComponent {
   readonly authService = inject(AuthService);
   private readonly api = inject(ApiService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
   readonly loading = signal(false);
 
   onUpdateProfile(dto: UpdateProfileRequest): void {
     this.loading.set(true);
-    this.api.put<MessageResponse>('/users/me', dto).subscribe({
+    this.api.put<MessageResponse>('/users/me', dto).pipe(
+      switchMap(() => this.authService.loadCurrentUser()),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: () => {
-        this.authService.loadCurrentUser().subscribe();
         this.snackBar.open('Profile updated', '', { duration: 3000 });
         this.loading.set(false);
       },
@@ -62,7 +67,9 @@ export class SettingsComponent {
 
   onChangePassword(dto: ChangePasswordRequest): void {
     this.loading.set(true);
-    this.api.put<MessageResponse>('/users/me/password', dto).subscribe({
+    this.api.put<MessageResponse>('/users/me/password', dto).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: () => {
         this.snackBar.open('Password changed', '', { duration: 3000 });
         this.loading.set(false);

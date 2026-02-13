@@ -2,11 +2,12 @@
 
 **Document Version:** 4.0
 **Created:** January 28, 2026
-**Updated:** February 6, 2026 (Frontend stack changed to Angular 21 + Angular Material)
-**Project Status:** Phase 1 — All backend features implemented (Auth, Household, User, Salary, Expenses, Approvals, Dashboard, Settlement); Frontend pending
+**Updated:** February 12, 2026
+**Project Status:** Phase 1 — Backend complete (47 endpoints, 723 tests), Frontend complete (Angular 21)
 
 > **Related docs:**
-> - `ARCHITECTURE.md` — Tech stack, data model, infrastructure, caching, Docker, CI/CD
+> - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
+> - `ARCHITECTURE.md` — Tech stack, data model, infrastructure, auth flow
 > - `CLAUDE.md` — Development process rules for Claude Code
 
 ---
@@ -456,106 +457,4 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 
 ---
 
-## API Endpoints
-
-### ✅ Authentication Endpoints (8 — all implemented)
-```
-POST   /api/v1/auth/register         - Register new user → sends 6-digit verification code  [3/min]
-POST   /api/v1/auth/verify-code      - Verify email with 6-digit code → auto-login (tokens) [5/min]
-POST   /api/v1/auth/resend-code      - Resend verification code                             [3/10min]
-POST   /api/v1/auth/login            - Login with email + password (requires verified email) [5/min]
-POST   /api/v1/auth/refresh          - Refresh access token (rotates refresh token)          [10/min]
-POST   /api/v1/auth/logout           - Logout (invalidate refresh token)                     [10/min]
-POST   /api/v1/auth/forgot-password  - Request password reset email (1-hour token)           [3/10min]
-POST   /api/v1/auth/reset-password   - Reset password with token (invalidates all sessions)  [5/min]
-```
-
-### ✅ Household Endpoints (11 — all implemented)
-All require `Authorization: Bearer <token>` header.
-
-**CRUD:**
-```
-POST   /api/v1/household                       - Create new household (user must not be in one)    [5/min]
-GET    /api/v1/household/mine                   - Get my household with all members                 [10/min]
-POST   /api/v1/household/regenerate-code        - Generate new invite code (OWNER only)             [5/min]
-```
-
-**Invitations:**
-```
-POST   /api/v1/household/invite                 - Invite user by email (OWNER only)                 [5/min]
-GET    /api/v1/household/invitations/pending     - Get my pending invitations                        [10/min]
-POST   /api/v1/household/invitations/:id/respond - Accept or decline invitation                     [10/min]
-DELETE /api/v1/household/invitations/:id         - Cancel pending invitation (sender only)           [5/min]
-```
-
-**Membership:**
-```
-POST   /api/v1/household/join                   - Join household by invite code (instant)            [5/min]
-POST   /api/v1/household/leave                  - Leave household (see rules below)                  [5/min]
-DELETE /api/v1/household/members/:userId         - Remove member (OWNER only, can't remove self)     [5/min]
-POST   /api/v1/household/transfer-ownership      - Transfer OWNER role to another member             [5/min]
-```
-
-### ✅ User Endpoints (3 — all implemented)
-All require `Authorization: Bearer <token>` header.
-```
-GET    /api/v1/users/me               - Get current user profile                         [10/min]
-PUT    /api/v1/users/me               - Update user profile (name only)                  [5/min]
-PUT    /api/v1/users/me/password      - Change password (requires current password)       [3/min]
-```
-
-### ✅ Salary Endpoints (4 — all implemented)
-All require `Authorization: Bearer <token>` header.
-```
-GET    /api/v1/salary/me                       - Get my salary (current month)              [10/min]
-PUT    /api/v1/salary/me                       - Upsert my salary (default + current)       [5/min]
-GET    /api/v1/salary/household                - Get all household members' salaries         [10/min]
-GET    /api/v1/salary/household/:year/:month   - Get household salaries for specific month   [10/min]
-```
-
-### ✅ Personal Expense Endpoints (5 — all implemented)
-All require `Authorization: Bearer <token>` header.
-```
-GET    /api/v1/expenses/personal              - List my personal expenses (with optional filters)  [10/min]
-POST   /api/v1/expenses/personal              - Create personal expense                            [5/min]
-GET    /api/v1/expenses/personal/:id          - Get personal expense details                       [10/min]
-PUT    /api/v1/expenses/personal/:id          - Update personal expense (creator only)              [5/min]
-DELETE /api/v1/expenses/personal/:id          - Soft-delete personal expense (creator only)         [5/min]
-```
-
-### ✅ Shared Expense Endpoints (5 — all implemented)
-All require `Authorization: Bearer <token>` header.
-```
-GET    /api/v1/expenses/shared                - List household shared expenses (with optional filters)  [10/min]
-GET    /api/v1/expenses/shared/:id            - Get shared expense details                              [10/min]
-POST   /api/v1/expenses/shared                - Propose new shared expense → creates approval            [5/min]
-PUT    /api/v1/expenses/shared/:id            - Propose edit to shared expense → creates approval        [5/min]
-DELETE /api/v1/expenses/shared/:id            - Propose deletion of shared expense → creates approval    [5/min]
-```
-**Note:** POST/PUT/DELETE on shared expenses don't directly modify data — they create approval requests.
-
-### ✅ Approval Endpoints (4 — all implemented)
-All require `Authorization: Bearer <token>` header.
-```
-GET    /api/v1/approvals                      - List pending approvals for current user's household  [10/min]
-GET    /api/v1/approvals/history              - List past approvals (optional status filter)          [10/min]
-PUT    /api/v1/approvals/:id/accept           - Accept a pending approval (with optional message)    [5/min]
-PUT    /api/v1/approvals/:id/reject           - Reject a pending approval (with required message)    [5/min]
-```
-
-### ✅ Dashboard / Settlement Endpoints (4 — all implemented)
-All require `Authorization: Bearer <token>` header.
-```
-GET    /api/v1/dashboard                      - Complete household financial overview                [10/min]
-GET    /api/v1/dashboard/savings              - Savings breakdown per member                        [10/min]
-GET    /api/v1/dashboard/settlement           - Current settlement calculation                      [10/min]
-POST   /api/v1/dashboard/settlement/mark-paid - Mark current month's settlement as paid             [5/min]
-```
-
----
-
-**Endpoint Summary:** 44 total endpoints — all implemented (8 auth + 11 household + 3 user + 4 salary + 5 personal expense + 5 shared expense + 4 approval + 4 dashboard)
-**Phase 1 Focus:** 2-person household (couple), full auth, expenses with approval workflow, settlement, dashboard
-**Remaining:** Frontend (Angular 21 + Angular Material), Redis data caching, Docker setup, CI/CD
-
-*Split from original spec on January 29, 2026. Updated February 6, 2026 (frontend stack changed to Angular 21 + Angular Material).*
+> **API Endpoints:** See [`PROJECT_INDEX.md`](./PROJECT_INDEX.md) for the full list of all 47 API endpoints with descriptions.

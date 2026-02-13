@@ -118,7 +118,7 @@ test.describe('Authentication', () => {
       await expect(page.getByText('SharedBudget')).toBeVisible({ timeout: 10_000 });
 
       // Open the user menu by clicking the account circle icon button
-      await page.getByRole('button', { name: 'account_circle' }).click();
+      await page.getByRole('button', { name: 'User menu' }).click();
 
       // Click the Logout menu item
       await page.getByRole('menuitem', { name: 'Logout' }).click();

@@ -1,10 +1,12 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { filter, switchMap } from 'rxjs';
 import { PersonalExpenseStore } from '../stores/personal-expense.store';
 import { RecurringOverrideService } from '../services/recurring-override.service';
 import { RecurringOverride } from '../../../shared/models/recurring-override.model';
@@ -107,6 +109,7 @@ export class RecurringTimelineComponent implements OnInit {
   private readonly store = inject(PersonalExpenseStore);
   private readonly overrideService = inject(RecurringOverrideService);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
   private readonly overrides = signal<RecurringOverride[]>([]);
@@ -242,7 +245,9 @@ export class RecurringTimelineComponent implements OnInit {
     const id = this.route.snapshot.params['id'];
     this.expenseId.set(id);
     this.store.loadExpense(id);
-    this.overrideService.listOverrides(id).subscribe({
+    this.overrideService.listOverrides(id).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: o => { this.overrides.set(o); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
@@ -257,46 +262,48 @@ export class RecurringTimelineComponent implements OnInit {
         year: m.year,
       } as RecurringOverrideDialogData,
       width: '400px',
-    }).afterClosed().subscribe((result: RecurringOverrideDialogResult | undefined) => {
-      if (!result) return;
-      const dto = { amount: result.amount, skipped: result.skipped };
+    }).afterClosed().pipe(
+      takeUntilDestroyed(this.destroyRef),
+      filter((result): result is RecurringOverrideDialogResult => !!result),
+      switchMap(result => {
+        const dto = { amount: result.amount, skipped: result.skipped };
 
-      if (result.scope === 'all_upcoming') {
-        const upcomingMonths = this.timeline().filter(t =>
-          t.year > m.year || (t.year === m.year && t.month >= m.month),
-        );
-        const batchItems: BatchOverrideItem[] = upcomingMonths.map(t => ({
-          year: t.year, month: t.month, amount: result.amount, skipped: result.skipped,
-        }));
-        if (batchItems.length > 0) {
-          this.overrideService.batchUpsertOverrides(this.expenseId(), { overrides: batchItems }).subscribe({
-            next: results => this.overrides.update(list => {
-              const keys = new Set(results.map(r => `${r.year}-${r.month}`));
-              const filtered = list.filter(x => !keys.has(`${x.year}-${x.month}`));
-              return [...filtered, ...results];
-            }),
-          });
+        if (result.scope === 'all_upcoming') {
+          const upcomingMonths = this.timeline().filter(t =>
+            t.year > m.year || (t.year === m.year && t.month >= m.month),
+          );
+          const batchItems: BatchOverrideItem[] = upcomingMonths.map(t => ({
+            year: t.year, month: t.month, amount: result.amount, skipped: result.skipped,
+          }));
+          return this.overrideService.batchUpsertOverrides(this.expenseId(), { overrides: batchItems });
         }
+        return this.overrideService.upsertOverride(this.expenseId(), m.year, m.month, dto);
+      }),
+    ).subscribe(result => {
+      if (Array.isArray(result)) {
+        this.overrides.update(list => {
+          const keys = new Set(result.map(r => `${r.year}-${r.month}`));
+          const filtered = list.filter(x => !keys.has(`${x.year}-${x.month}`));
+          return [...filtered, ...result];
+        });
       } else {
-        this.overrideService.upsertOverride(this.expenseId(), m.year, m.month, dto).subscribe({
-          next: o => this.overrides.update(list => {
-            const filtered = list.filter(x => !(x.month === m.month && x.year === m.year));
-            return [...filtered, o];
-          }),
+        this.overrides.update(list => {
+          const filtered = list.filter(x => !(x.month === m.month && x.year === m.year));
+          return [...filtered, result];
         });
       }
     });
   }
 
   undoOverride(m: TimelineMonth): void {
-    // Check if there are upcoming overrides beyond this month
     const hasUpcoming = this.overrides().some(o =>
       o.year > m.year || (o.year === m.year && o.month > m.month),
     );
 
     if (!hasUpcoming) {
-      // Only this month has an override, delete directly
-      this.overrideService.deleteOverride(this.expenseId(), m.year, m.month).subscribe({
+      this.overrideService.deleteOverride(this.expenseId(), m.year, m.month).pipe(
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe({
         next: () => this.overrides.update(list =>
           list.filter(x => !(x.month === m.month && x.year === m.year)),
         ),
@@ -305,21 +312,16 @@ export class RecurringTimelineComponent implements OnInit {
     }
 
     this.dialog.open(UndoScopeDialogComponent, { width: '350px' })
-      .afterClosed().subscribe((scope: 'single' | 'all_upcoming' | undefined) => {
-        if (!scope) return;
-        if (scope === 'all_upcoming') {
-          this.overrideService.deleteUpcomingOverrides(this.expenseId(), m.year, m.month).subscribe({
-            next: () => this.overrides.update(list =>
-              list.filter(x => x.year < m.year || (x.year === m.year && x.month < m.month)),
-            ),
-          });
-        } else {
-          this.overrideService.deleteOverride(this.expenseId(), m.year, m.month).subscribe({
-            next: () => this.overrides.update(list =>
-              list.filter(x => !(x.month === m.month && x.year === m.year)),
-            ),
-          });
-        }
-      });
+      .afterClosed().pipe(
+        takeUntilDestroyed(this.destroyRef),
+        filter((scope): scope is 'single' | 'all_upcoming' => !!scope),
+        switchMap(scope => {
+          if (scope === 'all_upcoming') {
+            return this.overrideService.deleteUpcomingOverrides(this.expenseId(), m.year, m.month);
+          }
+          return this.overrideService.deleteOverride(this.expenseId(), m.year, m.month);
+        }),
+        switchMap(() => this.overrideService.listOverrides(this.expenseId())),
+      ).subscribe(o => this.overrides.set(o));
   }
 }

@@ -4,6 +4,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ChartConfiguration } from 'chart.js';
 import { BaseChartComponent } from '../../../shared/components/base-chart.component';
 import { DashboardOverview } from '../../../shared/models/dashboard.model';
+import { cssVar } from '../../../shared/utils/chart-colors';
 
 type SavingsViewMode = 'total' | 'personal' | 'shared';
 
@@ -55,10 +56,10 @@ export class SavingsChartComponent {
         datasets: [{
           data: members.map(getData),
           backgroundColor: [
-            'rgba(0, 137, 123, 0.7)',
-            'rgba(30, 136, 229, 0.7)',
-            'rgba(249, 168, 37, 0.7)',
-            'rgba(142, 36, 170, 0.7)',
+            cssVar('--chart-1'),
+            cssVar('--chart-4'),
+            cssVar('--chart-3'),
+            cssVar('--chart-2'),
           ],
           borderWidth: 2,
         }],

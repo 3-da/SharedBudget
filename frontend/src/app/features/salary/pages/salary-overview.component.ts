@@ -52,11 +52,11 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
     }
   `,
   styles: [`
-    .salary-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; max-width: 1100px; margin: 0 auto; align-items: start; }
-    .year-nav { display: flex; align-items: center; gap: 8px; }
-    .stats-row { display: flex; gap: 24px; margin-bottom: 12px; }
+    .salary-layout { display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-md); max-width: 1100px; margin: 0 auto; align-items: start; }
+    .year-nav { display: flex; align-items: center; gap: var(--space-sm); }
+    .stats-row { display: flex; gap: var(--space-lg); margin-bottom: var(--space-sm); }
     .stat { display: flex; flex-direction: column; }
-    .stat-label { font-size: 0.85rem; opacity: 0.7; }
+    .stat-label { font-size: 0.85rem; color: var(--mat-sys-on-surface-variant); }
     @media (max-width: 768px) { .salary-layout { grid-template-columns: 1fr; } }
   `],
 })

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -45,13 +46,16 @@ export class PendingInvitationsComponent implements OnInit {
   readonly store = inject(HouseholdStore);
   private readonly invitationService = inject(InvitationService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
     this.store.loadInvitations();
   }
 
   respond(id: string, accept: boolean): void {
-    this.invitationService.respond(id, { accept }).subscribe({
+    this.invitationService.respond(id, { accept }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: res => {
         this.snackBar.open(res.message, '', { duration: 3000 });
         this.store.loadInvitations();

@@ -73,9 +73,9 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
     .message { font-style: italic; color: var(--mat-sys-on-surface-variant); word-break: break-word; }
     mat-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     mat-chip-set { flex-wrap: wrap; }
-    .status-accepted { --mdc-chip-elevated-container-color: #2e7d32; --mdc-chip-label-text-color: #fff; }
-    .status-rejected { --mdc-chip-elevated-container-color: #c62828; --mdc-chip-label-text-color: #fff; }
-    .status-cancelled { --mdc-chip-elevated-container-color: #757575; --mdc-chip-label-text-color: #fff; }
+    .status-accepted { --mdc-chip-elevated-container-color: var(--chip-accepted-bg); --mdc-chip-label-text-color: var(--chip-accepted-text); }
+    .status-rejected { --mdc-chip-elevated-container-color: var(--chip-rejected-bg); --mdc-chip-label-text-color: var(--chip-rejected-text); }
+    .status-cancelled { --mdc-chip-elevated-container-color: var(--chip-cancelled-bg); --mdc-chip-label-text-color: var(--chip-cancelled-text); }
   `],
 })
 export class ApprovalCardComponent {

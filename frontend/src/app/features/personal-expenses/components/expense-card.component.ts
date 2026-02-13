@@ -54,7 +54,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     .amount { font-size: 20px; font-weight: 500; }
     mat-card-actions { display: flex; }
     .paid { opacity: 0.7; }
-    .paid-chip { --mdc-chip-elevated-container-color: #4caf50; }
+    .paid-chip { --mdc-chip-elevated-container-color: var(--chip-paid-bg); --mdc-chip-label-text-color: var(--chip-paid-text); }
   `],
 })
 export class ExpenseCardComponent {

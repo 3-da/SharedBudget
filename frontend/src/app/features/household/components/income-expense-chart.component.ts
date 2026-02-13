@@ -1,8 +1,9 @@
-import {Component, computed, input} from '@angular/core';
-import {MatCardModule} from '@angular/material/card';
-import {ChartConfiguration} from 'chart.js';
-import {BaseChartComponent} from '../../../shared/components/base-chart.component';
-import {DashboardOverview} from '../../../shared/models/dashboard.model';
+import { Component, computed, input } from '@angular/core';
+import { MatCardModule } from '@angular/material/card';
+import { ChartConfiguration } from 'chart.js';
+import { BaseChartComponent } from '../../../shared/components/base-chart.component';
+import { DashboardOverview } from '../../../shared/models/dashboard.model';
+import { cssVar } from '../../../shared/utils/chart-colors';
 
 @Component({
   selector: 'app-income-expense-chart',
@@ -43,22 +44,22 @@ export class IncomeExpenseChartComponent {
           {
             label: 'Salary',
             data: salaries,
-            backgroundColor: 'rgba(0, 137, 123, 0.7)',
-            borderColor: 'rgb(0, 137, 123)',
+            backgroundColor: cssVar('--chart-1'),
+            borderColor: cssVar('--chart-1-border'),
             borderWidth: 1,
           },
           {
             label: 'Personal Expenses',
             data: personalExpenses,
-            backgroundColor: 'rgba(229, 57, 53, 0.7)',
-            borderColor: 'rgb(229, 57, 53)',
+            backgroundColor: cssVar('--chart-2'),
+            borderColor: cssVar('--chart-2-border'),
             borderWidth: 1,
           },
           {
             label: 'Shared Expenses (share)',
             data: sharedPerMember,
-            backgroundColor: 'rgba(249, 168, 37, 0.7)',
-            borderColor: 'rgb(249, 168, 37)',
+            backgroundColor: cssVar('--chart-3'),
+            borderColor: cssVar('--chart-3-border'),
             borderWidth: 1,
           },
         ],

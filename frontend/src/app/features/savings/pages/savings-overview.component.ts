@@ -102,12 +102,12 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     }
   `,
   styles: [`
-    .savings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 900px; margin: 0 auto; }
+    .savings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); max-width: 900px; margin: 0 auto; }
     .summary-card { grid-column: 1 / -1; }
-    .current-amount { font-size: 1.8rem; font-weight: 500; margin-bottom: 12px; }
-    .current-amount.large { font-size: 2.2rem; text-align: center; }
+    .current-amount { font-size: clamp(1.4rem, 2vw + 0.5rem, 1.8rem); font-weight: 500; margin-bottom: var(--space-sm); }
+    .current-amount.large { font-size: clamp(1.6rem, 3vw + 0.5rem, 2.2rem); text-align: center; }
     .full-width { width: 100%; }
-    form { display: flex; gap: 8px; align-items: start; }
+    form { display: flex; gap: var(--space-sm); align-items: start; }
     mat-icon[matCardAvatar] {
       background: var(--mat-sys-primary-container);
       color: var(--mat-sys-on-primary-container);

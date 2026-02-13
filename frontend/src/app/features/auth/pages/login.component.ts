@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -7,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { switchMap } from 'rxjs';
 import { PasswordFieldComponent } from '../components/password-field.component';
 import { AuthService } from '../../../core/auth/auth.service';
 
@@ -66,6 +68,7 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
   loading = signal(false);
 
   form = this.fb.nonNullable.group({
@@ -76,9 +79,11 @@ export class LoginComponent {
   onSubmit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
-    this.authService.login(this.form.getRawValue()).subscribe({
+    this.authService.login(this.form.getRawValue()).pipe(
+      switchMap(() => this.authService.loadCurrentUser()),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
       next: () => {
-        this.authService.loadCurrentUser().subscribe();
         const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/household';
         this.router.navigateByUrl(returnUrl);
       },

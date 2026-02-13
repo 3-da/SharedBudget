@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, computed } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDialog } from '@angular/material/dialog';
 import { ApprovalStore } from '../stores/approval.store';
@@ -47,9 +48,9 @@ import { AuthService } from '../../../core/auth/auth.service';
     }
   `,
   styles: [`
-    .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; padding: 16px 0; }
+    .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); padding: var(--space-md) 0; }
     @media (max-width: 600px) {
-      .approval-grid { grid-template-columns: 1fr; }
+      .approval-grid { grid-template-columns: 1fr; gap: var(--space-sm); padding: var(--space-sm) 0; }
     }
   `],
 })
@@ -57,6 +58,7 @@ export class ApprovalListComponent implements OnInit {
   readonly store = inject(ApprovalStore);
   private readonly dialog = inject(MatDialog);
   private readonly authService = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly currentUserId = computed(() => this.authService.currentUser()?.id ?? null);
 
   ngOnInit(): void {
@@ -69,7 +71,9 @@ export class ApprovalListComponent implements OnInit {
   }
 
   onReject(id: string): void {
-    this.dialog.open(RejectDialogComponent, { width: '400px' }).afterClosed().subscribe(message => {
+    this.dialog.open(RejectDialogComponent, { width: '400px' }).afterClosed().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(message => {
       if (message) this.store.reject(id, message);
     });
   }

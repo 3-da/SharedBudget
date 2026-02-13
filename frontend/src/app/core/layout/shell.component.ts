@@ -38,8 +38,11 @@ import { map } from 'rxjs';
       max-width: var(--content-max-width);
       margin: 0 auto;
     }
+    @media (max-width: 1024px) {
+      .content-wrapper { padding: var(--space-md); }
+    }
     @media (max-width: 600px) {
-      .content-wrapper { padding: var(--space-md) var(--space-sm); }
+      .content-wrapper { padding: var(--space-sm); }
     }
   `],
 })

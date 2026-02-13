@@ -83,7 +83,7 @@ function overlayNextYearButton(page: Page) {
  * @param shortName - The short month name, e.g., "Jan", "Feb", "Jun".
  */
 function overlayMonthCell(page: Page, shortName: string) {
-  return page.locator('.month-overlay .month-cell', { hasText: new RegExp(`^${shortName}$`) });
+  return page.locator('.month-overlay .month-cell').filter({ hasText: shortName });
 }
 
 /**
