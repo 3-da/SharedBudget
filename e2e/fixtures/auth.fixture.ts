@@ -15,8 +15,10 @@ import { TEST_USERS, apiLogin, AuthTokens } from './test-data';
 type AuthFixtures = {
   alexTokens: AuthTokens;
   samTokens: AuthTokens;
+  jordanTokens: AuthTokens;
   alexPage: Page;
   samPage: Page;
+  jordanPage: Page;
 };
 
 async function createAuthenticatedPage(browser: any, tokens: AuthTokens, baseURL: string): Promise<Page> {
@@ -46,6 +48,11 @@ export const test = base.extend<AuthFixtures>({
     await use(tokens);
   },
 
+  jordanTokens: async ({}, use) => {
+    const tokens = await apiLogin(TEST_USERS.jordan.email, TEST_USERS.jordan.password);
+    await use(tokens);
+  },
+
   alexPage: async ({ browser, alexTokens, baseURL }, use) => {
     const page = await createAuthenticatedPage(browser, alexTokens, baseURL!);
     await use(page);
@@ -54,6 +61,12 @@ export const test = base.extend<AuthFixtures>({
 
   samPage: async ({ browser, samTokens, baseURL }, use) => {
     const page = await createAuthenticatedPage(browser, samTokens, baseURL!);
+    await use(page);
+    await page.context().close();
+  },
+
+  jordanPage: async ({ browser, jordanTokens, baseURL }, use) => {
+    const page = await createAuthenticatedPage(browser, jordanTokens, baseURL!);
     await use(page);
     await page.context().close();
   },

@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { ChartConfiguration } from 'chart.js';
 import { BaseChartComponent } from '../../../shared/components/base-chart.component';
@@ -6,6 +6,7 @@ import { DashboardOverview } from '../../../shared/models/dashboard.model';
 import { cssVar } from '../../../shared/utils/chart-colors';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-income-expense-chart',
   standalone: true,
   imports: [MatCardModule, BaseChartComponent],

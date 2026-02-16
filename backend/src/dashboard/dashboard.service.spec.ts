@@ -5,6 +5,7 @@ import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
+import { DashboardCalculatorService } from './dashboard-calculator.service';
 
 describe('DashboardService', () => {
     let service: DashboardService;
@@ -154,6 +155,7 @@ describe('DashboardService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 DashboardService,
+                DashboardCalculatorService,
                 { provide: PrismaService, useValue: mockPrismaService },
                 { provide: ExpenseHelperService, useValue: mockExpenseHelper },
                 { provide: CacheService, useValue: mockCacheService },

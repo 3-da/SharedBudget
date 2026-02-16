@@ -1,4 +1,4 @@
-import { Component, input, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, computed, signal } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ChartConfiguration } from 'chart.js';
@@ -9,6 +9,7 @@ import { cssVar } from '../../../shared/utils/chart-colors';
 type SavingsViewMode = 'total' | 'personal' | 'shared';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-savings-chart',
   standalone: true,
   imports: [MatCardModule, MatButtonToggleModule, BaseChartComponent],

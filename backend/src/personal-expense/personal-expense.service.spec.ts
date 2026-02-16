@@ -92,7 +92,7 @@ describe('PersonalExpenseService', () => {
                 where: {
                     createdById: mockUserId,
                     type: ExpenseType.PERSONAL,
-                    deletedAt: null,
+
                 },
                 orderBy: { createdAt: 'desc' },
             });
@@ -120,7 +120,7 @@ describe('PersonalExpenseService', () => {
                 where: {
                     createdById: mockUserId,
                     type: ExpenseType.PERSONAL,
-                    deletedAt: null,
+
                     category: ExpenseCategory.ONE_TIME,
                 },
                 orderBy: { createdAt: 'desc' },
@@ -137,7 +137,7 @@ describe('PersonalExpenseService', () => {
                 where: {
                     createdById: mockUserId,
                     type: ExpenseType.PERSONAL,
-                    deletedAt: null,
+
                     frequency: ExpenseFrequency.YEARLY,
                 },
                 orderBy: { createdAt: 'desc' },
@@ -157,7 +157,7 @@ describe('PersonalExpenseService', () => {
                 where: {
                     createdById: mockUserId,
                     type: ExpenseType.PERSONAL,
-                    deletedAt: null,
+
                     category: ExpenseCategory.RECURRING,
                     frequency: ExpenseFrequency.MONTHLY,
                 },
@@ -171,7 +171,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.listPersonalExpenses(mockUserId, {});
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -317,7 +317,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.createPersonalExpense(mockUserId, createDto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -357,7 +357,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.getPersonalExpense(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -370,7 +370,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.getPersonalExpense(mockUserId, 'nonexistent-id');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Personal expense not found');
             }
@@ -383,7 +383,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.getPersonalExpense(mockUserId, 'expense-in-other-household');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Personal expense not found');
             }
@@ -445,7 +445,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.updatePersonalExpense(mockUserId, mockExpenseId, updateDto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -458,7 +458,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.updatePersonalExpense(mockUserId, 'nonexistent-id', updateDto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Personal expense not found');
             }
@@ -472,7 +472,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.updatePersonalExpense(mockUserId, mockExpenseId, updateDto);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('You can only modify your own personal expenses');
             }
@@ -503,7 +503,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.deletePersonalExpense(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -516,7 +516,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.deletePersonalExpense(mockUserId, 'nonexistent-id');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Personal expense not found');
             }
@@ -530,7 +530,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.deletePersonalExpense(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('You can only delete your own personal expenses');
             }
@@ -544,7 +544,7 @@ describe('PersonalExpenseService', () => {
             try {
                 await service.deletePersonalExpense(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Personal expense not found');
             }

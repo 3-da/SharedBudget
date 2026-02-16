@@ -16,6 +16,7 @@ import { InvitationService } from '../services/invitation.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog.component';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-household-management',
   standalone: true,
   imports: [
@@ -38,8 +39,8 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
         <div class="invite-code-section">
           <span class="code-label">Invite Code:</span>
           <code class="invite-code">{{ store.household()!.inviteCode }}</code>
-          <button mat-icon-button (click)="copyCode()"><mat-icon>content_copy</mat-icon></button>
-          <button mat-icon-button (click)="store.regenerateCode()"><mat-icon>refresh</mat-icon></button>
+          <button mat-icon-button (click)="copyCode()" aria-label="Copy invite code"><mat-icon aria-hidden="true">content_copy</mat-icon></button>
+          <button mat-icon-button (click)="store.regenerateCode()" aria-label="Regenerate invite code"><mat-icon aria-hidden="true">refresh</mat-icon></button>
         </div>
         <mat-divider />
       }

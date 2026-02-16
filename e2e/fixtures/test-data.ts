@@ -25,6 +25,12 @@ export const TEST_USERS = {
     firstName: 'Sam',
     lastName: 'TestMember',
   },
+  jordan: {
+    email: 'jordan.e2e@test.com',
+    password: 'TestPassword789!',
+    firstName: 'Jordan',
+    lastName: 'TestOutsider',
+  },
 } as const;
 
 export const TEST_HOUSEHOLD = {
@@ -35,6 +41,41 @@ export const TEST_HOUSEHOLD = {
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+}
+
+/** API response shape for user profile. */
+export interface UserProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+/** API response shape for an expense (personal or shared). */
+export interface ExpenseResponse {
+  id: string;
+  name: string;
+  amount: number;
+  type: string;
+  category: string;
+  frequency?: string;
+  paidByUserId?: string | null;
+  createdById: string;
+}
+
+/** API response shape for an approval. */
+export interface ApprovalResponse {
+  id: string;
+  status: string;
+  proposedData: Record<string, unknown>;
+  requestedBy: { id: string; firstName: string; lastName: string };
+  reviewedBy?: { id: string; firstName: string; lastName: string } | null;
+}
+
+/** Typed API call result. */
+export interface ApiResult<T = unknown> {
+  status: number;
+  body: T;
 }
 
 /**
@@ -102,12 +143,12 @@ export async function apiLogin(email: string, password: string): Promise<AuthTok
 /**
  * Helper: make an authenticated API call.
  */
-export async function apiCall(
+export async function apiCall<T = unknown>(
   method: string,
   path: string,
   token: string,
   body?: unknown,
-): Promise<{ status: number; body: unknown }> {
+): Promise<ApiResult<T>> {
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers: {
@@ -117,7 +158,7 @@ export async function apiCall(
     body: body ? JSON.stringify(body) : undefined,
   });
   const responseBody = await res.json().catch(() => null);
-  return { status: res.status, body: responseBody };
+  return { status: res.status, body: responseBody as T };
 }
 
 /**
@@ -131,8 +172,8 @@ export async function cleanupAllTestData(): Promise<void> {
   const samTokens = await apiLogin(TEST_USERS.sam.email, TEST_USERS.sam.password);
 
   // 1. Cancel all pending approvals first
-  const pending = await apiCall('GET', '/approvals', alexTokens.accessToken);
-  for (const approval of (pending.body as any[]) ?? []) {
+  const pending = await apiCall<ApprovalResponse[]>('GET', '/approvals', alexTokens.accessToken);
+  for (const approval of pending.body ?? []) {
     await flushThrottleKeys();
     if (approval.requestedBy?.firstName === 'Alex') {
       await apiCall('PUT', `/approvals/${approval.id}/cancel`, alexTokens.accessToken);
@@ -143,25 +184,25 @@ export async function cleanupAllTestData(): Promise<void> {
 
   // 2. Delete all personal expenses for both users
   await flushThrottleKeys();
-  const alexExpenses = await apiCall('GET', '/expenses/personal', alexTokens.accessToken);
-  for (const expense of (alexExpenses.body as any[]) ?? []) {
+  const alexExpenses = await apiCall<ExpenseResponse[]>('GET', '/expenses/personal', alexTokens.accessToken);
+  for (const expense of alexExpenses.body ?? []) {
     await apiCall('DELETE', `/expenses/personal/${expense.id}`, alexTokens.accessToken);
   }
   await flushThrottleKeys();
-  const samExpenses = await apiCall('GET', '/expenses/personal', samTokens.accessToken);
-  for (const expense of (samExpenses.body as any[]) ?? []) {
+  const samExpenses = await apiCall<ExpenseResponse[]>('GET', '/expenses/personal', samTokens.accessToken);
+  for (const expense of samExpenses.body ?? []) {
     await apiCall('DELETE', `/expenses/personal/${expense.id}`, samTokens.accessToken);
   }
 
   // 3. Delete all shared expenses (propose delete → auto-accept)
   await flushThrottleKeys();
-  const sharedExpenses = await apiCall('GET', '/expenses/shared', alexTokens.accessToken);
-  for (const expense of (sharedExpenses.body as any[]) ?? []) {
+  const sharedExpenses = await apiCall<ExpenseResponse[]>('GET', '/expenses/shared', alexTokens.accessToken);
+  for (const expense of sharedExpenses.body ?? []) {
     await flushThrottleKeys();
     // Alex proposes deletion
-    const delRes = await apiCall('DELETE', `/expenses/shared/${expense.id}`, alexTokens.accessToken);
+    const delRes = await apiCall<ApprovalResponse>('DELETE', `/expenses/shared/${expense.id}`, alexTokens.accessToken);
     if (delRes.status === 201) {
-      const approvalId = (delRes.body as any)?.id;
+      const approvalId = delRes.body?.id;
       if (approvalId) {
         // Sam accepts the deletion
         await apiCall('PUT', `/approvals/${approvalId}/accept`, samTokens.accessToken, {});

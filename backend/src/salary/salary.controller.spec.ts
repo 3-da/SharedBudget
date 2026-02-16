@@ -48,12 +48,12 @@ describe('SalaryController', () => {
             const result = await controller.getMySalary(mockUserId);
 
             expect(salaryService.getMySalary).toHaveBeenCalledWith(mockUserId);
-            expect(result.id).toBe('salary-789');
-            expect(result.defaultAmount).toBe(3500);
+            expect(result!.id).toBe('salary-789');
+            expect(result!.defaultAmount).toBe(3500);
         });
 
         it('should return null when no salary exists for current month', async () => {
-            mockSalaryService.getMySalary.mockResolvedValue(null);
+            mockSalaryService.getMySalary.mockResolvedValue(null as any);
 
             const result = await controller.getMySalary(mockUserId);
 

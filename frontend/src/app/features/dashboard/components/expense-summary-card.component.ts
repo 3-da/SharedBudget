@@ -4,6 +4,7 @@ import { MemberExpenseSummary } from '../../../shared/models/dashboard.model';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-expense-summary-card',
   standalone: true,
   imports: [MatCardModule, CurrencyEurPipe],

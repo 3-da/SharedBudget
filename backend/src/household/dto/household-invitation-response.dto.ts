@@ -3,38 +3,38 @@ import { InvitationStatus } from '../../generated/prisma/enums';
 
 export class HouseholdInvitationResponseDto {
     @ApiProperty({ type: 'string' })
-    id: string;
+    id!: string;
 
     @ApiProperty({ enum: InvitationStatus, enumName: 'InvitationStatus' })
-    status: InvitationStatus;
+    status!: InvitationStatus;
 
     @ApiProperty({ type: 'string' })
-    householdId: string;
+    householdId!: string;
 
     @ApiProperty({ example: 'My Home' })
-    householdName: string;
+    householdName!: string;
 
     @ApiProperty({ type: 'string' })
-    senderId: string;
+    senderId!: string;
 
     @ApiProperty({ example: 'John' })
-    senderFirstName: string;
+    senderFirstName!: string;
 
     @ApiProperty({ example: 'Doe' })
-    senderLastName: string;
+    senderLastName!: string;
 
     @ApiProperty({ type: 'string' })
-    targetUserId: string;
+    targetUserId!: string;
 
     @ApiProperty({ example: 'Jane' })
-    targetFirstName: string;
+    targetFirstName!: string;
 
     @ApiProperty({ example: 'Doe' })
-    targetLastName: string;
+    targetLastName!: string;
 
     @ApiProperty({ type: 'string', format: 'date-time' })
-    createdAt: Date;
+    createdAt!: Date;
 
     @ApiProperty({ type: 'string', format: 'date-time', nullable: true })
-    respondedAt: Date | null;
+    respondedAt!: Date | null;
 }

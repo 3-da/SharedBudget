@@ -1,5 +1,5 @@
-import { Component, inject, OnInit, computed } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, computed, input, effect } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +11,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state.comp
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-member-detail',
   standalone: true,
   imports: [
@@ -28,7 +29,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       </app-empty-state>
     } @else if (memberIncome(); as member) {
       <app-page-header [title]="member.firstName + ' ' + member.lastName" subtitle="Member Details">
-        <button mat-icon-button (click)="goBack()"><mat-icon>arrow_back</mat-icon></button>
+        <button mat-icon-button (click)="goBack()" aria-label="Go back"><mat-icon aria-hidden="true">arrow_back</mat-icon></button>
       </app-page-header>
 
       <div class="detail-grid">
@@ -123,42 +124,44 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     .negative { color: var(--color-negative); }
   `],
 })
-export class MemberDetailComponent implements OnInit {
+export class MemberDetailComponent {
   readonly store = inject(HouseholdStore);
-  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  private userId = '';
+  readonly userId = input<string>('');
 
-  readonly isSelf = computed(() => this.userId === this.store.currentUserId());
+  readonly isSelf = computed(() => this.userId() === this.store.currentUserId());
 
   readonly memberIncome = computed(() =>
-    this.store.overview()?.income.find(m => m.userId === this.userId) ?? null,
+    this.store.overview()?.income.find(m => m.userId === this.userId()) ?? null,
   );
 
   readonly memberExpenseTotal = computed(() =>
-    this.store.overview()?.expenses.personalExpenses.find(e => e.userId === this.userId)?.personalExpensesTotal ?? 0,
+    this.store.overview()?.expenses.personalExpenses.find(e => e.userId === this.userId())?.personalExpensesTotal ?? 0,
   );
 
   readonly memberPersonalSavings = computed(() =>
-    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.personalSavings ?? 0,
+    this.store.overview()?.savings.members.find(s => s.userId === this.userId())?.personalSavings ?? 0,
   );
 
   readonly memberSharedSavings = computed(() =>
-    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.sharedSavings ?? 0,
+    this.store.overview()?.savings.members.find(s => s.userId === this.userId())?.sharedSavings ?? 0,
   );
 
   readonly memberRemainingBudget = computed(() =>
-    this.store.overview()?.savings.members.find(s => s.userId === this.userId)?.remainingBudget ?? 0,
+    this.store.overview()?.savings.members.find(s => s.userId === this.userId())?.remainingBudget ?? 0,
   );
 
-  ngOnInit(): void {
-    this.userId = this.route.snapshot.paramMap.get('userId') ?? '';
-    if (!this.store.hasHousehold()) {
-      this.store.loadHousehold();
-    } else if (!this.store.overview()) {
-      this.store.loadOverview();
-    }
+  constructor() {
+    effect(() => {
+      // Trigger on userId changes; load data if needed
+      this.userId();
+      if (!this.store.hasHousehold()) {
+        this.store.loadHousehold();
+      } else if (!this.store.overview()) {
+        this.store.loadOverview();
+      }
+    });
   }
 
   goBack(): void {

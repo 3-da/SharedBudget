@@ -55,7 +55,7 @@ export class CacheService {
      * @param fetchFn - Function to fetch data if cache miss
      * @returns The cached or freshly fetched data
      */
-    async getOrSet<T>(key: string, ttl: number, fetchFn: () => Promise<T>): Promise<T> {
+    async getOrSet<T>(key: string, ttl: number, fetchFn: () => Promise<T>, useLock = false): Promise<T> {
         const cached = await this.redis.get(key);
 
         if (cached) {
@@ -64,6 +64,22 @@ export class CacheService {
         }
 
         this.logger.debug(`Cache miss: ${key}`);
+
+        if (useLock) {
+            const lockKey = `lock:${key}`;
+            const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
+            if (!acquired) {
+                // Another process is fetching — wait briefly and retry from cache
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                const retried = await this.redis.get(key);
+                if (retried) {
+                    this.logger.debug(`Cache hit after lock wait: ${key}`);
+                    return JSON.parse(retried) as T;
+                }
+                // Cache still empty after wait — fall through to fetch
+            }
+        }
+
         const data = await fetchFn();
 
         await this.redis.set(key, JSON.stringify(data), 'EX', ttl);
@@ -216,7 +232,7 @@ export class CacheService {
 
             stream.on('end', async () => {
                 if (keysToDelete.length > 0) {
-                    await this.redis.del(...keysToDelete);
+                    await this.deleteKeysInChunks(keysToDelete);
                     this.logger.debug(`Cache pattern invalidated: ${pattern} (${keysToDelete.length} keys)`);
                 }
                 resolve();
@@ -227,6 +243,13 @@ export class CacheService {
                 reject(err);
             });
         });
+    }
+
+    private async deleteKeysInChunks(keys: string[], chunkSize = 1000): Promise<void> {
+        for (let i = 0; i < keys.length; i += chunkSize) {
+            const chunk = keys.slice(i, i + chunkSize);
+            if (chunk.length > 0) await this.redis.del(...chunk);
+        }
     }
 
     /**

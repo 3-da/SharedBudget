@@ -6,11 +6,11 @@ export class UpdateProfileDto {
     @IsString()
     @MinLength(1)
     @MaxLength(50)
-    firstName: string;
+    firstName!: string;
 
     @ApiProperty({ example: 'John', description: 'First name', minLength: 1, maxLength: 50 })
     @IsString()
     @MinLength(1)
     @MaxLength(50)
-    lastName: string;
+    lastName!: string;
 }

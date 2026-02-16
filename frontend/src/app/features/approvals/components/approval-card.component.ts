@@ -1,4 +1,4 @@
-import { Component, input, output, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +7,7 @@ import { Approval } from '../../../shared/models/approval.model';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-approval-card',
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, RelativeTimePipe],
@@ -23,14 +24,21 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
       </mat-card-header>
       <mat-card-content>
         <mat-chip-set>
-          @if (isCancelled()) {
-            <mat-chip class="status-cancelled">CANCELLED</mat-chip>
-          } @else {
-            <mat-chip [highlighted]="approval().status === 'PENDING'"
-              [class.status-accepted]="approval().status === 'ACCEPTED'"
-              [class.status-rejected]="approval().status === 'REJECTED'">
-              {{ approval().status }}
-            </mat-chip>
+          @switch (approval().status) {
+            @case ('CANCELLED') {
+              <mat-chip class="status-cancelled">CANCELLED</mat-chip>
+            }
+            @case ('ACCEPTED') {
+              <mat-chip class="status-accepted">ACCEPTED</mat-chip>
+            }
+            @case ('REJECTED') {
+              <mat-chip class="status-rejected">REJECTED</mat-chip>
+            }
+            @default {
+              <mat-chip [highlighted]="approval().status === 'PENDING'">
+                {{ approval().status }}
+              </mat-chip>
+            }
           }
           <mat-chip>{{ approval().action }}</mat-chip>
         </mat-chip-set>
@@ -44,7 +52,7 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
             }
           </div>
         }
-        @if (approval().message && !isCancelled()) {
+        @if (approval().message && approval().status !== 'CANCELLED') {
           <p class="message">{{ approval().message }}</p>
         }
       </mat-card-content>
@@ -84,9 +92,4 @@ export class ApprovalCardComponent {
   readonly accept = output<string>();
   readonly reject = output<string>();
   readonly cancel = output<string>();
-
-  readonly isCancelled = computed(() => {
-    const msg = this.approval().message;
-    return msg?.toLowerCase().includes('cancelled') ?? false;
-  });
 }

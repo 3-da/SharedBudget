@@ -108,7 +108,7 @@ describe('RecurringOverrideService', () => {
             // Assert
             expect(mockExpenseHelper.requireMembership).toHaveBeenCalledWith(mockUserId);
             expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
-                where: { id: mockExpenseId, householdId: mockHouseholdId, deletedAt: null },
+                where: { id: mockExpenseId, householdId: mockHouseholdId },
             });
             expect(mockPrismaService.recurringOverride.upsert).toHaveBeenCalledWith({
                 where: {
@@ -190,7 +190,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.upsertOverride(mockUserId, mockExpenseId, 2026, 7, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -205,7 +205,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.upsertOverride(mockUserId, mockExpenseId, 2026, 7, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -220,7 +220,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.upsertOverride(mockUserId, mockOneTimeExpense.id, 2026, 7, dto);
                 expect.unreachable('Should have thrown BadRequestException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(BadRequestException);
                 expect(error.message).toBe('Only recurring expenses can have overrides');
             }
@@ -235,7 +235,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.upsertOverride(mockUserId, 'expense-in-other-household', 2026, 7, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -345,7 +345,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.updateDefaultAmount(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -360,7 +360,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.updateDefaultAmount(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -375,7 +375,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.updateDefaultAmount(mockUserId, mockOneTimeExpense.id, dto);
                 expect.unreachable('Should have thrown BadRequestException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(BadRequestException);
                 expect(error.message).toBe('Only recurring expenses can have their default amount updated');
             }
@@ -390,7 +390,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.updateDefaultAmount(mockUserId, 'expense-in-other-household', dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -440,7 +440,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.listOverrides(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -455,7 +455,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.listOverrides(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -470,7 +470,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.listOverrides(mockUserId, 'expense-in-other-household');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -530,7 +530,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteOverride(mockUserId, mockExpenseId, 2026, 7);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -546,7 +546,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteOverride(mockUserId, mockExpenseId, 2026, 7);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -614,7 +614,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteAllOverrides(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -629,7 +629,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteAllOverrides(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -644,7 +644,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteAllOverrides(mockUserId, 'expense-in-other-household');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -730,7 +730,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -745,7 +745,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -760,7 +760,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.batchUpsertOverrides(mockUserId, mockOneTimeExpense.id, batchOverrides);
                 expect.unreachable('Should have thrown BadRequestException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(BadRequestException);
                 expect(error.message).toBe('Only recurring expenses can have overrides');
             }
@@ -775,7 +775,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.batchUpsertOverrides(mockUserId, 'expense-in-other-household', batchOverrides);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -883,7 +883,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -898,7 +898,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -913,7 +913,7 @@ describe('RecurringOverrideService', () => {
             try {
                 await service.deleteUpcomingOverrides(mockUserId, 'expense-in-other-household', 2026, 7);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }

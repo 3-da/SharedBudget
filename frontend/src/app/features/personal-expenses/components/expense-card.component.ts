@@ -1,4 +1,4 @@
-import { Component, input, output, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, computed } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,6 +10,7 @@ import { PaymentStatus } from '../../../shared/models/enums';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-expense-card',
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatTooltipModule, CurrencyEurPipe],
@@ -32,21 +33,21 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       </mat-card-content>
       <mat-card-actions>
         @if (isPaid()) {
-          <button mat-icon-button (click)="undoPaid.emit(expense().id)" matTooltip="Mark as unpaid">
-            <mat-icon>undo</mat-icon>
+          <button mat-icon-button (click)="undoPaid.emit(expense().id)" matTooltip="Mark as unpaid" [attr.aria-label]="'Mark ' + expense().name + ' as unpaid'">
+            <mat-icon aria-hidden="true">undo</mat-icon>
           </button>
         } @else {
-          <button mat-icon-button (click)="markPaid.emit(expense().id)" matTooltip="Mark as paid">
-            <mat-icon>check_circle</mat-icon>
+          <button mat-icon-button (click)="markPaid.emit(expense().id)" matTooltip="Mark as paid" [attr.aria-label]="'Mark ' + expense().name + ' as paid'">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
           </button>
         }
         @if (hasTimeline()) {
-          <button mat-icon-button (click)="viewTimeline.emit(expense().id)" matTooltip="Timeline">
-            <mat-icon>timeline</mat-icon>
+          <button mat-icon-button (click)="viewTimeline.emit(expense().id)" matTooltip="Timeline" [attr.aria-label]="'View timeline for ' + expense().name">
+            <mat-icon aria-hidden="true">timeline</mat-icon>
           </button>
         }
-        <button mat-icon-button (click)="edit.emit(expense().id)"><mat-icon>edit</mat-icon></button>
-        <button mat-icon-button (click)="remove.emit(expense().id)"><mat-icon>delete</mat-icon></button>
+        <button mat-icon-button (click)="edit.emit(expense().id)" [attr.aria-label]="'Edit ' + expense().name"><mat-icon aria-hidden="true">edit</mat-icon></button>
+        <button mat-icon-button (click)="remove.emit(expense().id)" [attr.aria-label]="'Delete ' + expense().name"><mat-icon aria-hidden="true">delete</mat-icon></button>
       </mat-card-actions>
     </mat-card>
   `,

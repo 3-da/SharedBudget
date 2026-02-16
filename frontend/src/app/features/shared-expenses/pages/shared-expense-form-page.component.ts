@@ -1,5 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 import { CreateExpenseRequest } from '../../../shared/models/expense.model';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-shared-expense-form-page',
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, ExpenseFormComponent, LoadingSpinnerComponent],
@@ -16,9 +17,9 @@ import { CreateExpenseRequest } from '../../../shared/models/expense.model';
     <div class="form-container">
       <mat-card>
         <mat-card-header>
-          <mat-card-title>{{ isEdit ? 'Propose Update' : 'Propose New' }} Shared Expense</mat-card-title>
-          <button mat-icon-button class="close-btn" (click)="router.navigate(['/expenses/shared'])">
-            <mat-icon>close</mat-icon>
+          <mat-card-title>{{ isEdit() ? 'Propose Update' : 'Propose New' }} Shared Expense</mat-card-title>
+          <button mat-icon-button class="close-btn" (click)="router.navigate(['/expenses/shared'])" aria-label="Close form">
+            <mat-icon aria-hidden="true">close</mat-icon>
           </button>
         </mat-card-header>
         <mat-card-content>
@@ -41,23 +42,25 @@ import { CreateExpenseRequest } from '../../../shared/models/expense.model';
     .close-btn { position: absolute; top: 8px; right: 8px; }
   `],
 })
-export class SharedExpenseFormPageComponent implements OnInit {
+export class SharedExpenseFormPageComponent {
   readonly store = inject(SharedExpenseStore);
-  private readonly route = inject(ActivatedRoute);
   readonly router = inject(Router);
-  isEdit = false;
-  private expenseId = '';
 
-  ngOnInit(): void {
-    this.expenseId = this.route.snapshot.params['id'] ?? '';
-    this.isEdit = !!this.expenseId;
-    if (this.isEdit) this.store.loadExpense(this.expenseId);
-    else this.store.selectedExpense.set(null);
+  readonly id = input<string>('');
+  readonly isEdit = computed(() => !!this.id());
+
+  constructor() {
+    effect(() => {
+      const expenseId = this.id();
+      if (expenseId) this.store.loadExpense(expenseId);
+      else this.store.selectedExpense.set(null);
+    });
   }
 
   onSave(dto: CreateExpenseRequest): void {
     const onSuccess = () => this.router.navigate(['/expenses/shared']);
-    if (this.isEdit) this.store.proposeUpdate(this.expenseId, dto, undefined, undefined, onSuccess);
+    const expenseId = this.id();
+    if (this.isEdit()) this.store.proposeUpdate(expenseId, dto, undefined, undefined, onSuccess);
     else this.store.proposeCreate(dto, undefined, undefined, onSuccess);
   }
 }

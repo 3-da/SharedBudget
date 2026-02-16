@@ -119,6 +119,7 @@ enum ApprovalStatus {
   PENDING
   ACCEPTED
   REJECTED
+  CANCELLED
 }
 
 enum InvitationStatus {

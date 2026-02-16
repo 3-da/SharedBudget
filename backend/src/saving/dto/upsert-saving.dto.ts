@@ -5,7 +5,7 @@ export class UpsertSavingDto {
     @ApiProperty({ example: 200.0, description: 'Savings amount for the month', minimum: 0 })
     @IsNumber()
     @Min(0)
-    amount: number;
+    amount!: number;
 
     @ApiPropertyOptional({ example: 6, description: 'Month (1-12). Defaults to current month.', minimum: 1, maximum: 12 })
     @IsOptional()

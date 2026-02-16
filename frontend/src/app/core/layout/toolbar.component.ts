@@ -16,13 +16,13 @@ import { ThemeService } from '../theme/theme.service';
   imports: [RouterLink, MatToolbarModule, MatIconModule, MatButtonModule, MatMenuModule, MatTooltipModule],
   template: `
     <mat-toolbar color="primary" class="toolbar">
-      <button mat-icon-button (click)="menuToggle.emit()">
-        <mat-icon>menu</mat-icon>
+      <button mat-icon-button (click)="menuToggle.emit()" aria-label="Toggle navigation menu">
+        <mat-icon aria-hidden="true">menu</mat-icon>
       </button>
       <span class="app-name">SharedBudget</span>
       <span class="spacer"></span>
-      <button mat-icon-button (click)="themeService.toggle()" [matTooltip]="themeTooltip()">
-        <mat-icon>{{ themeIcon() }}</mat-icon>
+      <button mat-icon-button (click)="themeService.toggle()" [matTooltip]="themeTooltip()" [attr.aria-label]="'Switch to ' + (themeService.isDark() ? 'light' : 'dark') + ' theme'">
+        <mat-icon aria-hidden="true">{{ themeIcon() }}</mat-icon>
       </button>
       <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
         <mat-icon>account_circle</mat-icon>

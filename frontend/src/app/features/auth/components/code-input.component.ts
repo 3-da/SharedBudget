@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, output, signal, viewChildren, ElementRef, AfterViewInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, output, signal, viewChildren, ElementRef, AfterViewInit } from '@angular/core';
 
 @Component({
   selector: 'app-code-input',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="code-container">
+    <div class="code-container" role="group" aria-label="Verification code, 6 digits">
       @for (i of digits; track i) {
         <input
           #digitInput
@@ -13,11 +13,15 @@ import { ChangeDetectionStrategy, Component, output, signal, viewChildren, Eleme
           maxlength="1"
           inputmode="numeric"
           class="digit-input"
+          [attr.aria-label]="'Digit ' + (i + 1) + ' of 6'"
           [value]="values()[i]"
           (input)="onInput(i, $event)"
           (keydown)="onKeyDown(i, $event)"
           (paste)="onPaste($event)" />
       }
+    </div>
+    <div aria-live="polite" class="cdk-visually-hidden">
+      @if (isComplete()) { Code entered. Verifying... }
     </div>
   `,
   styles: [`
@@ -38,6 +42,7 @@ export class CodeInputComponent implements AfterViewInit {
   readonly digits = [0, 1, 2, 3, 4, 5];
   readonly values = signal<string[]>(['', '', '', '', '', '']);
   private readonly inputs = viewChildren<ElementRef>('digitInput');
+  readonly isComplete = computed(() => this.values().join('').length === 6);
 
   ngAfterViewInit(): void {
     setTimeout(() => this.inputs()[0]?.nativeElement.focus(), 0);

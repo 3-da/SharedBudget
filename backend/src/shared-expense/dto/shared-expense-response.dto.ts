@@ -2,28 +2,28 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SharedExpenseResponseDto {
     @ApiProperty({ type: 'string' })
-    id: string;
+    id!: string;
 
     @ApiProperty({ type: 'string' })
-    householdId: string;
+    householdId!: string;
 
     @ApiProperty({ type: 'string' })
-    createdById: string;
+    createdById!: string;
 
     @ApiPropertyOptional({ type: 'string', nullable: true, description: 'User who pays. Null means split equally.' })
-    paidByUserId: string | null;
+    paidByUserId!: string | null;
 
     @ApiProperty({ example: 'Monthly Rent' })
-    name: string;
+    name!: string;
 
     @ApiProperty({ example: 500.0, type: 'number' })
-    amount: number;
+    amount!: number;
 
     @ApiProperty({ example: 'RECURRING' })
-    category: string;
+    category!: string;
 
     @ApiProperty({ example: 'MONTHLY' })
-    frequency: string;
+    frequency!: string;
 
     @ApiPropertyOptional({ example: 'FULL' })
     yearlyPaymentStrategy?: string | null;
@@ -32,7 +32,7 @@ export class SharedExpenseResponseDto {
     installmentFrequency?: string | null;
 
     @ApiPropertyOptional({ example: 24, description: 'Total number of installments' })
-    installmentCount: number | null;
+    installmentCount!: number | null;
 
     @ApiPropertyOptional({ example: 6 })
     paymentMonth?: number | null;
@@ -44,8 +44,8 @@ export class SharedExpenseResponseDto {
     year?: number | null;
 
     @ApiProperty({ type: 'string', format: 'date-time' })
-    createdAt: Date;
+    createdAt!: Date;
 
     @ApiProperty({ type: 'string', format: 'date-time' })
-    updatedAt: Date;
+    updatedAt!: Date;
 }

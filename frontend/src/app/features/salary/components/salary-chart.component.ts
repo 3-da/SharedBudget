@@ -1,10 +1,11 @@
-import { Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { ChartConfiguration } from 'chart.js';
 import { BaseChartComponent } from '../../../shared/components/base-chart.component';
 import { SalaryResponse } from '../../../shared/models/salary.model';
 import { cssVar } from '../../../shared/utils/chart-colors';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-salary-chart',
   standalone: true,
   imports: [BaseChartComponent],

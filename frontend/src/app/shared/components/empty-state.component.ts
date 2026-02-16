@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule],
   template: `
-    <div class="empty-state">
+    <div class="empty-state" role="status">
       <mat-icon class="empty-icon">{{ icon() }}</mat-icon>
       <h3>{{ title() }}</h3>
       @if (description()) {

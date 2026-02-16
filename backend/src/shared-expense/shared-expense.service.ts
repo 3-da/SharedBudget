@@ -47,7 +47,6 @@ export class SharedExpenseService {
             const where: any = {
                 householdId: membership.householdId,
                 type: ExpenseType.SHARED,
-                deletedAt: null,
             };
 
             if (query.category) where.category = query.category;

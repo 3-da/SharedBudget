@@ -9,6 +9,7 @@ import { ApprovalAction, ApprovalStatus, ExpenseType } from '../generated/prisma
 import { Prisma } from '../generated/prisma/client';
 import { buildExpenseNullableFields, mapToApprovalResponse } from '../common/expense/expense.mappers';
 import { CacheService } from '../common/cache/cache.service';
+import { validateProposedData } from './interfaces/proposed-expense-data.interface';
 
 @Injectable()
 export class ApprovalService {
@@ -78,7 +79,7 @@ export class ApprovalService {
         return this.cacheService.getOrSet(cacheKey, this.cacheService.summaryTTL, async () => {
             const where: Prisma.ExpenseApprovalWhereInput = {
                 householdId: membership.householdId,
-                status: query.status ? query.status : { in: [ApprovalStatus.ACCEPTED, ApprovalStatus.REJECTED] },
+                status: query.status ? query.status : { in: [ApprovalStatus.ACCEPTED, ApprovalStatus.REJECTED, ApprovalStatus.CANCELLED] },
             };
 
             const approvals = await this.prismaService.expenseApproval.findMany({
@@ -125,11 +126,6 @@ export class ApprovalService {
         const membership = await this.expenseHelper.requireMembership(userId);
         const approval = await this.findApprovalOrFail(approvalId, membership.householdId);
 
-        if (approval.status !== ApprovalStatus.PENDING) {
-            this.logger.warn(`Approval not pending: ${approvalId}, status: ${approval.status}`);
-            throw new ConflictException('This approval has already been reviewed');
-        }
-
         if (approval.requestedById === userId) {
             this.logger.warn(`Self-review attempt: user ${userId} on approval ${approvalId}`);
             throw new ForbiddenException('You cannot review your own approval');
@@ -138,14 +134,25 @@ export class ApprovalService {
         const now = new Date();
 
         const result = await this.prismaService.$transaction(async (tx) => {
-            const updatedApproval = await tx.expenseApproval.update({
-                where: { id: approvalId },
+            // Atomic status check + update to prevent TOCTOU race condition
+            const updated = await tx.expenseApproval.updateMany({
+                where: { id: approvalId, status: ApprovalStatus.PENDING },
                 data: {
                     status: ApprovalStatus.ACCEPTED,
                     reviewedById: userId,
                     message: dto.message ?? null,
                     reviewedAt: now,
                 },
+            });
+
+            if (updated.count === 0) {
+                this.logger.warn(`Approval not pending: ${approvalId}`);
+                throw new ConflictException('This approval has already been reviewed or cancelled');
+            }
+
+            // Fetch the full approval record for the response and expense mutation
+            const updatedApproval = await tx.expenseApproval.findUniqueOrThrow({
+                where: { id: approvalId },
                 include: {
                     requestedBy: { select: { id: true, firstName: true, lastName: true } },
                     reviewedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -153,7 +160,7 @@ export class ApprovalService {
             });
 
             if (approval.action === ApprovalAction.CREATE) {
-                const proposed = approval.proposedData as any;
+                const proposed = validateProposedData(approval.proposedData);
                 await tx.expense.create({
                     data: {
                         householdId: approval.householdId,
@@ -168,10 +175,17 @@ export class ApprovalService {
                     },
                 });
             } else if (approval.action === ApprovalAction.UPDATE) {
-                const proposed = approval.proposedData as any;
+                const proposed = validateProposedData(approval.proposedData);
                 await tx.expense.update({
                     where: { id: approval.expenseId! },
-                    data: proposed,
+                    data: {
+                        name: proposed.name,
+                        amount: proposed.amount,
+                        category: proposed.category,
+                        frequency: proposed.frequency,
+                        paidByUserId: proposed.paidByUserId ?? null,
+                        ...buildExpenseNullableFields(proposed),
+                    },
                 });
             } else if (approval.action === ApprovalAction.DELETE) {
                 await tx.expense.update({
@@ -216,24 +230,29 @@ export class ApprovalService {
         const membership = await this.expenseHelper.requireMembership(userId);
         const approval = await this.findApprovalOrFail(approvalId, membership.householdId);
 
-        if (approval.status !== ApprovalStatus.PENDING) {
-            this.logger.warn(`Approval not pending: ${approvalId}, status: ${approval.status}`);
-            throw new ConflictException('This approval has already been reviewed');
-        }
-
         if (approval.requestedById === userId) {
             this.logger.warn(`Self-review attempt: user ${userId} on approval ${approvalId}`);
             throw new ForbiddenException('You cannot review your own approval');
         }
 
-        const updatedApproval = await this.prismaService.expenseApproval.update({
-            where: { id: approvalId },
+        // Atomic status check + update to prevent TOCTOU race condition
+        const updated = await this.prismaService.expenseApproval.updateMany({
+            where: { id: approvalId, status: ApprovalStatus.PENDING },
             data: {
                 status: ApprovalStatus.REJECTED,
                 reviewedById: userId,
                 message: dto.message,
                 reviewedAt: new Date(),
             },
+        });
+
+        if (updated.count === 0) {
+            this.logger.warn(`Approval not pending: ${approvalId}, status: ${approval.status}`);
+            throw new ConflictException('This approval has already been reviewed or cancelled');
+        }
+
+        const updatedApproval = await this.prismaService.expenseApproval.findUniqueOrThrow({
+            where: { id: approvalId },
             include: {
                 requestedBy: { select: { id: true, firstName: true, lastName: true } },
                 reviewedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -250,7 +269,7 @@ export class ApprovalService {
 
     /**
      * Cancels a pending approval that was requested by the authenticated user.
-     * Sets the status to REJECTED with the reviewer being the requester themselves.
+     * Sets the status to CANCELLED with the reviewer being the requester themselves.
      * No expense changes are applied.
      *
      * Use case: A requester changes their mind about a proposed expense change
@@ -262,7 +281,7 @@ export class ApprovalService {
      *
      * @param userId - The authenticated user's ID (must be the original requester)
      * @param approvalId - The approval to cancel
-     * @returns The updated approval record with status REJECTED
+     * @returns The updated approval record with status CANCELLED
      * @throws {NotFoundException} If the user is not a member of any household
      * @throws {NotFoundException} If the approval does not exist or belongs to a different household
      * @throws {ConflictException} If the approval is not in PENDING status
@@ -274,24 +293,29 @@ export class ApprovalService {
         const membership = await this.expenseHelper.requireMembership(userId);
         const approval = await this.findApprovalOrFail(approvalId, membership.householdId);
 
-        if (approval.status !== ApprovalStatus.PENDING) {
-            this.logger.warn(`Approval not pending: ${approvalId}, status: ${approval.status}`);
-            throw new ConflictException('This approval has already been reviewed');
-        }
-
         if (approval.requestedById !== userId) {
             this.logger.warn(`Non-requester cancel attempt: user ${userId} on approval ${approvalId}`);
             throw new ForbiddenException('Only the requester can cancel their own approval');
         }
 
-        const updatedApproval = await this.prismaService.expenseApproval.update({
-            where: { id: approvalId },
+        // Atomic status check + update to prevent TOCTOU race condition
+        const updated = await this.prismaService.expenseApproval.updateMany({
+            where: { id: approvalId, status: ApprovalStatus.PENDING },
             data: {
-                status: ApprovalStatus.REJECTED,
+                status: ApprovalStatus.CANCELLED,
                 reviewedById: userId,
                 message: 'Cancelled by requester',
                 reviewedAt: new Date(),
             },
+        });
+
+        if (updated.count === 0) {
+            this.logger.warn(`Approval not pending: ${approvalId}, status: ${approval.status}`);
+            throw new ConflictException('This approval has already been reviewed or cancelled');
+        }
+
+        const updatedApproval = await this.prismaService.expenseApproval.findUniqueOrThrow({
+            where: { id: approvalId },
             include: {
                 requestedBy: { select: { id: true, firstName: true, lastName: true } },
                 reviewedBy: { select: { id: true, firstName: true, lastName: true } },

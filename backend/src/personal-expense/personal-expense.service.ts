@@ -47,7 +47,6 @@ export class PersonalExpenseService {
             const where: any = {
                 createdById: userId,
                 type: ExpenseType.PERSONAL,
-                deletedAt: null,
             };
 
             if (query.category) where.category = query.category;

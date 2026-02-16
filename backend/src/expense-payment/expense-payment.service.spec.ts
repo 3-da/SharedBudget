@@ -105,7 +105,7 @@ describe('ExpensePaymentService', () => {
             // Assert
             expect(mockExpenseHelper.requireMembership).toHaveBeenCalledWith(mockUserId);
             expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
-                where: { id: mockExpenseId, householdId: mockHouseholdId, deletedAt: null },
+                where: { id: mockExpenseId, householdId: mockHouseholdId },
             });
             expect(mockPrismaService.expensePaymentStatus.upsert).toHaveBeenCalledWith({
                 where: {
@@ -171,7 +171,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.markPaid(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -186,7 +186,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.markPaid(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -201,7 +201,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.markPaid(mockUserId, 'expense-in-other-household', dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -306,7 +306,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.undoPaid(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -321,7 +321,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.undoPaid(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -337,7 +337,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.undoPaid(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('No payment status found for this expense and period');
             }
@@ -450,7 +450,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.cancel(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -463,7 +463,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.cancel(mockUserId, mockExpenseId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -515,7 +515,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.getPaymentStatuses(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -530,7 +530,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.getPaymentStatuses(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
@@ -545,7 +545,7 @@ describe('ExpensePaymentService', () => {
             try {
                 await service.getPaymentStatuses(mockUserId, 'expense-in-other-household');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }

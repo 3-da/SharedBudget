@@ -8,6 +8,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-member-list',
   standalone: true,
   imports: [MatListModule, MatIconModule, MatMenuModule, MatButtonModule, RelativeTimePipe],
@@ -25,8 +26,8 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
           <span matListItemLine>Joined {{ member.joinedAt | relativeTime }}</span>
           @if (isOwner() && member.role !== roles.OWNER) {
             <ng-container matListItemMeta>
-              <button mat-icon-button [matMenuTriggerFor]="menu">
-                <mat-icon>more_vert</mat-icon>
+              <button mat-icon-button [matMenuTriggerFor]="menu" [attr.aria-label]="'Actions for ' + member.firstName">
+                <mat-icon aria-hidden="true">more_vert</mat-icon>
               </button>
               <mat-menu #menu="matMenu">
                 <button mat-menu-item (click)="transfer.emit(member.userId)">

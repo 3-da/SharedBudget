@@ -14,6 +14,8 @@ A household budget management app where members track personal/shared expenses, 
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Tech stack, data model, auth flow, caching, infrastructure  |
 | [CLAUDE.md](./CLAUDE.md)             | Development rules for Claude Code (tests, logging, Swagger) |
 | [PLAN.md](./PLAN.md)                 | Bug fix & feature plan (all sprints complete)               |
+| [docs/FRONTEND_ARCHITECTURE.md](./docs/FRONTEND_ARCHITECTURE.md) | Frontend deep-dive (15 sections, interview-ready) |
+| [docs/backend/](./docs/backend/)     | Backend deep-dive (8 docs: DB, auth, architecture, approvals, caching, API, security, testing) |
 
 ---
 
@@ -276,7 +278,7 @@ GET /savings/household              All household savings
 | YearlyPaymentStrategy | FULL, INSTALLMENTS                     |
 | InstallmentFrequency  | MONTHLY, QUARTERLY, SEMI_ANNUAL        |
 | ApprovalAction        | CREATE, UPDATE, DELETE                  |
-| ApprovalStatus        | PENDING, ACCEPTED, REJECTED            |
+| ApprovalStatus        | PENDING, ACCEPTED, REJECTED, CANCELLED |
 | InvitationStatus      | PENDING, ACCEPTED, DECLINED, CANCELLED |
 | PaymentStatus         | PENDING, PAID, CANCELLED               |
 

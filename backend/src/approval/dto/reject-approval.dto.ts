@@ -6,5 +6,5 @@ export class RejectApprovalDto {
     @IsString()
     @IsNotEmpty()
     @MaxLength(500)
-    message: string;
+    message!: string;
 }

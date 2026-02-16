@@ -8,20 +8,20 @@ export class CreateSharedExpenseDto {
     @IsNotEmpty()
     @MinLength(1)
     @MaxLength(100)
-    name: string;
+    name!: string;
 
     @ApiProperty({ example: 500.0, description: 'Amount in EUR', minimum: 1 })
     @IsNumber()
     @Min(1)
-    amount: number;
+    amount!: number;
 
     @ApiProperty({ enum: ExpenseCategory, example: 'RECURRING', description: 'RECURRING or ONE_TIME' })
     @IsEnum(ExpenseCategory)
-    category: ExpenseCategory;
+    category!: ExpenseCategory;
 
     @ApiProperty({ enum: ExpenseFrequency, example: 'MONTHLY', description: 'MONTHLY or YEARLY' })
     @IsEnum(ExpenseFrequency)
-    frequency: ExpenseFrequency;
+    frequency!: ExpenseFrequency;
 
     @ApiPropertyOptional({ description: 'User ID of the person who pays. Null means split equally among members.' })
     @IsOptional()

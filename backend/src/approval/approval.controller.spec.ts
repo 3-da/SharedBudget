@@ -19,7 +19,9 @@ describe('ApprovalController', () => {
         action: 'CREATE',
         status: 'PENDING',
         requestedById: 'user-other',
+        requestedBy: { id: 'user-other', firstName: 'Sam', lastName: 'Member' },
         reviewedById: null,
+        reviewedBy: null,
         message: null,
         proposedData: { name: 'Monthly Rent', amount: 800 },
         createdAt: new Date(),
@@ -44,7 +46,7 @@ describe('ApprovalController', () => {
 
     const mockCancelledApproval: ApprovalResponseDto = {
         ...mockPendingApproval,
-        status: 'REJECTED',
+        status: 'CANCELLED',
         reviewedById: 'user-other',
         message: 'Cancelled by requester',
         reviewedAt: new Date(),
@@ -130,7 +132,7 @@ describe('ApprovalController', () => {
             const result = await controller.cancelApproval(mockUserId, mockApprovalId);
 
             expect(service.cancelApproval).toHaveBeenCalledWith(mockUserId, mockApprovalId);
-            expect(result.status).toBe('REJECTED');
+            expect(result.status).toBe('CANCELLED');
             expect(result.message).toBe('Cancelled by requester');
         });
     });

@@ -2,20 +2,20 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class UserProfileResponseDto {
     @ApiProperty({ type: 'string' })
-    id: string;
+    id!: string;
 
     @ApiProperty({ example: 'user@example.com' })
-    email: string;
+    email!: string;
 
     @ApiProperty({ example: 'John' })
-    firstName: string;
+    firstName!: string;
 
     @ApiProperty({ example: 'Doe' })
-    lastName: string;
+    lastName!: string;
 
     @ApiProperty({ type: 'string', format: 'date-time' })
-    createdAt: Date;
+    createdAt!: Date;
 
     @ApiProperty({ type: 'string', format: 'date-time' })
-    updatedAt: Date;
+    updatedAt!: Date;
 }

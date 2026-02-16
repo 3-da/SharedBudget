@@ -1,8 +1,9 @@
-import {computed, inject, Injectable, signal} from '@angular/core';
-import {Approval} from '../../../shared/models/approval.model';
-import {ApprovalService} from '../services/approval.service';
-import {SharedExpenseStore} from '../../shared-expenses/stores/shared-expense.store';
-import {DashboardStore} from '../../dashboard/stores/dashboard.store';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { Approval } from '../../../shared/models/approval.model';
+import { ApprovalService } from '../services/approval.service';
+import { SharedExpenseStore } from '../../shared-expenses/stores/shared-expense.store';
+import { DashboardStore } from '../../dashboard/stores/dashboard.store';
+import { NotificationStore } from '../../../core/stores/notification.store';
 
 @Injectable({ providedIn: 'root' })
 export class ApprovalStore {
@@ -17,6 +18,13 @@ export class ApprovalStore {
   private readonly service = inject(ApprovalService);
   private readonly sharedExpenseStore = inject(SharedExpenseStore);
   private readonly dashboardStore = inject(DashboardStore);
+  private readonly notificationStore = inject(NotificationStore);
+
+  constructor() {
+    effect(() => {
+      this.notificationStore.setPendingApprovalsCount(this.pendingCount());
+    });
+  }
 
   loadPending(): void {
     this.loading.set(true);

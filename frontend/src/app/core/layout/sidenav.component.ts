@@ -1,9 +1,9 @@
-import { Component, inject, output, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
-import { ApprovalStore } from '../../features/approvals/stores/approval.store';
+import { NotificationStore } from '../stores/notification.store';
 
 
 interface NavItem {
@@ -13,6 +13,7 @@ interface NavItem {
 }
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sidenav',
   standalone: true,
   imports: [RouterLink, RouterLinkActive, MatListModule, MatIconModule, MatBadgeModule],
@@ -24,7 +25,7 @@ interface NavItem {
            routerLinkActive="active"
            (click)="navClick.emit()">
           <mat-icon matListItemIcon
-            [matBadge]="item.route === '/approvals' && approvalStore.pendingCount() > 0 ? approvalStore.pendingCount() : null"
+            [matBadge]="item.route === '/approvals' && notificationStore.pendingApprovalsCount() > 0 ? notificationStore.pendingApprovalsCount() : null"
             matBadgeColor="warn">{{ item.icon }}</mat-icon>
           <span matListItemTitle>{{ item.label }}</span>
         </a>
@@ -37,7 +38,7 @@ interface NavItem {
   `],
 })
 export class SidenavComponent implements OnInit {
-  readonly approvalStore = inject(ApprovalStore);
+  readonly notificationStore = inject(NotificationStore);
   navClick = output();
 
   readonly navItems: NavItem[] = [
@@ -50,6 +51,6 @@ export class SidenavComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.approvalStore.loadPending();
+    this.notificationStore.loadPendingApprovalsCount();
   }
 }

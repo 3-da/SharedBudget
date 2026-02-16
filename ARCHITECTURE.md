@@ -1,11 +1,13 @@
 # Household Budget Tracker — Architecture & Technical Reference
 
-**Updated:** February 12, 2026
+**Updated:** February 14, 2026
 
 > **Related docs:**
 > - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
 > - `SPEC.md` — Business requirements, user stories, feature specs
 > - `CLAUDE.md` — Development process rules for Claude Code
+> - `docs/FRONTEND_ARCHITECTURE.md` — Frontend architecture deep-dive (15 sections)
+> - `docs/backend/01-08` — Backend architecture deep-dive (8 documents)
 
 ---
 
@@ -201,6 +203,24 @@
 | paidAt       | DateTime      | When the settlement was marked as paid  |
 
 **Constraints:** Unique on (householdId, month, year). One settlement record per household per month.
+
+#### Phase 1 Constraints
+
+The current Settlement model is designed for **exactly 2 members** per household:
+- Direct foreign keys `paidByUserId` and `paidToUserId` represent a one-to-one payment flow
+- Each settlement record encodes a single debt direction (payer → payee)
+- Works well for households with 2 people but becomes problematic with 4+ members
+
+**Phase 2 (Multi-Party Settlements)** would require:
+- A **multi-party debt graph model** that can represent complex settlement scenarios (e.g., one person paying multiple creditors in a single settlement)
+- Possibly a join table `SettlementParticipant(settlementId, userId, role: 'payer'|'receiver', amount)` to track variable-member payoff chains
+- Alternative: Explicit `SettlementFlow` records for each debt edge in the graph
+
+**Dashboard Impact:**
+- Current aggregation queries assume 2 members and would fail or produce incorrect totals with 4+ members
+- `getPendingApprovalsCount`, settlement history summaries, and expense breakdowns are currently written for binary households
+- Refactoring would require parameterized queries that dynamically handle variable member counts
+
 
 ### ExpensePaymentStatus
 | Field     | Type          | Notes                                    |

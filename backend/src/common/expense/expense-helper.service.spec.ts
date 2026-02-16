@@ -71,7 +71,7 @@ describe('ExpenseHelperService', () => {
             const result = await service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL);
 
             expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
-                where: { id: mockExpenseId, type: ExpenseType.PERSONAL, householdId: mockHouseholdId, deletedAt: null },
+                where: { id: mockExpenseId, type: ExpenseType.PERSONAL, householdId: mockHouseholdId },
             });
             expect(result).toEqual(mockExpense);
         });
@@ -83,7 +83,7 @@ describe('ExpenseHelperService', () => {
             const result = await service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.SHARED);
 
             expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
-                where: { id: mockExpenseId, type: ExpenseType.SHARED, householdId: mockHouseholdId, deletedAt: null },
+                where: { id: mockExpenseId, type: ExpenseType.SHARED, householdId: mockHouseholdId },
             });
             expect(result).toEqual(sharedExpense);
         });
@@ -102,14 +102,15 @@ describe('ExpenseHelperService', () => {
             await expect(service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.SHARED)).rejects.toThrow('Shared expense not found');
         });
 
-        it('should not find soft-deleted expenses (deletedAt filter)', async () => {
+        it('should not include deletedAt filter (handled by Prisma soft-delete extension)', async () => {
             mockPrismaService.expense.findFirst.mockResolvedValue(null);
 
             await expect(service.findExpenseOrFail(mockExpenseId, mockHouseholdId, ExpenseType.PERSONAL)).rejects.toThrow(NotFoundException);
 
-            expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
-                where: expect.objectContaining({ deletedAt: null }),
-            });
+            // deletedAt: null is now injected automatically by PrismaService's $extends soft-delete extension,
+            // so the service should NOT pass it explicitly in the where clause.
+            const callArgs = mockPrismaService.expense.findFirst.mock.calls[0][0];
+            expect(callArgs.where).not.toHaveProperty('deletedAt');
         });
     });
     //#endregion
