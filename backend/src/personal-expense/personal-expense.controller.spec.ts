@@ -22,6 +22,7 @@ describe('PersonalExpenseController', () => {
         frequency: 'MONTHLY',
         yearlyPaymentStrategy: null,
         installmentFrequency: null,
+        installmentCount: null,
         paymentMonth: null,
         month: null,
         year: null,

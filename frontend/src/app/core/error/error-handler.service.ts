@@ -22,9 +22,7 @@ export class GlobalErrorHandler implements ErrorHandler {
   private extractMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       if (error.error?.message) {
-        return Array.isArray(error.error.message)
-          ? error.error.message.join(', ')
-          : error.error.message;
+        return (error.error.message as string[]).join(', ');
       }
       return `Server error: ${error.status}`;
     }

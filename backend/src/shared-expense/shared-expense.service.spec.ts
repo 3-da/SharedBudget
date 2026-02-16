@@ -132,7 +132,7 @@ describe('SharedExpenseService', () => {
                 where: {
                     householdId: mockHouseholdId,
                     type: ExpenseType.SHARED,
-                    deletedAt: null,
+
                 },
                 orderBy: { createdAt: 'desc' },
             });
@@ -160,7 +160,7 @@ describe('SharedExpenseService', () => {
                 where: {
                     householdId: mockHouseholdId,
                     type: ExpenseType.SHARED,
-                    deletedAt: null,
+
                     category: ExpenseCategory.ONE_TIME,
                 },
                 orderBy: { createdAt: 'desc' },
@@ -177,7 +177,7 @@ describe('SharedExpenseService', () => {
                 where: {
                     householdId: mockHouseholdId,
                     type: ExpenseType.SHARED,
-                    deletedAt: null,
+
                     frequency: ExpenseFrequency.YEARLY,
                 },
                 orderBy: { createdAt: 'desc' },
@@ -197,7 +197,7 @@ describe('SharedExpenseService', () => {
                 where: {
                     householdId: mockHouseholdId,
                     type: ExpenseType.SHARED,
-                    deletedAt: null,
+
                     category: ExpenseCategory.RECURRING,
                     frequency: ExpenseFrequency.MONTHLY,
                 },
@@ -211,7 +211,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.listSharedExpenses(mockUserId, {});
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -258,7 +258,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.getSharedExpense(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -271,7 +271,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.getSharedExpense(mockUserId, 'nonexistent-id');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Shared expense not found');
             }
@@ -284,7 +284,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.getSharedExpense(mockUserId, 'expense-in-other-household');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Shared expense not found');
             }
@@ -422,7 +422,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeCreateSharedExpense(mockUserId, createDto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -437,7 +437,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeCreateSharedExpense(mockUserId, dtoWithInvalidPayer);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('The specified payer is not a member of this household');
             }
@@ -452,7 +452,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeCreateSharedExpense(mockUserId, dtoWithWrongHousehold);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('The specified payer is not a member of this household');
             }
@@ -542,7 +542,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, mockExpenseId, updateDto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -555,7 +555,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, 'nonexistent-id', updateDto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Shared expense not found');
             }
@@ -569,7 +569,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, mockExpenseId, updateDto);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('There is already a pending approval for this expense');
             }
@@ -586,7 +586,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeUpdateSharedExpense(mockUserId, mockExpenseId, dtoWithInvalidPayer);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('The specified payer is not a member of this household');
             }
@@ -630,7 +630,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -643,7 +643,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, 'nonexistent-id');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Shared expense not found');
             }
@@ -657,7 +657,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, mockExpenseId);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('There is already a pending approval for this expense');
             }
@@ -671,7 +671,7 @@ describe('SharedExpenseService', () => {
             try {
                 await service.proposeDeleteSharedExpense(mockUserId, 'expense-in-other-household');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Shared expense not found');
             }

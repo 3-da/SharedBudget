@@ -8,19 +8,19 @@ export class CreatePersonalExpenseDto {
     @IsNotEmpty()
     @MinLength(1)
     @MaxLength(100)
-    name: string;
+    name!: string;
 
     @ApiProperty({ example: 49.99, description: 'Amount in EUR', minimum: 1 })
     @IsNumber()
     @Min(1)
-    amount: number;
+    amount!: number;
 
     @IsEnum(ExpenseCategory)
-    category: ExpenseCategory;
+    category!: ExpenseCategory;
 
     @ApiProperty({ enum: ExpenseFrequency, example: 'MONTHLY', description: 'MONTHLY or YEARLY' })
     @IsEnum(ExpenseFrequency)
-    frequency: ExpenseFrequency;
+    frequency!: ExpenseFrequency;
 
     //#region Yearly specific fields
 

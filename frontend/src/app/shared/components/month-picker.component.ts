@@ -10,15 +10,15 @@ import { CdkOverlayOrigin, CdkConnectedOverlay } from '@angular/cdk/overlay';
   imports: [MatButtonModule, MatIconModule, CdkOverlayOrigin, CdkConnectedOverlay],
   template: `
     <div class="month-picker-inline">
-      <button mat-icon-button [disabled]="!canGoPrev()" (click)="prevMonth()">
-        <mat-icon>chevron_left</mat-icon>
+      <button mat-icon-button [disabled]="!canGoPrev()" (click)="prevMonth()" aria-label="Previous month">
+        <mat-icon aria-hidden="true">chevron_left</mat-icon>
       </button>
       <button class="month-label" cdkOverlayOrigin #trigger="cdkOverlayOrigin" (click)="toggleOverlay()">
         {{ displayLabel() }}
-        <mat-icon class="dropdown-icon">arrow_drop_down</mat-icon>
+        <mat-icon class="dropdown-icon" aria-hidden="true">arrow_drop_down</mat-icon>
       </button>
-      <button mat-icon-button [disabled]="!canGoNext()" (click)="nextMonth()">
-        <mat-icon>chevron_right</mat-icon>
+      <button mat-icon-button [disabled]="!canGoNext()" (click)="nextMonth()" aria-label="Next month">
+        <mat-icon aria-hidden="true">chevron_right</mat-icon>
       </button>
     </div>
 
@@ -30,12 +30,12 @@ import { CdkOverlayOrigin, CdkConnectedOverlay } from '@angular/cdk/overlay';
       (backdropClick)="overlayOpen.set(false)">
       <div class="month-overlay">
         <div class="overlay-header">
-          <button mat-icon-button [disabled]="!canPrevYear()" (click)="prevYear()">
-            <mat-icon>chevron_left</mat-icon>
+          <button mat-icon-button [disabled]="!canPrevYear()" (click)="prevYear()" aria-label="Previous year">
+            <mat-icon aria-hidden="true">chevron_left</mat-icon>
           </button>
           <span class="year-label">{{ overlayYear() }}</span>
-          <button mat-icon-button [disabled]="!canNextYear()" (click)="nextYear()">
-            <mat-icon>chevron_right</mat-icon>
+          <button mat-icon-button [disabled]="!canNextYear()" (click)="nextYear()" aria-label="Next year">
+            <mat-icon aria-hidden="true">chevron_right</mat-icon>
           </button>
         </div>
         <div class="month-grid">

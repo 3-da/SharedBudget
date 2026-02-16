@@ -1,5 +1,7 @@
-import { Component, inject, input, output, effect, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, effect, computed } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { startWith } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -10,6 +12,7 @@ import { HouseholdMember } from '../../../shared/models/household.model';
 import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFrequency } from '../../../shared/models/enums';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-expense-form',
   standalone: true,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, DecimalPipe],
@@ -35,7 +38,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
         </mat-select>
       </mat-form-field>
 
-      @if (form.get('category')?.value !== 'ONE_TIME') {
+      @if (showFrequency()) {
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Frequency</mat-label>
           <mat-select formControlName="frequency">
@@ -45,7 +48,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
         </mat-form-field>
       }
 
-      @if (form.get('category')?.value !== 'ONE_TIME' && form.get('frequency')?.value === 'YEARLY') {
+      @if (showYearlyOptions()) {
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Yearly Payment Strategy</mat-label>
           <mat-select formControlName="yearlyPaymentStrategy">
@@ -54,7 +57,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
           </mat-select>
         </mat-form-field>
 
-        @if (form.get('yearlyPaymentStrategy')?.value === 'INSTALLMENTS') {
+        @if (formYearlyStrategy() === 'INSTALLMENTS') {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Installment Frequency</mat-label>
             <mat-select formControlName="installmentFrequency">
@@ -64,7 +67,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
           </mat-form-field>
         }
 
-        @if (form.get('yearlyPaymentStrategy')?.value === 'FULL') {
+        @if (formYearlyStrategy() === 'FULL') {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Payment Month</mat-label>
             <mat-select formControlName="paymentMonth">
@@ -76,7 +79,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
         }
       }
 
-      @if (form.get('category')?.value === 'ONE_TIME') {
+      @if (formCategory() === 'ONE_TIME') {
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Payment Type</mat-label>
           <mat-select formControlName="yearlyPaymentStrategy">
@@ -85,7 +88,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
           </mat-select>
         </mat-form-field>
 
-        @if (form.get('yearlyPaymentStrategy')?.value === 'FULL' || !form.get('yearlyPaymentStrategy')?.value) {
+        @if (formYearlyStrategy() === 'FULL' || !formYearlyStrategy()) {
           <div class="row">
             <mat-form-field appearance="outline">
               <mat-label>Expense Month</mat-label>
@@ -104,7 +107,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
           </div>
         }
 
-        @if (form.get('yearlyPaymentStrategy')?.value === 'INSTALLMENTS') {
+        @if (formYearlyStrategy() === 'INSTALLMENTS') {
           <div class="row">
             <mat-form-field appearance="outline">
               <mat-label>Start Month</mat-label>
@@ -187,10 +190,30 @@ export class ExpenseFormComponent {
     installmentYears: [null as number | null],
   });
 
-  installmentAmount(): number {
-    const amount = this.form.get('amount')?.value ?? 0;
-    const years = this.form.get('installmentYears')?.value ?? 0;
-    const freq = this.form.get('installmentFrequency')?.value;
+  // Bridge form control values to signals for reactive template conditionals (S2.8)
+  readonly formCategory = toSignal(
+    this.form.controls.category.valueChanges.pipe(startWith(this.form.controls.category.value)),
+  );
+  readonly formFrequency = toSignal(
+    this.form.controls.frequency.valueChanges.pipe(startWith(this.form.controls.frequency.value)),
+  );
+  readonly formYearlyStrategy = toSignal(
+    this.form.controls.yearlyPaymentStrategy.valueChanges.pipe(startWith(this.form.controls.yearlyPaymentStrategy.value)),
+  );
+  private readonly formValues = toSignal(
+    this.form.valueChanges.pipe(startWith(this.form.getRawValue())),
+    { initialValue: this.form.getRawValue() },
+  );
+
+  readonly showFrequency = computed(() => this.formCategory() !== 'ONE_TIME');
+  readonly showYearlyOptions = computed(() => this.formCategory() !== 'ONE_TIME' && this.formFrequency() === 'YEARLY');
+
+  // Computed signal replaces plain method (S2.7)
+  readonly installmentAmount = computed(() => {
+    const v = this.formValues();
+    const amount = v.amount ?? 0;
+    const years = v.installmentYears ?? 0;
+    const freq = v.installmentFrequency;
     if (years <= 0) return 0;
     let installmentsPerYear: number;
     switch (freq) {
@@ -201,7 +224,7 @@ export class ExpenseFormComponent {
     }
     const totalInstallments = installmentsPerYear * years;
     return Math.round((amount / totalInstallments) * 100) / 100;
-  }
+  });
 
   months = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,

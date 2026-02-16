@@ -1,9 +1,10 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MemberSavings } from '../../../shared/models/dashboard.model';
 import { CurrencyDisplayComponent } from '../../../shared/components/currency-display.component';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-savings-card',
   standalone: true,
   imports: [MatCardModule, CurrencyDisplayComponent],

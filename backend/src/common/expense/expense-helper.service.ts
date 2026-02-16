@@ -39,7 +39,7 @@ export class ExpenseHelperService {
         const label = type === ExpenseType.PERSONAL ? 'Personal' : 'Shared';
 
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, type, householdId, deletedAt: null },
+            where: { id: expenseId, type, householdId },
         });
 
         if (!expense) {

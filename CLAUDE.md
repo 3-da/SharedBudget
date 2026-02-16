@@ -6,7 +6,8 @@ This file contains **process rules** for Claude Code when working on this projec
 > - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
 > - `SPEC.md` — Business requirements, user stories, feature specs
 > - `ARCHITECTURE.md` — Tech stack, data model, caching, auth flow, infrastructure
-> - `docs/CONCEPTS.md` — Educational guide: Logger, Redis, Swagger explained
+> - `docs/FRONTEND_ARCHITECTURE.md` — Frontend deep-dive (15 sections, interview-ready)
+> - `docs/backend/01-08` — Backend deep-dive (8 documents: database, auth, architecture, approvals, caching, API, security, testing)
 
 ---
 

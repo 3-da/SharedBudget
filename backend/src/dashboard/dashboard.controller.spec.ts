@@ -27,19 +27,22 @@ describe('DashboardController', () => {
         totalCurrentIncome: 5700,
         expenses: {
             personalExpenses: [
-                { userId: 'user-alex', firstName: 'Alex', lastName: 'Owner', personalExpensesTotal: 50 },
-                { userId: 'user-sam', firstName: 'Sam', lastName: 'Member', personalExpensesTotal: 30 },
+                { userId: 'user-alex', firstName: 'Alex', lastName: 'Owner', personalExpensesTotal: 50, remainingExpenses: 20 },
+                { userId: 'user-sam', firstName: 'Sam', lastName: 'Member', personalExpensesTotal: 30, remainingExpenses: 10 },
             ],
             sharedExpensesTotal: 920,
             totalHouseholdExpenses: 1000,
+            remainingHouseholdExpenses: 500,
         },
         savings: {
             members: [
-                { userId: 'user-alex', firstName: 'Alex', lastName: 'Owner', defaultSavings: 2990, currentSavings: 2690 },
-                { userId: 'user-sam', firstName: 'Sam', lastName: 'Member', defaultSavings: 2010, currentSavings: 2010 },
+                { userId: 'user-alex', firstName: 'Alex', lastName: 'Owner', personalSavings: 500, sharedSavings: 200, remainingBudget: 1990 },
+                { userId: 'user-sam', firstName: 'Sam', lastName: 'Member', personalSavings: 300, sharedSavings: 100, remainingBudget: 1610 },
             ],
-            totalDefaultSavings: 5000,
-            totalCurrentSavings: 4700,
+            totalPersonalSavings: 800,
+            totalSharedSavings: 300,
+            totalSavings: 1100,
+            totalRemainingBudget: 3600,
         },
         settlement: {
             amount: 60,
@@ -59,11 +62,13 @@ describe('DashboardController', () => {
 
     const mockSavingsResponse: SavingsResponseDto = {
         members: [
-            { userId: 'user-alex', firstName: 'Alex', lastName: 'Owner', defaultSavings: 2990, currentSavings: 2690 },
-            { userId: 'user-sam', firstName: 'Sam', lastName: 'Member', defaultSavings: 2010, currentSavings: 2010 },
+            { userId: 'user-alex', firstName: 'Alex', lastName: 'Owner', personalSavings: 500, sharedSavings: 200, remainingBudget: 1990 },
+            { userId: 'user-sam', firstName: 'Sam', lastName: 'Member', personalSavings: 300, sharedSavings: 100, remainingBudget: 1610 },
         ],
-        totalDefaultSavings: 5000,
-        totalCurrentSavings: 4700,
+        totalPersonalSavings: 800,
+        totalSharedSavings: 300,
+        totalSavings: 1100,
+        totalRemainingBudget: 3600,
     };
 
     const mockSettlementResponse: SettlementResponseDto = {
@@ -161,7 +166,7 @@ describe('DashboardController', () => {
 
             expect(dashboardService.getSavings).toHaveBeenCalledWith(mockUserId, undefined, undefined);
             expect(result.members).toHaveLength(2);
-            expect(result.totalDefaultSavings).toBe(5000);
+            expect(result.totalSavings).toBe(1100);
         });
 
         it('should pass month and year query params to service', async () => {

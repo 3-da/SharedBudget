@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal, computed, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,6 +11,7 @@ import { CodeInputComponent } from '../components/code-input.component';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-verify-code',
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatProgressBarModule, MatIconModule, CodeInputComponent],
@@ -62,14 +63,13 @@ import { AuthService } from '../../../core/auth/auth.service';
     .timer.expired { color: var(--mat-sys-error); }
   `],
 })
-export class VerifyCodeComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+export class VerifyCodeComponent {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
-  email = signal('');
+  readonly email = input<string>('');
   loading = signal(false);
   resendCooldown = signal(0);
   codeExpiry = signal(600); // 10 minutes in seconds
@@ -81,8 +81,7 @@ export class VerifyCodeComponent implements OnInit {
     return `${min}:${sec.toString().padStart(2, '0')}`;
   });
 
-  ngOnInit(): void {
-    this.email.set(this.route.snapshot.queryParams['email'] || '');
+  constructor() {
     this.startTimers();
   }
 

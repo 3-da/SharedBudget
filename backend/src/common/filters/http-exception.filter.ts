@@ -4,7 +4,7 @@ import { PrismaClientKnownRequestError } from '../../generated/prisma/internal/p
 
 interface HttpErrorResponse {
     statusCode: number;
-    message: string | string[];
+    message: string[];
     error: string;
 }
 
@@ -43,6 +43,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
         return this.handleUnknownError(exception);
     }
 
+    private normalizeMessage(message: unknown): string[] {
+        if (Array.isArray(message)) return message.map(String);
+        if (typeof message === 'string') return [message];
+        return ['An error occurred'];
+    }
+
     private handleHttpException(exception: HttpException): HttpErrorResponse {
         const statusCode = exception.getStatus();
         const response = exception.getResponse();
@@ -52,14 +58,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
             const res = response as Record<string, unknown>;
             return {
                 statusCode,
-                message: (res.message as string | string[]) ?? exception.message,
+                message: this.normalizeMessage(res.message ?? exception.message),
                 error: (res.error as string) ?? HttpStatus[statusCode] ?? 'Error',
             };
         }
 
         return {
             statusCode,
-            message: typeof response === 'string' ? response : exception.message,
+            message: this.normalizeMessage(typeof response === 'string' ? response : exception.message),
             error: HttpStatus[statusCode] ?? 'Error',
         };
     }
@@ -69,20 +75,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
             case 'P2002':
                 return {
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'A record with this value already exists',
+                    message: ['A record with this value already exists'],
                     error: 'Conflict',
                 };
             case 'P2025':
                 return {
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'Record not found',
+                    message: ['Record not found'],
                     error: 'Not Found',
                 };
             default:
                 this.logger.error(`Unhandled Prisma error [${exception.code}]: ${exception.message}`);
                 return {
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                    message: 'Internal server error',
+                    message: ['Internal server error'],
                     error: 'Internal Server Error',
                 };
         }
@@ -94,7 +100,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
         return {
             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: 'Internal server error',
+            message: ['Internal server error'],
             error: 'Internal Server Error',
         };
     }

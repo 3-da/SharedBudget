@@ -95,7 +95,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.inviteToHousehold(mockOwnerId, 'target@example.com');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You are not a member of any household');
             }
@@ -110,7 +110,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.inviteToHousehold(mockOwnerId, 'target@example.com');
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('Only the household owner can send invitations');
             }
@@ -128,7 +128,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.inviteToHousehold(mockOwnerId, 'target@example.com');
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('Household is full');
             }
@@ -141,7 +141,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.inviteToHousehold(mockOwnerId, 'nobody@example.com');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('User with this email not found');
             }
@@ -156,7 +156,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.inviteToHousehold(mockOwnerId, 'target@example.com');
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('This user already belongs to a household');
             }
@@ -170,7 +170,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.inviteToHousehold(mockOwnerId, 'target@example.com');
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('A pending invitation already exists for this user');
             }
@@ -201,7 +201,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.inviteToHousehold(mockOwnerId, 'owner@example.com');
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('This user already belongs to a household');
             }
@@ -264,7 +264,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.respondToInvitation(mockUserId, 'bad-id', true);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Invitation not found');
             }
@@ -276,7 +276,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.respondToInvitation('wrong-user', mockInvitationId, true);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('You are not authorized to respond to this invitation');
             }
@@ -291,7 +291,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.respondToInvitation(mockUserId, mockInvitationId, true);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('This invitation has already been responded to');
             }
@@ -306,7 +306,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.respondToInvitation(mockUserId, mockInvitationId, true);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('Household is full');
             }
@@ -319,7 +319,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.respondToInvitation(mockUserId, mockInvitationId, true);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('The joining user already belongs to a household');
             }
@@ -339,7 +339,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.respondToInvitation(mockUserId, mockInvitationId, true);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('Household is full');
             }
@@ -421,7 +421,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.cancelInvitation(mockOwnerId, 'bad-id');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Invitation not found');
             }
@@ -437,7 +437,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.cancelInvitation(mockOwnerId, mockInvitationId);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('You can only cancel invitations you sent');
             }
@@ -453,7 +453,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.cancelInvitation(mockOwnerId, mockInvitationId);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('Only pending invitations can be cancelled');
             }
@@ -470,7 +470,7 @@ describe('HouseholdInvitationService', () => {
             try {
                 await service.cancelInvitation(mockOwnerId, mockInvitationId);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('Only pending invitations can be cancelled');
             }

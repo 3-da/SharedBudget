@@ -1,4 +1,4 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import {MatCardModule} from '@angular/material/card';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
@@ -10,6 +10,7 @@ import {PageHeaderComponent} from '../../../shared/components/page-header.compon
 import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-salary-overview',
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, SalaryFormComponent, SalaryChartComponent, LoadingSpinnerComponent, PageHeaderComponent, CurrencyEurPipe],
@@ -34,9 +35,9 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
           <mat-card-header>
             <mat-card-title>
               <div class="year-nav">
-                <button mat-icon-button (click)="prevYear()"><mat-icon>chevron_left</mat-icon></button>
+                <button mat-icon-button (click)="prevYear()" aria-label="Previous year"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
                 <span>{{ currentYear() }}</span>
-                <button mat-icon-button (click)="nextYear()"><mat-icon>chevron_right</mat-icon></button>
+                <button mat-icon-button (click)="nextYear()" aria-label="Next year"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
               </div>
             </mat-card-title>
           </mat-card-header>

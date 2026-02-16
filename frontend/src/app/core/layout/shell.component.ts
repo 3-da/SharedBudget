@@ -13,6 +13,7 @@ import { map } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, MatSidenavModule, ToolbarComponent, SidenavComponent],
   template: `
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <app-toolbar (menuToggle)="sidenavEl()?.toggle()" />
     <mat-sidenav-container class="sidenav-container">
       <mat-sidenav
@@ -23,7 +24,7 @@ import { map } from 'rxjs';
         <app-sidenav (navClick)="onNavClick()" />
       </mat-sidenav>
       <mat-sidenav-content class="content">
-        <div class="content-wrapper">
+        <div id="main-content" tabindex="-1" class="content-wrapper">
           <router-outlet />
         </div>
       </mat-sidenav-content>
@@ -31,6 +32,18 @@ import { map } from 'rxjs';
   `,
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; }
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+      z-index: 9999;
+      border-radius: 0 0 4px 4px;
+      text-decoration: none;
+      &:focus { top: 0; }
+    }
     .sidenav-container { flex: 1; }
     .sidenav { width: var(--sidenav-width); }
     .content-wrapper {

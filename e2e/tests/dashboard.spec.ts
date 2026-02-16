@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { apiCall } from '../fixtures/test-data';
+import { apiCall, ApprovalResponse, UserProfile } from '../fixtures/test-data';
 import { Page } from '@playwright/test';
 
 /**
@@ -28,9 +28,9 @@ async function goToHousehold(page: Page): Promise<void> {
   await expect(page.locator('app-settlement-summary')).toBeVisible({ timeout: 10_000 });
 }
 
-/** Get the current user's profile (returns { id, firstName, lastName, email }). */
-async function getUserProfile(token: string): Promise<any> {
-  const res = await apiCall('GET', '/users/me', token);
+/** Get the current user's profile. */
+async function getUserProfile(token: string): Promise<UserProfile> {
+  const res = await apiCall<UserProfile>('GET', '/users/me', token);
   expect(res.status).toBe(200);
   return res.body;
 }
@@ -39,8 +39,8 @@ async function getUserProfile(token: string): Promise<any> {
 async function proposeSharedExpense(
   token: string,
   overrides: Record<string, unknown> = {},
-): Promise<{ status: number; body: any }> {
-  return apiCall('POST', '/expenses/shared', token, {
+): Promise<{ status: number; body: ApprovalResponse }> {
+  return apiCall<ApprovalResponse>('POST', '/expenses/shared', token, {
     name: 'E2E Settlement Test',
     amount: 600,
     category: 'RECURRING',
@@ -50,17 +50,17 @@ async function proposeSharedExpense(
 }
 
 /** Get pending approvals via API. */
-async function getPendingApprovals(token: string): Promise<any[]> {
-  const res = await apiCall('GET', '/approvals', token);
-  return res.body as any[];
+async function getPendingApprovals(token: string): Promise<ApprovalResponse[]> {
+  const res = await apiCall<ApprovalResponse[]>('GET', '/approvals', token);
+  return res.body;
 }
 
 /** Accept an approval via API. */
 async function acceptApproval(
   token: string,
   approvalId: string,
-): Promise<{ status: number; body: any }> {
-  return apiCall('PUT', `/approvals/${approvalId}/accept`, token, {});
+): Promise<{ status: number; body: ApprovalResponse }> {
+  return apiCall<ApprovalResponse>('PUT', `/approvals/${approvalId}/accept`, token, {});
 }
 
 /** Cancel an approval via API (by the original requester). */
@@ -139,6 +139,16 @@ test.describe('Dashboard overview cards', () => {
     await expect(expenseCard).toBeVisible();
     await expect(expenseCard.getByText('Shared expenses')).toBeVisible();
     await expect(expenseCard.getByText('Grand Total')).toBeVisible();
+  });
+
+  test('dashboard API responds within 2 seconds', async ({ alexPage }) => {
+    const responsePromise = alexPage.waitForResponse((res) =>
+      res.url().includes('/dashboard') && res.status() === 200,
+    );
+    await alexPage.goto('/dashboard');
+    const response = await responsePromise;
+    const timing = response.timing();
+    expect(timing.responseEnd).toBeLessThan(2000);
   });
 });
 

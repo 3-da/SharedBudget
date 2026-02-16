@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { SalaryResponse } from '../../../shared/models/salary.model';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-salary-form',
   standalone: true,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],

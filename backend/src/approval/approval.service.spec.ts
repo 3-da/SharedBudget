@@ -120,6 +120,8 @@ describe('ApprovalService', () => {
 
     const mockTxExpenseApproval = {
         update: vi.fn(),
+        updateMany: vi.fn(),
+        findUniqueOrThrow: vi.fn(),
     };
 
     const mockTxExpense = {
@@ -137,6 +139,8 @@ describe('ApprovalService', () => {
             findMany: vi.fn(),
             findFirst: vi.fn(),
             update: vi.fn(),
+            updateMany: vi.fn(),
+            findUniqueOrThrow: vi.fn(),
         },
         $transaction: vi.fn(),
     };
@@ -235,7 +239,7 @@ describe('ApprovalService', () => {
             expect(mockPrismaService.expenseApproval.findMany).toHaveBeenCalledWith({
                 where: {
                     householdId: mockHouseholdId,
-                    status: { in: [ApprovalStatus.ACCEPTED, ApprovalStatus.REJECTED] },
+                    status: { in: [ApprovalStatus.ACCEPTED, ApprovalStatus.REJECTED, ApprovalStatus.CANCELLED] },
                 },
                 orderBy: { createdAt: 'desc' },
                 include: {
@@ -329,7 +333,8 @@ describe('ApprovalService', () => {
                 message: 'Approved',
                 reviewedAt: expect.any(Date),
             };
-            mockTxExpenseApproval.update.mockResolvedValue(updatedApproval);
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockTxExpenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
             mockTxExpense.create.mockResolvedValue({});
             mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
 
@@ -338,14 +343,17 @@ describe('ApprovalService', () => {
             expect(mockPrismaService.expenseApproval.findFirst).toHaveBeenCalledWith({
                 where: { id: mockApprovalId, householdId: mockHouseholdId },
             });
-            expect(mockTxExpenseApproval.update).toHaveBeenCalledWith({
-                where: { id: mockApprovalId },
+            expect(mockTxExpenseApproval.updateMany).toHaveBeenCalledWith({
+                where: { id: mockApprovalId, status: ApprovalStatus.PENDING },
                 data: {
                     status: ApprovalStatus.ACCEPTED,
                     reviewedById: mockReviewerId,
                     message: 'Approved',
                     reviewedAt: expect.any(Date),
                 },
+            });
+            expect(mockTxExpenseApproval.findUniqueOrThrow).toHaveBeenCalledWith({
+                where: { id: mockApprovalId },
                 include: {
                     requestedBy: { select: { id: true, firstName: true, lastName: true } },
                     reviewedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -383,19 +391,16 @@ describe('ApprovalService', () => {
                 message: null,
                 reviewedAt: expect.any(Date),
             };
-            mockTxExpenseApproval.update.mockResolvedValue(updatedApproval);
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockTxExpenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
             mockTxExpense.create.mockResolvedValue({});
             mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
 
             const result = await service.acceptApproval(mockReviewerId, mockApprovalId, {});
 
-            expect(mockTxExpenseApproval.update).toHaveBeenCalledWith({
-                where: { id: mockApprovalId },
+            expect(mockTxExpenseApproval.updateMany).toHaveBeenCalledWith({
+                where: { id: mockApprovalId, status: ApprovalStatus.PENDING },
                 data: expect.objectContaining({ message: null }),
-                include: {
-                    requestedBy: { select: { id: true, firstName: true, lastName: true } },
-                    reviewedBy: { select: { id: true, firstName: true, lastName: true } },
-                },
             });
             expect(result.message).toBeNull();
         });
@@ -410,7 +415,8 @@ describe('ApprovalService', () => {
                 message: null,
                 reviewedAt: expect.any(Date),
             };
-            mockTxExpenseApproval.update.mockResolvedValue(updatedApproval);
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockTxExpenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
             mockTxExpense.update.mockResolvedValue({});
             mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
 
@@ -418,7 +424,7 @@ describe('ApprovalService', () => {
 
             expect(mockTxExpense.update).toHaveBeenCalledWith({
                 where: { id: mockExpenseId },
-                data: { name: 'Updated Rent', amount: 850 },
+                data: expect.objectContaining({ name: 'Updated Rent', amount: 850 }),
             });
             expect(result.status).toBe(ApprovalStatus.ACCEPTED);
         });
@@ -433,7 +439,8 @@ describe('ApprovalService', () => {
                 message: null,
                 reviewedAt: expect.any(Date),
             };
-            mockTxExpenseApproval.update.mockResolvedValue(updatedApproval);
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockTxExpenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
             mockTxExpense.update.mockResolvedValue({});
             mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
 
@@ -471,18 +478,22 @@ describe('ApprovalService', () => {
         it('should throw ConflictException if approval is already accepted', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockAcceptedApproval);
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 0 });
+            mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
 
             await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow(ConflictException);
-            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow('This approval has already been reviewed');
+            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow('This approval has already been reviewed or cancelled');
         });
 
         it('should throw ConflictException if approval is already rejected', async () => {
             const rejectedApproval = { ...mockPendingCreateApproval, status: ApprovalStatus.REJECTED };
             mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(rejectedApproval);
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 0 });
+            mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
 
             await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow(ConflictException);
-            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow('This approval has already been reviewed');
+            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow('This approval has already been reviewed or cancelled');
         });
 
         it('should throw ForbiddenException if user tries to accept their own approval', async () => {
@@ -500,6 +511,20 @@ describe('ApprovalService', () => {
 
             await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow('Transaction failed');
         });
+
+        it('should throw ConflictException on concurrent acceptance (TOCTOU prevention)', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
+            // Approval appears pending when fetched, but another request accepted it before our updateMany
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 0 });
+            mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
+
+            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow(ConflictException);
+            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow(
+                'This approval has already been reviewed or cancelled',
+            );
+            expect(mockTxExpense.create).not.toHaveBeenCalled();
+        });
     });
     //#endregion
 
@@ -515,18 +540,22 @@ describe('ApprovalService', () => {
                 message: 'Too expensive',
                 reviewedAt: expect.any(Date),
             };
-            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockPrismaService.expenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
 
             const result = await service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'Too expensive' });
 
-            expect(mockPrismaService.expenseApproval.update).toHaveBeenCalledWith({
-                where: { id: mockApprovalId },
+            expect(mockPrismaService.expenseApproval.updateMany).toHaveBeenCalledWith({
+                where: { id: mockApprovalId, status: ApprovalStatus.PENDING },
                 data: {
                     status: ApprovalStatus.REJECTED,
                     reviewedById: mockReviewerId,
                     message: 'Too expensive',
                     reviewedAt: expect.any(Date),
                 },
+            });
+            expect(mockPrismaService.expenseApproval.findUniqueOrThrow).toHaveBeenCalledWith({
+                where: { id: mockApprovalId },
                 include: {
                     requestedBy: { select: { id: true, firstName: true, lastName: true } },
                     reviewedBy: { select: { id: true, firstName: true, lastName: true } },
@@ -557,9 +586,10 @@ describe('ApprovalService', () => {
         it('should throw ConflictException if approval is not pending', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockAcceptedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 0 });
 
             await expect(service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'No' })).rejects.toThrow(ConflictException);
-            await expect(service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'No' })).rejects.toThrow('This approval has already been reviewed');
+            await expect(service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'No' })).rejects.toThrow('This approval has already been reviewed or cancelled');
         });
 
         it('should throw ForbiddenException if user tries to reject their own approval', async () => {
@@ -580,7 +610,8 @@ describe('ApprovalService', () => {
                 message: 'Denied',
                 reviewedAt: new Date(),
             };
-            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockPrismaService.expenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
 
             await service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'Denied' });
 
@@ -596,13 +627,14 @@ describe('ApprovalService', () => {
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
             const updatedApproval = {
                 ...mockPendingCreateApproval,
-                status: ApprovalStatus.REJECTED,
+                status: ApprovalStatus.CANCELLED,
                 reviewedById: mockUserId,
                 reviewedBy: mockRequestedByUser,
                 message: 'Cancelled by requester',
                 reviewedAt: expect.any(Date),
             };
-            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockPrismaService.expenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
 
             const result = await service.cancelApproval(mockUserId, mockApprovalId);
 
@@ -610,20 +642,23 @@ describe('ApprovalService', () => {
             expect(mockPrismaService.expenseApproval.findFirst).toHaveBeenCalledWith({
                 where: { id: mockApprovalId, householdId: mockHouseholdId },
             });
-            expect(mockPrismaService.expenseApproval.update).toHaveBeenCalledWith({
-                where: { id: mockApprovalId },
+            expect(mockPrismaService.expenseApproval.updateMany).toHaveBeenCalledWith({
+                where: { id: mockApprovalId, status: ApprovalStatus.PENDING },
                 data: {
-                    status: ApprovalStatus.REJECTED,
+                    status: ApprovalStatus.CANCELLED,
                     reviewedById: mockUserId,
                     message: 'Cancelled by requester',
                     reviewedAt: expect.any(Date),
                 },
+            });
+            expect(mockPrismaService.expenseApproval.findUniqueOrThrow).toHaveBeenCalledWith({
+                where: { id: mockApprovalId },
                 include: {
                     requestedBy: { select: { id: true, firstName: true, lastName: true } },
                     reviewedBy: { select: { id: true, firstName: true, lastName: true } },
                 },
             });
-            expect(result.status).toBe(ApprovalStatus.REJECTED);
+            expect(result.status).toBe(ApprovalStatus.CANCELLED);
             expect(result.reviewedById).toBe(mockUserId);
             expect(result.message).toBe('Cancelled by requester');
         });
@@ -633,13 +668,14 @@ describe('ApprovalService', () => {
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
             const updatedApproval = {
                 ...mockPendingCreateApproval,
-                status: ApprovalStatus.REJECTED,
+                status: ApprovalStatus.CANCELLED,
                 reviewedById: mockUserId,
                 reviewedBy: mockRequestedByUser,
                 message: 'Cancelled by requester',
                 reviewedAt: new Date(),
             };
-            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockPrismaService.expenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
 
             await service.cancelApproval(mockUserId, mockApprovalId);
 
@@ -652,13 +688,14 @@ describe('ApprovalService', () => {
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockPendingCreateApproval);
             const updatedApproval = {
                 ...mockPendingCreateApproval,
-                status: ApprovalStatus.REJECTED,
+                status: ApprovalStatus.CANCELLED,
                 reviewedById: mockUserId,
                 reviewedBy: mockRequestedByUser,
                 message: 'Cancelled by requester',
                 reviewedAt: new Date(),
             };
-            mockPrismaService.expenseApproval.update.mockResolvedValue(updatedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockPrismaService.expenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
 
             await service.cancelApproval(mockUserId, mockApprovalId);
 
@@ -683,17 +720,19 @@ describe('ApprovalService', () => {
         it('should throw ConflictException if approval is already accepted', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockAcceptedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 0 });
 
             await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow(ConflictException);
-            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow('This approval has already been reviewed');
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow('This approval has already been reviewed or cancelled');
         });
 
         it('should throw ConflictException if approval is already rejected', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockPrismaService.expenseApproval.findFirst.mockResolvedValue(mockRejectedApproval);
+            mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 0 });
 
             await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow(ConflictException);
-            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow('This approval has already been reviewed');
+            await expect(service.cancelApproval(mockUserId, mockApprovalId)).rejects.toThrow('This approval has already been reviewed or cancelled');
         });
 
         it('should throw ForbiddenException if user is not the original requester', async () => {

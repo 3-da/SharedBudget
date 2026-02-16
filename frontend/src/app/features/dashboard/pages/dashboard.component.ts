@@ -12,6 +12,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header.comp
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-dashboard',
   standalone: true,
   imports: [

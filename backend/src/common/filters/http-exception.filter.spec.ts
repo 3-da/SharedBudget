@@ -41,7 +41,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'User already belongs to a household',
+                    message: ['User already belongs to a household'],
                     error: 'Conflict',
                 }),
                 HttpStatus.CONFLICT,
@@ -57,7 +57,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'Household not found',
+                    message: ['Household not found'],
                     error: 'Not Found',
                 }),
                 HttpStatus.NOT_FOUND,
@@ -76,7 +76,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.BAD_REQUEST,
-                    message: 'Something went wrong',
+                    message: ['Something went wrong'],
                 }),
                 HttpStatus.BAD_REQUEST,
             );
@@ -103,6 +103,16 @@ describe('HttpExceptionFilter', () => {
                 HttpStatus.BAD_REQUEST,
             );
         });
+
+        it('should normalize a single string message to array', () => {
+            const exception = new ConflictException('Already exists');
+
+            filter.catch(exception, mockHost);
+
+            const responseBody = mockReply.mock.calls[0][1];
+            expect(Array.isArray(responseBody.message)).toBe(true);
+            expect(responseBody.message).toEqual(['Already exists']);
+        });
     });
 
     describe('Prisma error handling', () => {
@@ -118,7 +128,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'A record with this value already exists',
+                    message: ['A record with this value already exists'],
                     error: 'Conflict',
                 }),
                 HttpStatus.CONFLICT,
@@ -137,7 +147,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'Record not found',
+                    message: ['Record not found'],
                     error: 'Not Found',
                 }),
                 HttpStatus.NOT_FOUND,
@@ -158,7 +168,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                    message: 'Internal server error',
+                    message: ['Internal server error'],
                     error: 'Internal Server Error',
                 }),
                 HttpStatus.INTERNAL_SERVER_ERROR,
@@ -177,7 +187,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                    message: 'Internal server error',
+                    message: ['Internal server error'],
                     error: 'Internal Server Error',
                 }),
                 HttpStatus.INTERNAL_SERVER_ERROR,
@@ -200,7 +210,7 @@ describe('HttpExceptionFilter', () => {
                 {},
                 expect.objectContaining({
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                    message: 'Internal server error',
+                    message: ['Internal server error'],
                 }),
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );

@@ -6,11 +6,11 @@ export class MarkPaidDto {
     @IsInt()
     @Min(1)
     @Max(12)
-    month: number;
+    month!: number;
 
     @ApiProperty({ example: 2026, description: 'Year', minimum: 2020, maximum: 2099 })
     @IsInt()
     @Min(2020)
     @Max(2099)
-    year: number;
+    year!: number;
 }

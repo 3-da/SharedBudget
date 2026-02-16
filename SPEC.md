@@ -1,14 +1,16 @@
 # Household Budget Tracker — Feature Specification
 
-**Document Version:** 4.0
+**Document Version:** 5.0
 **Created:** January 28, 2026
-**Updated:** February 12, 2026
-**Project Status:** Phase 1 — Backend complete (47 endpoints, 723 tests), Frontend complete (Angular 21)
+**Updated:** February 14, 2026
+**Project Status:** Phase 1 — Backend complete (47 endpoints, 723 tests), Frontend complete (Angular 21, 33 unit test files), E2E complete (8 Playwright suites)
 
 > **Related docs:**
 > - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
 > - `ARCHITECTURE.md` — Tech stack, data model, infrastructure, auth flow
 > - `CLAUDE.md` — Development process rules for Claude Code
+> - `docs/FRONTEND_ARCHITECTURE.md` — Frontend architecture deep-dive (15 sections)
+> - `docs/backend/01-08` — Backend architecture deep-dive (8 documents)
 
 ---
 
@@ -262,7 +264,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Verify code endpoint auto-logs in on success (returns JWT tokens)
 - [x] Resend code endpoint (rate limited: 3 per 10 min)
 - [x] Login blocked until email is verified (403)
-- [ ] Frontend: registration form → code input screen → redirect to dashboard
+- [x] Frontend: registration form → code input screen → redirect to dashboard
 
 ### User Story 2: Login, Logout & Password Recovery ✅
 **As a** registered user
@@ -277,8 +279,8 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Forgot password → sends reset email with 1-hour token
 - [x] Reset password → validates token, updates password, invalidates ALL sessions
 - [x] All auth endpoints rate-limited (3-10 req/min depending on endpoint)
-- [ ] Frontend: auto-refresh via Angular HttpClient interceptor
-- [ ] Frontend: protected routes redirect to login if unauthenticated
+- [x] Frontend: auto-refresh via Angular HttpClient interceptor
+- [x] Frontend: protected routes redirect to login if unauthenticated
 
 ### User Story 2.5: Household Management & Invitations ✅
 **As a** verified user
@@ -301,7 +303,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Household respects maxMembers constraint (Phase 1: 2)
 - [x] Duplicate pending invitations prevented
 - [x] Race condition guard on accept (household could be full)
-- [ ] Frontend: household dashboard with member list and invite actions
+- [x] Frontend: household dashboard with member list and invite actions
 
 ### User Story 3: Salary Management ✅
 **As a** household member
@@ -316,7 +318,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Values persist per month/year in PostgreSQL via Prisma
 - [x] Invalid inputs (negative numbers) are rejected
 - [x] Month and year auto-determined from server clock
-- [ ] Frontend: salary input form with summary cards
+- [x] Frontend: salary input form with summary cards
 
 ### User Story 4: Personal Expense Management ✅
 **As a** household member
@@ -332,7 +334,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] One-time expenses scoped to a specific month/year
 - [x] Soft-delete support (deletedAt timestamp)
 - [x] List endpoint supports category and frequency query filters
-- [ ] Frontend: expense list with badges (yearly, monthly equivalent)
+- [x] Frontend: expense list with badges (yearly, monthly equivalent)
 
 ### User Story 5: Shared Expense Proposals ✅
 **As a** household member
@@ -346,8 +348,8 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Can propose deleting an existing shared expense (creates approval)
 - [x] Duplicate pending approvals prevented (ConflictException if expense already has pending approval)
 - [x] paidByUserId validated as household member
-- [ ] Frontend: pending proposals shown with yellow "Pending" badge
-- [ ] Frontend: partner receives notification/badge about pending approval
+- [x] Frontend: pending proposals shown with yellow "Pending" badge
+- [x] Frontend: partner receives notification/badge about pending approval
 
 ### User Story 6: Expense Approval Workflow ✅
 **As a** household member
@@ -364,7 +366,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Approval history viewable (past accepted/rejected items with optional status filter)
 - [x] Self-review prevention (reviewer ≠ requester → ForbiddenException)
 - [x] Already-reviewed prevention (ConflictException if approval not PENDING)
-- [ ] Frontend: dedicated "Approvals" section with pending/history tabs
+- [x] Frontend: dedicated "Approvals" section with pending/history tabs
 
 ### User Story 7: Yearly Expense Configuration ✅
 **As a** household member
@@ -377,7 +379,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Monthly equivalent always shown for budget planning (total ÷ 12)
 - [x] Works for both personal and shared yearly expenses
 - [x] Shared yearly expenses go through approval workflow
-- [ ] Frontend: expense form with yearly payment strategy configuration
+- [x] Frontend: expense form with yearly payment strategy configuration
 
 ### User Story 8: Settlement & Debt Tracking ✅
 **As a** couple managing shared expenses
@@ -392,8 +394,8 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] "Mark as Settled" endpoint to record when payment is made (with duplicate prevention)
 - [x] Settlement data stored per household/month/year with unique constraint
 - [x] Context-aware message (relative to requesting user)
-- [ ] Frontend: settlement card with "Mark as Paid" button
-- [ ] Frontend: historical settlements viewable per month
+- [x] Frontend: settlement card with "Mark as Paid" button
+- [x] Frontend: historical settlements viewable per month
 
 ### User Story 9: Financial Dashboard ✅
 **As a** household member
@@ -409,9 +411,9 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Combined household savings (default + current totals)
 - [x] Pending approvals count
 - [x] Expense normalization (yearly ÷ 12, one-time only in matching month)
-- [ ] Frontend: responsive dashboard with income/expense/savings cards
-- [ ] Frontend: negative balances in red, positive in teal
-- [ ] Frontend: responsive on mobile, tablet, desktop
+- [x] Frontend: responsive dashboard with income/expense/savings cards
+- [x] Frontend: negative balances in red, positive in cyan
+- [x] Frontend: responsive on mobile, tablet, desktop
 
 ### User Story 10: Data Persistence & Security
 **As a** user
@@ -425,7 +427,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] Backend validates all data before saving (Prisma 7)
 - [x] Users can only access their own household's data
 - [x] API endpoints protected with auth guards
-- [ ] Data persists after page refresh (frontend integration)
+- [x] Data persists after page refresh (frontend integration)
 
 ### User Story 11: API Integration
 **As a** full-stack developer
@@ -447,13 +449,13 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 **So that** the app responds instantly and reduces database load
 
 **Acceptance Criteria:**
-- [ ] Salaries cached in Redis (5 min TTL)
-- [ ] Summary/dashboard calculations cached (2 min TTL)
-- [ ] Expense lists cached (1 min TTL)
-- [ ] Cache invalidated on any write operation for the household
-- [ ] API response times < 100ms for cached data
-- [ ] Cache misses handled gracefully with fresh DB query
-- [ ] Cache keys scoped per household
+- [x] Salaries cached in Redis (5 min TTL)
+- [x] Summary/dashboard calculations cached (2 min TTL)
+- [x] Expense lists cached (1 min TTL)
+- [x] Cache invalidated on any write operation for the household
+- [x] API response times < 100ms for cached data
+- [x] Cache misses handled gracefully with fresh DB query
+- [x] Cache keys scoped per household
 
 ---
 

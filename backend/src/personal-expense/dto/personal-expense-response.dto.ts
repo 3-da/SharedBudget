@@ -2,25 +2,25 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PersonalExpenseResponseDto {
     @ApiProperty({ type: 'string' })
-    id: string;
+    id!: string;
 
     @ApiProperty({ type: 'string' })
-    householdId: string;
+    householdId!: string;
 
     @ApiProperty({ type: 'string' })
-    createdById: string;
+    createdById!: string;
 
     @ApiProperty({ example: 'Gym membership' })
-    name: string;
+    name!: string;
 
     @ApiProperty({ example: 49.99, type: 'number' })
-    amount: number;
+    amount!: number;
 
     @ApiProperty({ example: 'RECURRING' })
-    category: string;
+    category!: string;
 
     @ApiProperty({ example: 'MONTHLY' })
-    frequency: string;
+    frequency!: string;
 
     @ApiPropertyOptional({ example: 'FULL' })
     yearlyPaymentStrategy?: string | null;
@@ -29,7 +29,7 @@ export class PersonalExpenseResponseDto {
     installmentFrequency?: string | null;
 
     @ApiPropertyOptional({ example: 24, description: 'Total number of installments' })
-    installmentCount: number | null;
+    installmentCount!: number | null;
 
     @ApiPropertyOptional({ example: 6 })
     paymentMonth?: number | null;
@@ -41,8 +41,8 @@ export class PersonalExpenseResponseDto {
     year?: number | null;
 
     @ApiProperty({ type: 'string', format: 'date-time' })
-    createdAt: Date;
+    createdAt!: Date;
 
     @ApiProperty({ type: 'string', format: 'date-time' })
-    updatedAt: Date;
+    updatedAt!: Date;
 }

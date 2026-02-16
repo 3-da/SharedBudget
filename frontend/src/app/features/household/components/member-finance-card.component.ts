@@ -1,10 +1,11 @@
-import { Component, input, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, computed } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MemberIncome, MemberExpenseSummary, MemberSavings } from '../../../shared/models/dashboard.model';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-member-finance-card',
   standalone: true,
   imports: [MatCardModule, MatIconModule, CurrencyEurPipe],

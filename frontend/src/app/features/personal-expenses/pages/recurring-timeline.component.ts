@@ -1,6 +1,6 @@
-import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,6 +22,7 @@ import {
 } from '../components/recurring-override-dialog.component';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-undo-scope-dialog',
   standalone: true,
   imports: [MatDialogModule, MatButtonModule],
@@ -48,6 +49,7 @@ interface TimelineMonth {
 }
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-recurring-timeline',
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
@@ -103,17 +105,16 @@ interface TimelineMonth {
     .override-chip { --mdc-chip-elevated-container-color: var(--mat-sys-tertiary-container); font-size: 0.7rem; }
   `],
 })
-export class RecurringTimelineComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+export class RecurringTimelineComponent {
   readonly router = inject(Router);
   private readonly store = inject(PersonalExpenseStore);
   private readonly overrideService = inject(RecurringOverrideService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly id = input.required<string>();
   readonly loading = signal(true);
   private readonly overrides = signal<RecurringOverride[]>([]);
-  private readonly expenseId = signal('');
 
   readonly expenseName = computed(() => this.store.selectedExpense()?.name ?? 'Expense');
   readonly defaultAmount = computed(() => {
@@ -241,15 +242,16 @@ export class RecurringTimelineComponent implements OnInit {
     return months;
   }
 
-  ngOnInit(): void {
-    const id = this.route.snapshot.params['id'];
-    this.expenseId.set(id);
-    this.store.loadExpense(id);
-    this.overrideService.listOverrides(id).pipe(
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: o => { this.overrides.set(o); this.loading.set(false); },
-      error: () => this.loading.set(false),
+  constructor() {
+    effect(() => {
+      const expenseId = this.id();
+      this.store.loadExpense(expenseId);
+      this.overrideService.listOverrides(expenseId).pipe(
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe({
+        next: o => { this.overrides.set(o); this.loading.set(false); },
+        error: () => this.loading.set(false),
+      });
     });
   }
 
@@ -275,9 +277,9 @@ export class RecurringTimelineComponent implements OnInit {
           const batchItems: BatchOverrideItem[] = upcomingMonths.map(t => ({
             year: t.year, month: t.month, amount: result.amount, skipped: result.skipped,
           }));
-          return this.overrideService.batchUpsertOverrides(this.expenseId(), { overrides: batchItems });
+          return this.overrideService.batchUpsertOverrides(this.id(), { overrides: batchItems });
         }
-        return this.overrideService.upsertOverride(this.expenseId(), m.year, m.month, dto);
+        return this.overrideService.upsertOverride(this.id(), m.year, m.month, dto);
       }),
     ).subscribe(result => {
       if (Array.isArray(result)) {
@@ -301,7 +303,7 @@ export class RecurringTimelineComponent implements OnInit {
     );
 
     if (!hasUpcoming) {
-      this.overrideService.deleteOverride(this.expenseId(), m.year, m.month).pipe(
+      this.overrideService.deleteOverride(this.id(), m.year, m.month).pipe(
         takeUntilDestroyed(this.destroyRef),
       ).subscribe({
         next: () => this.overrides.update(list =>
@@ -317,11 +319,11 @@ export class RecurringTimelineComponent implements OnInit {
         filter((scope): scope is 'single' | 'all_upcoming' => !!scope),
         switchMap(scope => {
           if (scope === 'all_upcoming') {
-            return this.overrideService.deleteUpcomingOverrides(this.expenseId(), m.year, m.month);
+            return this.overrideService.deleteUpcomingOverrides(this.id(), m.year, m.month);
           }
-          return this.overrideService.deleteOverride(this.expenseId(), m.year, m.month);
+          return this.overrideService.deleteOverride(this.id(), m.year, m.month);
         }),
-        switchMap(() => this.overrideService.listOverrides(this.expenseId())),
+        switchMap(() => this.overrideService.listOverrides(this.id())),
       ).subscribe(o => this.overrides.set(o));
   }
 }

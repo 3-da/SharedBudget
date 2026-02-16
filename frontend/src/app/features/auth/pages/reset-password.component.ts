@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,6 +11,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { passwordMatchValidator } from '../../../shared/validators/password-match.validator';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-reset-password',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, MatCardModule, MatButtonModule, MatProgressBarModule, PasswordFieldComponent],
@@ -53,29 +54,25 @@ import { passwordMatchValidator } from '../../../shared/validators/password-matc
     mat-card-content { padding: var(--space-md) var(--space-lg); }
   `],
 })
-export class ResetPasswordComponent implements OnInit {
+export class ResetPasswordComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   loading = signal(false);
-  private token = '';
+
+  readonly token = input<string>('');
 
   form = this.fb.nonNullable.group({
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
     confirmPassword: ['', [Validators.required]],
   }, { validators: passwordMatchValidator });
 
-  ngOnInit(): void {
-    this.token = this.route.snapshot.queryParams['token'] || '';
-  }
-
   onSubmit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
-    this.authService.resetPassword({ token: this.token, password: this.form.getRawValue().password }).pipe(
+    this.authService.resetPassword({ token: this.token(), password: this.form.getRawValue().password }).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {

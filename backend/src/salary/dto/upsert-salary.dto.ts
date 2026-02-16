@@ -9,7 +9,7 @@ export class UpsertSalaryDto {
     @IsNotEmpty()
     @IsNumber()
     @Min(0)
-    defaultAmount: number;
+    defaultAmount!: number;
 
     @ApiProperty({
         example: 3500.0,
@@ -18,5 +18,5 @@ export class UpsertSalaryDto {
     @IsNotEmpty()
     @IsNumber()
     @Min(0)
-    currentAmount: number;
+    currentAmount!: number;
 }

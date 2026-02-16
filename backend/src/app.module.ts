@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import * as Joi from 'joi';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
@@ -27,7 +28,23 @@ import { SavingModule } from './saving/saving.module';
 @Module({
     imports: [
         LoggerModule,
-        ConfigModule.forRoot(),
+        ConfigModule.forRoot({
+            isGlobal: true,
+            validationSchema: Joi.object({
+                NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+                PORT: Joi.number().default(3000),
+                API_PREFIX: Joi.string().default('api/v1'),
+                CORS_ORIGIN: Joi.string().default('http://localhost:4200'),
+                DATABASE_URL: Joi.string().required(),
+                REDIS_HOST: Joi.string().default('localhost'),
+                REDIS_PORT: Joi.number().default(6379),
+                REDIS_PASSWORD: Joi.string().allow('').default(''),
+                JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+                JWT_ACCESS_EXPIRATION: Joi.string().required(),
+                RESEND_API_KEY: Joi.string().allow('').default(''),
+            }),
+            validationOptions: { abortEarly: false, allowUnknown: true },
+        }),
         RedisModule,
         CacheModule,
         MailModule,

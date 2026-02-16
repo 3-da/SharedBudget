@@ -50,7 +50,7 @@ export class PersonalExpenseStore {
     this.loading.set(true);
     this.service.get(id).subscribe({
       next: e => { this.selectedExpense.set(e); this.loading.set(false); },
-      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
     });
   }
 
@@ -58,7 +58,7 @@ export class PersonalExpenseStore {
     this.loading.set(true);
     this.service.create(dto).subscribe({
       next: () => { this.snackBar.open('Expense created', '', { duration: 3000 }); this.loading.set(false); this.loadExpenses(month, year); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed to create', '', { duration: 4000 }); this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed to create', '', { duration: 4000 }); this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
     });
   }
 
@@ -66,7 +66,7 @@ export class PersonalExpenseStore {
     this.loading.set(true);
     this.service.update(id, dto).subscribe({
       next: () => { this.snackBar.open('Expense updated', '', { duration: 3000 }); this.loading.set(false); this.loadExpenses(month, year); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed to update', '', { duration: 4000 }); this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed to update', '', { duration: 4000 }); this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
     });
   }
 

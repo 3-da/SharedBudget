@@ -1,9 +1,10 @@
-import { Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { SalaryResponse } from '../../../shared/models/salary.model';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-salary-summary-card',
   standalone: true,
   imports: [MatCardModule, CurrencyEurPipe],

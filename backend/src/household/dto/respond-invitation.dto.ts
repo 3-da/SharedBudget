@@ -5,5 +5,5 @@ export class RespondInvitationDto {
     @ApiProperty({ example: true, description: 'True to accept, false to decline' })
     @IsNotEmpty()
     @IsBoolean()
-    accept: boolean;
+    accept!: boolean;
 }

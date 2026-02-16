@@ -49,7 +49,7 @@ export class RecurringOverrideService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+            where: { id: expenseId, householdId: membership.householdId },
         });
 
         if (!expense) {
@@ -111,7 +111,7 @@ export class RecurringOverrideService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+            where: { id: expenseId, householdId: membership.householdId },
         });
 
         if (!expense) {
@@ -148,7 +148,7 @@ export class RecurringOverrideService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+            where: { id: expenseId, householdId: membership.householdId },
         });
 
         if (!expense) {
@@ -188,7 +188,7 @@ export class RecurringOverrideService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+            where: { id: expenseId, householdId: membership.householdId },
         });
 
         if (!expense) {
@@ -228,7 +228,7 @@ export class RecurringOverrideService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+            where: { id: expenseId, householdId: membership.householdId },
         });
 
         if (!expense) {
@@ -274,7 +274,7 @@ export class RecurringOverrideService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+            where: { id: expenseId, householdId: membership.householdId },
         });
 
         if (!expense) {
@@ -339,7 +339,7 @@ export class RecurringOverrideService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId, deletedAt: null },
+            where: { id: expenseId, householdId: membership.householdId },
         });
 
         if (!expense) {

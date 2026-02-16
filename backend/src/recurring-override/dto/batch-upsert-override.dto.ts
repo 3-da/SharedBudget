@@ -7,18 +7,18 @@ export class BatchOverrideItemDto {
     @IsInt()
     @Min(2020)
     @Max(2100)
-    year: number;
+    year!: number;
 
     @ApiProperty({ example: 6, description: 'Month of the override (1-12)' })
     @IsInt()
     @Min(1)
     @Max(12)
-    month: number;
+    month!: number;
 
     @ApiProperty({ example: 450.0, description: 'Overridden amount for this month', minimum: 0 })
     @IsNumber()
     @Min(0)
-    amount: number;
+    amount!: number;
 
     @ApiPropertyOptional({ example: false, description: 'If true, expense is skipped this month' })
     @IsOptional()
@@ -31,5 +31,5 @@ export class BatchUpsertOverrideDto {
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => BatchOverrideItemDto)
-    overrides: BatchOverrideItemDto[];
+    overrides!: BatchOverrideItemDto[];
 }

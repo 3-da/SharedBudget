@@ -1,5 +1,5 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal, computed } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,6 +20,7 @@ interface TimelineMonth {
 }
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-shared-recurring-timeline',
   standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
@@ -58,11 +59,11 @@ interface TimelineMonth {
     .past { opacity: 0.6; }
   `],
 })
-export class SharedRecurringTimelineComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+export class SharedRecurringTimelineComponent {
   readonly router = inject(Router);
   private readonly store = inject(SharedExpenseStore);
 
+  readonly id = input.required<string>();
   readonly loading = signal(true);
 
   readonly expenseName = computed(() => this.store.selectedExpense()?.name ?? 'Expense');
@@ -97,11 +98,11 @@ export class SharedRecurringTimelineComponent implements OnInit {
     return this.buildRecurringTimeline(expense, currentM, currentY);
   });
 
-  ngOnInit(): void {
-    const id = this.route.snapshot.params['id'];
-    this.store.loadExpense(id);
-    // No overrides for shared expenses, just wait for expense to load
-    this.loading.set(false);
+  constructor() {
+    effect(() => {
+      this.store.loadExpense(this.id());
+      this.loading.set(false);
+    });
   }
 
   private buildRecurringTimeline(expense: any, currentM: number, currentY: number): TimelineMonth[] {

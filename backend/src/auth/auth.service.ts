@@ -13,6 +13,10 @@ import { REDIS_CLIENT } from '../redis/redis.module';
 import Redis from 'ioredis';
 import { MessageResponseDto } from '../common/dto/message-response.dto';
 
+
+// Pre-computed Argon2id hash to equalize response time when user not found (timing attack prevention)
+const DUMMY_ARGON2_HASH = '$argon2id$v=19$m=65536,t=3,p=4$dW5rbm93bnNhbHQ$dW5rbm93bmhhc2g';
+
 @Injectable()
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
@@ -63,6 +67,8 @@ export class AuthService {
 
         const user = await this.prismaService.user.findUnique({ where: { email: loginDto.email } });
         if (!user) {
+            // Perform dummy hash verification to equalize response time (timing attack prevention)
+            await argon2.verify(DUMMY_ARGON2_HASH, loginDto.password).catch(() => {});
             this.logger.warn(`Failed login attempt for email: ${loginDto.email}`);
             throw new UnauthorizedException('Incorrect email or password.');
         }

@@ -14,8 +14,8 @@ import { MatButtonModule } from '@angular/material/button';
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>{{ label() }}</mat-label>
       <input matInput [type]="showPassword() ? 'text' : 'password'" [formControl]="control()">
-      <button mat-icon-button matSuffix type="button" (click)="showPassword.set(!showPassword())">
-        <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+      <button mat-icon-button matSuffix type="button" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+        <mat-icon aria-hidden="true">{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
       </button>
       <mat-error>
         @if (control().hasError('required')) { Password is required }

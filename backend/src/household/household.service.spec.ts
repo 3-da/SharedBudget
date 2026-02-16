@@ -97,7 +97,7 @@ describe('HouseholdService', () => {
             try {
                 await service.createHousehold(mockUserId, 'My Home');
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('User already belongs to a household');
             }
@@ -126,7 +126,7 @@ describe('HouseholdService', () => {
             try {
                 await service.getMyHousehold(mockUserId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('User is not a member of any household');
             }
@@ -156,7 +156,7 @@ describe('HouseholdService', () => {
             try {
                 await service.regenerateInviteCode(mockUserId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('User is not a member of any household');
             }
@@ -173,7 +173,7 @@ describe('HouseholdService', () => {
             try {
                 await service.regenerateInviteCode(mockUserId);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('Only the household owner can regenerate the invite code');
             }
@@ -215,7 +215,7 @@ describe('HouseholdService', () => {
             try {
                 await service.joinByCode(mockUserId, mockInviteCode);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('You already belong to a household');
             }
@@ -228,7 +228,7 @@ describe('HouseholdService', () => {
             try {
                 await service.joinByCode(mockUserId, 'bad-code');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Household not found');
             }
@@ -246,7 +246,7 @@ describe('HouseholdService', () => {
             try {
                 await service.joinByCode(mockUserId, mockInviteCode);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('Household is full');
             }
@@ -287,7 +287,7 @@ describe('HouseholdService', () => {
             try {
                 await service.joinByCode(mockUserId, mockInviteCode);
                 expect.unreachable('Should have thrown ConflictException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ConflictException);
                 expect(error.message).toBe('Household is full');
             }
@@ -339,7 +339,7 @@ describe('HouseholdService', () => {
             try {
                 await service.leaveHousehold(mockUserId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('User is not a member of any household');
             }
@@ -360,7 +360,7 @@ describe('HouseholdService', () => {
             try {
                 await service.leaveHousehold(mockUserId);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('Owner must transfer ownership before leaving. Use /household/transfer-ownership first.');
             }
@@ -400,7 +400,7 @@ describe('HouseholdService', () => {
             try {
                 await service.removeMember(mockUserId, 'user-789');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You are not a member of any household');
             }
@@ -417,7 +417,7 @@ describe('HouseholdService', () => {
             try {
                 await service.removeMember(mockUserId, 'user-789');
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('Only the household owner can remove members');
             }
@@ -434,7 +434,7 @@ describe('HouseholdService', () => {
             try {
                 await service.removeMember(mockUserId, mockUserId);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('Cannot remove yourself. Transfer the ownership or leave/delete the household instead.');
             }
@@ -458,7 +458,7 @@ describe('HouseholdService', () => {
             try {
                 await service.removeMember(mockUserId, 'user-789');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Target user is not a member of your household');
             }
@@ -496,7 +496,7 @@ describe('HouseholdService', () => {
             try {
                 await service.transferOwnership(mockUserId, 'user-789');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You are not a member of any household');
             }
@@ -513,7 +513,7 @@ describe('HouseholdService', () => {
             try {
                 await service.transferOwnership(mockUserId, 'user-789');
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('Only the household owner can transfer ownership');
             }
@@ -530,7 +530,7 @@ describe('HouseholdService', () => {
             try {
                 await service.transferOwnership(mockUserId, mockUserId);
                 expect.unreachable('Should have thrown ForbiddenException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(ForbiddenException);
                 expect(error.message).toBe('Cannot transfer ownership to yourself');
             }
@@ -554,7 +554,7 @@ describe('HouseholdService', () => {
             try {
                 await service.transferOwnership(mockUserId, 'user-789');
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Target user is not a member of your household');
             }

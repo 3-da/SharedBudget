@@ -29,7 +29,7 @@ export class SharedExpenseStore {
         this.loadBatchPaymentStatuses(m, y);
       },
       error: err => {
-        this.error.set(err.error?.message ?? 'Failed to load expenses');
+        this.error.set(err.error?.message?.join(', ') ?? 'Failed to load expenses');
         this.expenses.set([]);
         this.loading.set(false);
       },
@@ -40,7 +40,7 @@ export class SharedExpenseStore {
     this.loading.set(true);
     this.service.get(id).subscribe({
       next: e => { this.selectedExpense.set(e); this.loading.set(false); },
-      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
     });
   }
 
@@ -53,7 +53,7 @@ export class SharedExpenseStore {
         this.loadExpenses(month, year);
         onSuccess?.();
       },
-      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
     });
   }
 
@@ -66,7 +66,7 @@ export class SharedExpenseStore {
         this.loadExpenses(month, year);
         onSuccess?.();
       },
-      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
     });
   }
 
@@ -78,21 +78,21 @@ export class SharedExpenseStore {
         this.loading.set(false);
         this.loadExpenses(month, year);
       },
-      error: err => { this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
     });
   }
 
   markPaid(expenseId: string, month: number, year: number): void {
     this.paymentService.markPaid(expenseId, { month, year }).subscribe({
       next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Marked as paid', '', { duration: 2000 }); },
-      error: err => this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }),
+      error: err => this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed', '', { duration: 4000 }),
     });
   }
 
   undoPaid(expenseId: string, month: number, year: number): void {
     this.paymentService.undoPaid(expenseId, { month, year }).subscribe({
       next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
-      error: err => this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }),
+      error: err => this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed', '', { duration: 4000 }),
     });
   }
 

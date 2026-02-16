@@ -6,29 +6,29 @@ import { SettlementResponseDto } from './settlement-response.dto';
 
 export class DashboardResponseDto {
     @ApiProperty({ type: [MemberIncomeDto], description: 'Income details per member' })
-    income: MemberIncomeDto[];
+    income!: MemberIncomeDto[];
 
     @ApiProperty({ example: 7000.0, type: 'number', description: 'Total household income (sum of default salaries)' })
-    totalDefaultIncome: number;
+    totalDefaultIncome!: number;
 
     @ApiProperty({ example: 6700.0, type: 'number', description: 'Total household income (sum of current salaries)' })
-    totalCurrentIncome: number;
+    totalCurrentIncome!: number;
 
     @ApiProperty({ type: ExpenseSummaryDto, description: 'Expense breakdown' })
-    expenses: ExpenseSummaryDto;
+    expenses!: ExpenseSummaryDto;
 
     @ApiProperty({ type: SavingsResponseDto, description: 'Savings breakdown per member and total' })
-    savings: SavingsResponseDto;
+    savings!: SavingsResponseDto;
 
     @ApiProperty({ type: SettlementResponseDto, description: 'Current settlement calculation' })
-    settlement: SettlementResponseDto;
+    settlement!: SettlementResponseDto;
 
     @ApiProperty({ example: 3, type: 'number', description: 'Number of pending approvals requiring attention' })
-    pendingApprovalsCount: number;
+    pendingApprovalsCount!: number;
 
     @ApiProperty({ example: 2, minimum: 1, maximum: 12 })
-    month: number;
+    month!: number;
 
     @ApiProperty({ example: 2026 })
-    year: number;
+    year!: number;
 }

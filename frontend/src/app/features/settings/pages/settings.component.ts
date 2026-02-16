@@ -12,6 +12,7 @@ import { UpdateProfileRequest, ChangePasswordRequest } from '../../../shared/mod
 import { MessageResponse } from '../../../shared/models/auth.model';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-settings',
   standalone: true,
   imports: [MatExpansionModule, ProfileFormComponent, ChangePasswordFormComponent, PageHeaderComponent],

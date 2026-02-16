@@ -71,11 +71,11 @@ describe('SalaryService', () => {
                 where: { userId_month_year: { userId: mockUserId, month: currentMonth, year: currentYear } },
                 include: { user: { select: { firstName: true, lastName: true } } },
             });
-            expect(result.id).toBe(mockSalaryId);
-            expect(result.firstName).toBe('John');
-            expect(result.lastName).toBe('Doe');
-            expect(result.defaultAmount).toBe(3500.0);
-            expect(result.currentAmount).toBe(3500.0);
+            expect(result!.id).toBe(mockSalaryId);
+            expect(result!.firstName).toBe('John');
+            expect(result!.lastName).toBe('Doe');
+            expect(result!.defaultAmount).toBe(3500.0);
+            expect(result!.currentAmount).toBe(3500.0);
         });
 
         it('should return null when no salary exists for current month', async () => {
@@ -96,10 +96,10 @@ describe('SalaryService', () => {
 
             const result = await service.getMySalary(mockUserId);
 
-            expect(result.defaultAmount).toBe(0);
-            expect(result.currentAmount).toBe(0);
-            expect(typeof result.defaultAmount).toBe('number');
-            expect(typeof result.currentAmount).toBe('number');
+            expect(result!.defaultAmount).toBe(0);
+            expect(result!.currentAmount).toBe(0);
+            expect(typeof result!.defaultAmount).toBe('number');
+            expect(typeof result!.currentAmount).toBe('number');
         });
     });
 

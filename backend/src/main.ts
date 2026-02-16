@@ -11,7 +11,7 @@ async function bootstrap() {
     const configService = app.get(ConfigService);
 
     // Global validation pipe
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
     // API prefix
     const apiPrefix = configService.get('API_PREFIX', 'api/v1');
@@ -38,7 +38,9 @@ async function bootstrap() {
 
     const logger = app.get(Logger);
     logger.log(`Application running on: http://localhost:${port}/${apiPrefix}`);
-    logger.log(`Swagger docs: http://localhost:${port}/docs`);
+    if (configService.get('NODE_ENV') !== 'production') {
+        logger.log(`Swagger docs: http://localhost:${port}/docs`);
+    }
 }
 
 bootstrap();

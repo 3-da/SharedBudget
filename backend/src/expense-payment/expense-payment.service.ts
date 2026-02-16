@@ -219,7 +219,7 @@ export class ExpensePaymentService {
      */
     private async findExpenseInHousehold(expenseId: string, householdId: string) {
         const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId, deletedAt: null },
+            where: { id: expenseId, householdId },
         });
 
         if (!expense) {

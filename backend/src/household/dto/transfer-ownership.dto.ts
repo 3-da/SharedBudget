@@ -8,5 +8,5 @@ export class TransferOwnershipDto {
     })
     @IsNotEmpty()
     @IsUUID()
-    targetUserId: string;
+    targetUserId!: string;
 }

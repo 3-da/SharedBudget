@@ -113,7 +113,7 @@ describe('SavingService', () => {
             try {
                 await service.getMySavings(mockUserId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -230,7 +230,7 @@ describe('SavingService', () => {
             try {
                 await service.upsertPersonalSaving(mockUserId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -312,7 +312,7 @@ describe('SavingService', () => {
             try {
                 await service.getHouseholdSavings(mockUserId);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
@@ -421,7 +421,7 @@ describe('SavingService', () => {
             try {
                 await service.upsertSharedSaving(mockUserId, dto);
                 expect.unreachable('Should have thrown NotFoundException');
-            } catch (error) {
+            } catch (error: any) {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }

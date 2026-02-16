@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDialog } from '@angular/material/dialog';
@@ -11,6 +11,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state.comp
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-approval-list',
   standalone: true,
   imports: [MatTabsModule, ApprovalCardComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
