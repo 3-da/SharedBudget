@@ -7,7 +7,7 @@ services:
     region: frankfurt
     plan: free
     branch: main
-    healthCheckPath: /api/v1
+    healthCheckPath: /api/v1/health
     preDeployCommand: npx prisma migrate deploy --config prisma.config.ts
     envVars:
       - key: NODE_ENV
