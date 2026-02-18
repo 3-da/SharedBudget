@@ -38,7 +38,7 @@ const logger = new Logger('RedisModule');
                     host: configService.get('REDIS_HOST'),
                     port: configService.get<number>('REDIS_PORT'),
                     password: configService.get('REDIS_PASSWORD'),
-                    ...(configService.get('NODE_ENV') === 'production' ? { tls: {} } : {}),
+                    ...(configService.get('REDIS_TLS') === 'true' ? { tls: {} } : {}),
                     maxRetriesPerRequest: 3,
                     enableOfflineQueue: true,
                     retryStrategy(times) {

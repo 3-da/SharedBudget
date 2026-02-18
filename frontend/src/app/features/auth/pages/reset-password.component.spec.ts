@@ -67,7 +67,7 @@ describe('ResetPasswordComponent', () => {
       component.form.setValue({ password: 'ValidPass1!', confirmPassword: 'ValidPass1!' });
       component.onSubmit();
       // token input defaults to ''
-      expect(authService['resetPassword']).toHaveBeenCalledWith({ token: '', password: 'ValidPass1!' });
+      expect(authService['resetPassword']).toHaveBeenCalledWith({ token: '', newPassword: 'ValidPass1!' });
     });
 
     it('should show success snackbar and navigate to login on success', () => {
