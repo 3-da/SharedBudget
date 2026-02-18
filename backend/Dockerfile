@@ -9,8 +9,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY prisma ./prisma/
-COPY prisma.config.ts ./
-RUN npx prisma generate --config prisma.config.ts
+RUN npx prisma generate --schema ./prisma/schema.prisma
 
 COPY . .
 RUN npm run build
@@ -25,12 +24,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci --omit=dev && apk del python3 make g++
 
-# Re-generate Prisma client (needed for production node_modules)
-COPY prisma ./prisma/
-COPY prisma.config.ts ./
-RUN npx prisma generate --config prisma.config.ts
-
-# Copy built application
+# Copy built application (includes compiled Prisma client at dist/src/generated/prisma)
 COPY --from=build /app/dist ./dist
 
 ENV NODE_ENV=production
@@ -38,4 +32,5 @@ ENV NODE_ENV=production
 USER node
 EXPOSE 3000
 
-CMD ["node", "dist/main"]
+# TypeScript compiles src/ → dist/src/ (no rootDir set, so tsc preserves the src/ prefix)
+CMD ["node", "dist/src/main"]
