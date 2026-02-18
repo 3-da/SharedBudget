@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { maskEmail } from '../common/utils/mask-email';
 import { HouseholdInvitationResponseDto } from './dto/household-invitation-response.dto';
 import { HouseholdRole, InvitationStatus } from '../generated/prisma/enums';
 
@@ -41,7 +42,7 @@ export class HouseholdInvitationService {
      * @throws {ConflictException} If a pending invitation already exists for this user
      */
     async inviteToHousehold(ownerId: string, email: string): Promise<HouseholdInvitationResponseDto> {
-        this.logger.log(`Invite attempt by owner: ${ownerId} to email: ${email}`);
+        this.logger.log(`Invite attempt by owner: ${ownerId} to email: ${maskEmail(email)}`);
 
         //#region Validate ownership
         const ownerMembership = await this.prismaService.householdMember.findUnique({
@@ -69,7 +70,7 @@ export class HouseholdInvitationService {
         // Find the target user by email
         const targetUser = await this.prismaService.user.findUnique({ where: { email } });
         if (!targetUser) {
-            this.logger.log(`Invited user not found: ${email}`);
+            this.logger.log(`Invited user not found: ${maskEmail(email)}`);
             throw new NotFoundException('User with this email not found');
         }
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { ConfigService } from '@nestjs/config';
 import { UserService } from './user.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
@@ -39,7 +40,12 @@ describe('UserService', () => {
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [UserService, { provide: PrismaService, useValue: mockPrismaService }, { provide: SessionService, useValue: mockSessionService }],
+            providers: [
+                UserService,
+                { provide: PrismaService, useValue: mockPrismaService },
+                { provide: SessionService, useValue: mockSessionService },
+                { provide: ConfigService, useValue: { get: vi.fn().mockReturnValue(undefined) } },
+            ],
         }).compile();
 
         userService = module.get<UserService>(UserService);
@@ -128,7 +134,7 @@ describe('UserService', () => {
 
             expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({ where: { id: userId } });
             expect(argon2.verify).toHaveBeenCalledWith(mockUser.password, changePasswordDto.currentPassword);
-            expect(argon2.hash).toHaveBeenCalledWith(changePasswordDto.newPassword);
+            expect(argon2.hash).toHaveBeenCalledWith(changePasswordDto.newPassword, expect.any(Object));
             expect(mockPrismaService.user.update).toHaveBeenCalledWith({ where: { id: userId }, data: { password: 'new-hashed-password' } });
             expect(mockSessionService.invalidateAllSessions).toHaveBeenCalledWith(userId);
             expect(result.message).toBe('Password changed successfully. Please log in again.');

@@ -5,12 +5,9 @@ describe('TokenService', () => {
   let service: TokenService;
 
   beforeEach(() => {
-    localStorage.clear();
     TestBed.configureTestingModule({});
     service = TestBed.inject(TokenService);
   });
-
-  afterEach(() => localStorage.clear());
 
   describe('access token (memory)', () => {
     it('should return null initially', () => {
@@ -26,23 +23,6 @@ describe('TokenService', () => {
       service.setAccessToken('abc123');
       service.clearTokens();
       expect(service.getAccessToken()).toBeNull();
-    });
-  });
-
-  describe('refresh token (localStorage)', () => {
-    it('should return null initially', () => {
-      expect(service.getRefreshToken()).toBeNull();
-    });
-
-    it('should store and retrieve refresh token', () => {
-      service.setRefreshToken('refresh-xyz');
-      expect(service.getRefreshToken()).toBe('refresh-xyz');
-    });
-
-    it('should clear refresh token', () => {
-      service.setRefreshToken('refresh-xyz');
-      service.clearTokens();
-      expect(service.getRefreshToken()).toBeNull();
     });
   });
 

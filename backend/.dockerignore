@@ -1,11 +1,7 @@
 node_modules
 dist
-.env
-.env.*
+.env*
 *.spec.ts
-test
+e2e
 coverage
-.git
-.gitignore
-README.md
-vitest*.config.ts
+.angular

@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { authInterceptor } from './auth.interceptor';
 import { TokenService } from './token.service';
 import { AuthService } from './auth.service';
+import { StoreResetService } from '../stores/store-reset.service';
 import { environment } from '../../environments/environment';
 
 describe('authInterceptor', () => {
@@ -20,6 +21,7 @@ describe('authInterceptor', () => {
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: StoreResetService, useValue: { resetAll: vi.fn() } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -54,14 +56,13 @@ describe('authInterceptor', () => {
 
   it('should attempt refresh on 401 and retry', () => {
     tokenService.setAccessToken('expired');
-    tokenService.setRefreshToken('valid-refresh');
 
     http.get(`${baseUrl}/salary/me`).subscribe();
     const req = httpMock.expectOne(`${baseUrl}/salary/me`);
     req.flush(null, { status: 401, statusText: 'Unauthorized' });
 
     const refreshReq = httpMock.expectOne(`${baseUrl}/auth/refresh`);
-    refreshReq.flush({ accessToken: 'new-at', refreshToken: 'new-rt' });
+    refreshReq.flush({ accessToken: 'new-at' });
 
     const retryReq = httpMock.expectOne(`${baseUrl}/salary/me`);
     expect(retryReq.request.headers.get('Authorization')).toBe('Bearer new-at');
@@ -71,7 +72,6 @@ describe('authInterceptor', () => {
   it('should clear auth on refresh failure', () => {
     const clearSpy = vi.spyOn(authService, 'clearAuth');
     tokenService.setAccessToken('expired');
-    tokenService.setRefreshToken('bad-refresh');
 
     http.get(`${baseUrl}/salary/me`).subscribe({ error: () => {} });
     const req = httpMock.expectOne(`${baseUrl}/salary/me`);

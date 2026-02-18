@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import { maskEmail } from '../common/utils/mask-email';
 
 @Injectable()
 export class MailService {
@@ -32,7 +33,7 @@ export class MailService {
         `;
 
         await this.send(email, subject, html);
-        this.logger.log(`Verification code sent to ${email}`);
+        this.logger.log(`Verification code sent to ${maskEmail(email)}`);
     }
 
     async sendPasswordResetLink(email: string, token: string): Promise<void> {
@@ -48,7 +49,7 @@ export class MailService {
         `;
 
         await this.send(email, subject, html);
-        this.logger.log(`Password reset link sent to ${email}`);
+        this.logger.log(`Password reset link sent to ${maskEmail(email)}`);
     }
 
     async sendHouseholdInvitation(email: string, inviterName: string, householdName: string): Promise<void> {
@@ -60,7 +61,7 @@ export class MailService {
         `;
 
         await this.send(email, subject, html);
-        this.logger.log(`Household invitation sent to ${email} from ${inviterName}`);
+        this.logger.log(`Household invitation sent to ${maskEmail(email)} from ${inviterName}`);
     }
 
     async sendInvitationResponse(email: string, responderName: string, householdName: string, accepted: boolean): Promise<void> {
@@ -72,7 +73,7 @@ export class MailService {
         `;
 
         await this.send(email, subject, html);
-        this.logger.log(`Invitation response (${action}) sent to ${email}`);
+        this.logger.log(`Invitation response (${action}) sent to ${maskEmail(email)}`);
     }
 
     async sendMemberRemoved(email: string, householdName: string): Promise<void> {
@@ -83,7 +84,7 @@ export class MailService {
         `;
 
         await this.send(email, subject, html);
-        this.logger.log(`Member removed notification sent to ${email}`);
+        this.logger.log(`Member removed notification sent to ${maskEmail(email)}`);
     }
 
     private async send(to: string, subject: string, html: string): Promise<void> {
@@ -91,7 +92,7 @@ export class MailService {
             try {
                 await this.resend.emails.send({ from: this.fromEmail, to, subject, html });
             } catch (error) {
-                this.logger.error(`Failed to send email to ${to}: ${(error as Error).message}`);
+                this.logger.error(`Failed to send email to ${maskEmail(to)}: ${(error as Error).message}`);
                 // Don't throw — email failure should not break the user flow
             }
         } else {

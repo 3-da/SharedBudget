@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -37,7 +37,7 @@ interface NavItem {
     .active { background: var(--mat-sys-secondary-container); }
   `],
 })
-export class SidenavComponent implements OnInit {
+export class SidenavComponent {
   readonly notificationStore = inject(NotificationStore);
   navClick = output();
 
@@ -49,8 +49,4 @@ export class SidenavComponent implements OnInit {
     { icon: 'payments', label: 'Salary', route: '/salary' },
     { icon: 'savings', label: 'Savings', route: '/savings' },
   ];
-
-  ngOnInit(): void {
-    this.notificationStore.loadPendingApprovalsCount();
-  }
 }

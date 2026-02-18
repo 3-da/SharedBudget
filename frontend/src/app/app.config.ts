@@ -7,22 +7,17 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { GlobalErrorHandler } from './core/error/error-handler.service';
 import { AuthService } from './core/auth/auth.service';
-import { TokenService } from './core/auth/token.service';
 
 function initializeAuth(): Observable<unknown> {
   const authService = inject(AuthService);
-  const tokenService = inject(TokenService);
 
-  if (tokenService.getRefreshToken()) {
-    // On reload, access token is lost (in-memory). Refresh first to get a new one,
-    // then load the user profile with the fresh token.
-    // Returning the Observable makes Angular wait before rendering components.
-    return authService.refresh().pipe(
-      switchMap(() => authService.loadCurrentUser()),
-      catchError(() => of(null)),
-    );
-  }
-  return of(null);
+  // On reload, access token is lost (in-memory). Attempt refresh via HttpOnly cookie
+  // to get a new one, then load the user profile with the fresh token.
+  // If no cookie exists, the refresh call returns 401 and we silently ignore it.
+  return authService.refresh().pipe(
+    switchMap(() => authService.loadCurrentUser()),
+    catchError(() => of(null)),
+  );
 }
 
 export const appConfig: ApplicationConfig = {

@@ -15,7 +15,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
                         level: isProduction ? 'info' : 'debug',
                         transport: isProduction ? undefined : { target: 'pino-pretty', options: { colorize: true, singleLine: true } },
                         autoLogging: true, // Auto-log request/response
-                        redact: { paths: ['req.headers.authorization', 'req.body.password', 'req.body.newPassword'], censor: '[REDACTED]' }, // Redact sensitive fields
+                        redact: { paths: ['req.headers.authorization', 'req.body.password', 'req.body.newPassword', 'req.body.currentPassword', 'req.body.confirmPassword'], censor: '[REDACTED]' },
 
                         // Custom serializers
                         serializers: {

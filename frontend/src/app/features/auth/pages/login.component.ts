@@ -77,6 +77,13 @@ export class LoginComponent {
     password: ['', [Validators.required]],
   });
 
+  private sanitizeReturnUrl(url: string): string {
+    if (!url || url.startsWith('//') || url.includes('@') || /^https?:/i.test(url)) {
+      return '/household';
+    }
+    return url.startsWith('/') ? url : '/household';
+  }
+
   onSubmit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
@@ -85,7 +92,7 @@ export class LoginComponent {
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {
-        this.router.navigateByUrl(this.returnUrl() || '/household');
+        this.router.navigateByUrl(this.sanitizeReturnUrl(this.returnUrl()));
       },
       error: err => {
         this.loading.set(false);

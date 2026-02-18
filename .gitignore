@@ -44,3 +44,4 @@ generated
 # Misc
 .DS_Store
 *.tsbuildinfo
+nul

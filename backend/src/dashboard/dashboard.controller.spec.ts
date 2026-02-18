@@ -129,25 +129,25 @@ describe('DashboardController', () => {
         });
 
         it('should pass yearly mode when mode query param is yearly', async () => {
-            await controller.getOverview(mockUserId, 'yearly');
+            await controller.getOverview(mockUserId, { mode: 'yearly' });
 
             expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'yearly', undefined, undefined);
         });
 
         it('should default to monthly for unknown mode values', async () => {
-            await controller.getOverview(mockUserId, 'invalid');
+            await controller.getOverview(mockUserId, { mode: 'monthly' });
 
             expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly', undefined, undefined);
         });
 
         it('should pass month and year query params to service', async () => {
-            await controller.getOverview(mockUserId, undefined, { month: 3, year: 2025 });
+            await controller.getOverview(mockUserId, { month: 3, year: 2025 });
 
             expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly', 3, 2025);
         });
 
         it('should pass only month when year is not provided', async () => {
-            await controller.getOverview(mockUserId, undefined, { month: 6 });
+            await controller.getOverview(mockUserId, { month: 6 });
 
             expect(dashboardService.getOverview).toHaveBeenCalledWith(mockUserId, 'monthly', 6, undefined);
         });

@@ -23,8 +23,17 @@ export class SavingStore {
   readonly totalShared = computed(() => this.sharedSaving()?.amount ?? 0);
   readonly totalHousehold = computed(() => this.householdSavings().reduce((sum, s) => sum + s.amount, 0));
 
+  reset(): void {
+    this.mySavings.set([]);
+    this.householdSavings.set([]);
+    this.savingsHistory.set([]);
+    this.loading.set(false);
+    this.error.set(null);
+  }
+
   loadMySavings(month?: number, year?: number): void {
-    this.loading.set(true);
+    const showSpinner = this.mySavings().length === 0;
+    if (showSpinner) this.loading.set(true);
     this.service.getMine(month, year).subscribe({
       next: s => { this.mySavings.set(s); this.loading.set(false); },
       error: () => { this.mySavings.set([]); this.loading.set(false); },
@@ -46,18 +55,16 @@ export class SavingStore {
   }
 
   upsertPersonal(dto: UpsertSavingRequest, onSuccess?: () => void): void {
-    this.loading.set(true);
     this.service.upsertPersonal(dto).subscribe({
-      next: () => { this.snackBar.open('Personal savings updated', '', { duration: 3000 }); this.loading.set(false); this.loadMySavings(); this.loadHouseholdSavings(); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); this.loading.set(false); },
+      next: () => { this.snackBar.open('Personal savings updated', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
+      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
     });
   }
 
   upsertShared(dto: UpsertSavingRequest, onSuccess?: () => void): void {
-    this.loading.set(true);
     this.service.upsertShared(dto).subscribe({
-      next: () => { this.snackBar.open('Shared savings updated', '', { duration: 3000 }); this.loading.set(false); this.loadMySavings(); this.loadHouseholdSavings(); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); this.loading.set(false); },
+      next: () => { this.snackBar.open('Shared savings updated', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
+      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
     });
   }
 }

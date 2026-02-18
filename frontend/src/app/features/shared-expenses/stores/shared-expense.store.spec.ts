@@ -24,6 +24,7 @@ describe('SharedExpenseStore', () => {
       undoPaid: vi.fn(),
       cancel: vi.fn(),
       getStatus: vi.fn().mockReturnValue(of([])),
+      getBatchStatuses: vi.fn().mockReturnValue(of([])),
     };
     TestBed.configureTestingModule({
       providers: [

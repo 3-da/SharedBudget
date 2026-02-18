@@ -2,6 +2,12 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { REDIS_CLIENT } from '../redis/redis.module';
 import Redis from 'ioredis';
+import * as crypto from 'crypto';
+
+export interface StoredSession {
+    userId: string;
+    uaHash: string | null;
+}
 
 @Injectable()
 export class SessionService {
@@ -17,27 +23,57 @@ export class SessionService {
     }
 
     /**
-     * Stores a refresh token in Redis mapped to a userId, and tracks it
-     * in the user's session set for bulk invalidation.
+     * Stores a refresh token in Redis mapped to a userId and user-agent hash,
+     * and tracks it in the user's session set for bulk invalidation.
      *
      * @param userId - The user who owns this token
      * @param token - The opaque refresh token string
+     * @param userAgent - Optional user-agent string for device binding
      */
-    async storeRefreshToken(userId: string, token: string): Promise<void> {
-        await this.redis.set(`refresh:${token}`, userId, 'EX', this.refreshTokenTTL);
-        await this.redis.sadd(`user_sessions:${userId}`, token);
-        await this.redis.expire(`user_sessions:${userId}`, this.refreshTokenTTL);
+    async storeRefreshToken(userId: string, token: string, userAgent?: string): Promise<void> {
+        const uaHash = userAgent ? this.hashUserAgent(userAgent) : null;
+        const value = JSON.stringify({ userId, uaHash });
+
+        const pipeline = this.redis.pipeline();
+        pipeline.set(`refresh:${token}`, value, 'EX', this.refreshTokenTTL);
+        pipeline.sadd(`user_sessions:${userId}`, token);
+        pipeline.expire(`user_sessions:${userId}`, this.refreshTokenTTL);
+        await pipeline.exec();
         this.logger.debug(`Stored refresh token for user: ${userId}`);
     }
 
     /**
-     * Looks up which userId a refresh token belongs to.
+     * Looks up which userId a refresh token belongs to, along with the stored
+     * user-agent hash for device binding verification.
+     *
+     * Graceful migration: if the stored value is a plain string (old format),
+     * returns it as userId with null uaHash.
      *
      * @param token - The opaque refresh token string
-     * @returns The userId, or null if the token is expired/invalid
+     * @returns The session info, or null if the token is expired/invalid
+     */
+    async getSessionFromRefreshToken(token: string): Promise<StoredSession | null> {
+        const value = await this.redis.get(`refresh:${token}`);
+        if (!value) return null;
+
+        try {
+            const parsed = JSON.parse(value);
+            if (parsed && typeof parsed === 'object' && parsed.userId) {
+                return { userId: parsed.userId, uaHash: parsed.uaHash ?? null };
+            }
+        } catch {
+            // Old format: plain userId string — graceful migration
+        }
+
+        return { userId: value, uaHash: null };
+    }
+
+    /**
+     * @deprecated Use getSessionFromRefreshToken instead. Kept for backward compatibility.
      */
     async getUserIdFromRefreshToken(token: string): Promise<string | null> {
-        return this.redis.get(`refresh:${token}`);
+        const session = await this.getSessionFromRefreshToken(token);
+        return session?.userId ?? null;
     }
 
     /**
@@ -47,10 +83,13 @@ export class SessionService {
      * @returns The userId that owned the token, or null if it was already gone
      */
     async removeRefreshToken(token: string): Promise<string | null> {
-        const userId = await this.redis.get(`refresh:${token}`);
-        await this.redis.del(`refresh:${token}`);
+        const session = await this.getSessionFromRefreshToken(token);
+        const userId = session?.userId ?? null;
 
-        if (userId) await this.redis.srem(`user_sessions:${userId}`, token);
+        const pipeline = this.redis.pipeline();
+        pipeline.del(`refresh:${token}`);
+        if (userId) pipeline.srem(`user_sessions:${userId}`, token);
+        await pipeline.exec();
 
         return userId;
     }
@@ -80,5 +119,12 @@ export class SessionService {
 
         this.logger.log(`Invalidated ${tokens.length} sessions for user: ${userId}`);
         return tokens.length;
+    }
+
+    /**
+     * Hashes a user-agent string into a short fingerprint for device binding.
+     */
+    hashUserAgent(userAgent: string): string {
+        return crypto.createHash('sha256').update(userAgent).digest('hex').slice(0, 16);
     }
 }

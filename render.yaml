@@ -63,6 +63,14 @@ services:
         sync: false # Set manually in Render dashboard
       - key: MAIL_FROM
         sync: false # Set manually in Render dashboard
+      - key: FRONTEND_URL
+        sync: false # Set manually to your Vercel domain (e.g. https://sharedbudget.vercel.app)
+      - key: JWT_REFRESH_EXPIRATION
+        value: "604800"
+      - key: SWAGGER_USER
+        sync: false # Optional: Set in Render dashboard to protect Swagger on staging
+      - key: SWAGGER_PASSWORD
+        sync: false # Optional: Set in Render dashboard to protect Swagger on staging
 
 databases:
   - name: sharedbudget-db
@@ -75,4 +83,4 @@ databases:
     type: redis
     plan: free
     region: frankfurt
-    maxmemoryPolicy: allkeys-lru
+    maxmemoryPolicy: volatile-lru

@@ -48,13 +48,6 @@ function handle401(
     isRefreshing = true;
     refreshTokenSubject.next(null);
 
-    const refreshToken = tokenService.getRefreshToken();
-    if (!refreshToken) {
-      isRefreshing = false;
-      authService.clearAuth();
-      return throwError(() => new Error('No refresh token'));
-    }
-
     return authService.refresh().pipe(
       switchMap(res => {
         isRefreshing = false;

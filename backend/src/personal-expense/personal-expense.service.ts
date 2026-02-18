@@ -6,6 +6,7 @@ import { CreatePersonalExpenseDto } from './dto/create-personal-expense.dto';
 import { UpdatePersonalExpenseDto } from './dto/update-personal-expense.dto';
 import { MessageResponseDto } from '../common/dto/message-response.dto';
 import { ExpenseType } from '../generated/prisma/enums';
+import { Prisma } from '../generated/prisma/client';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { mapToPersonalExpenseResponse, buildExpenseNullableFields, EXPENSE_FIELDS } from '../common/expense/expense.mappers';
 import { pickDefined } from '../common/utils/pick-defined';
@@ -44,7 +45,7 @@ export class PersonalExpenseService {
         const cacheKey = this.cacheService.personalExpensesKey(userId, filterHash);
 
         return this.cacheService.getOrSet(cacheKey, this.cacheService.expensesTTL, async () => {
-            const where: any = {
+            const where: Prisma.ExpenseWhereInput = {
                 createdById: userId,
                 type: ExpenseType.PERSONAL,
             };

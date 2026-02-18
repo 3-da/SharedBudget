@@ -31,8 +31,17 @@ export class PersonalExpenseStore {
 
   readonly remainingBudget = computed(() => this.totalMonthly() - this.paidTotal());
 
+  reset(): void {
+    this.expenses.set([]);
+    this.paymentStatuses.set(new Map());
+    this.selectedExpense.set(null);
+    this.loading.set(false);
+    this.error.set(null);
+  }
+
   loadExpenses(month?: number, year?: number): void {
-    this.loading.set(true);
+    const showSpinner = this.expenses().length === 0;
+    if (showSpinner) this.loading.set(true);
     const now = new Date();
     const m = month ?? now.getMonth() + 1;
     const y = year ?? now.getFullYear();
@@ -50,31 +59,28 @@ export class PersonalExpenseStore {
     this.loading.set(true);
     this.service.get(id).subscribe({
       next: e => { this.selectedExpense.set(e); this.loading.set(false); },
-      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
+      error: err => { this.error.set(this.extractError(err) ?? null); this.loading.set(false); },
     });
   }
 
   createExpense(dto: CreateExpenseRequest, month?: number, year?: number, onSuccess?: () => void): void {
-    this.loading.set(true);
     this.service.create(dto).subscribe({
-      next: () => { this.snackBar.open('Expense created', '', { duration: 3000 }); this.loading.set(false); this.loadExpenses(month, year); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed to create', '', { duration: 4000 }); this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
+      next: () => { this.snackBar.open('Expense created', '', { duration: 3000 }); this.loadExpenses(month, year); onSuccess?.(); },
+      error: err => { this.snackBar.open(this.extractError(err) ?? 'Failed to create', '', { duration: 4000 }); this.error.set(this.extractError(err) ?? null); },
     });
   }
 
   updateExpense(id: string, dto: UpdateExpenseRequest, month?: number, year?: number, onSuccess?: () => void): void {
-    this.loading.set(true);
     this.service.update(id, dto).subscribe({
-      next: () => { this.snackBar.open('Expense updated', '', { duration: 3000 }); this.loading.set(false); this.loadExpenses(month, year); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed to update', '', { duration: 4000 }); this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
+      next: () => { this.snackBar.open('Expense updated', '', { duration: 3000 }); this.loadExpenses(month, year); onSuccess?.(); },
+      error: err => { this.snackBar.open(this.extractError(err) ?? 'Failed to update', '', { duration: 4000 }); this.error.set(this.extractError(err) ?? null); },
     });
   }
 
   deleteExpense(id: string, month?: number, year?: number): void {
-    this.loading.set(true);
     this.service.delete(id).subscribe({
-      next: () => { this.snackBar.open('Expense deleted', '', { duration: 3000 }); this.loading.set(false); this.loadExpenses(month, year); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed to delete', '', { duration: 4000 }); this.error.set(err.error?.message); this.loading.set(false); },
+      next: () => { this.snackBar.open('Expense deleted', '', { duration: 3000 }); this.loadExpenses(month, year); },
+      error: err => { this.snackBar.open(this.extractError(err) ?? 'Failed to delete', '', { duration: 4000 }); this.error.set(this.extractError(err)); },
     });
   }
 
@@ -103,6 +109,12 @@ export class PersonalExpenseStore {
       },
       error: () => {},
     });
+  }
+
+  private extractError(err: any): string | null {
+    const msg = err?.error?.message;
+    if (!msg) return null;
+    return Array.isArray(msg) ? msg.join(', ') : msg;
   }
 
   private updatePaymentMap(expenseId: string, status: PaymentStatus): void {

@@ -22,8 +22,15 @@ export class SalaryStore {
     return salaries.length > 0 ? this.yearlyTotal() / salaries.length : 0;
   });
 
+  reset(): void {
+    this.mySalary.set(null);
+    this.yearlySalaries.set([]);
+    this.loading.set(false);
+    this.error.set(null);
+  }
+
   loadMySalary(): void {
-    this.loading.set(true);
+    if (!this.mySalary()) this.loading.set(true);
     this.salaryService.getMine().subscribe({
       next: s => { this.mySalary.set(s); this.loading.set(false); },
       error: () => { this.mySalary.set(null); this.loading.set(false); },
@@ -38,7 +45,6 @@ export class SalaryStore {
   }
 
   upsert(dto: { defaultAmount: number; currentAmount: number }): void {
-    this.loading.set(true);
     this.salaryService.upsert(dto).subscribe({
       next: s => {
         this.mySalary.set(s);

@@ -231,8 +231,8 @@ model HouseholdMember {
   /// When the member joined
   joinedAt    DateTime      @default(now())
 
-  user      User      @relation(fields: [userId], references: [id])
-  household Household @relation(fields: [householdId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([userId, householdId])
   @@index([householdId])
@@ -291,8 +291,8 @@ model Salary {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user      User      @relation(fields: [userId], references: [id])
-  household Household @relation(fields: [householdId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([userId, month, year])
   @@index([householdId])
@@ -349,9 +349,9 @@ model Expense {
   /// @DtoEntityHidden
   deletedAt             DateTime?
 
-  household          Household              @relation(fields: [householdId], references: [id])
-  createdBy          User                   @relation("ExpenseCreator", fields: [createdById], references: [id])
-  paidBy             User?                  @relation("ExpensePayer", fields: [paidByUserId], references: [id])
+  household          Household              @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy          User                   @relation("ExpenseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  paidBy             User?                  @relation("ExpensePayer", fields: [paidByUserId], references: [id], onDelete: Restrict)
   approvals          ExpenseApproval[]
   paymentStatuses    ExpensePaymentStatus[]
   recurringOverrides RecurringOverride[]
@@ -390,10 +390,10 @@ model ExpenseApproval {
   /// @DtoCreateHidden
   reviewedAt    DateTime?
 
-  expense     Expense?  @relation(fields: [expenseId], references: [id])
-  household   Household @relation(fields: [householdId], references: [id])
-  requestedBy User      @relation("ApprovalRequester", fields: [requestedById], references: [id])
-  reviewedBy  User?     @relation("ApprovalReviewer", fields: [reviewedById], references: [id])
+  expense     Expense?  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  requestedBy User      @relation("ApprovalRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewedBy  User?     @relation("ApprovalReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
 
   @@index([householdId, status])
   @@index([requestedById])
@@ -424,9 +424,9 @@ model Settlement {
   /// When the settlement was marked as paid
   paidAt      DateTime @default(now())
 
-  household Household @relation(fields: [householdId], references: [id])
-  paidBy    User      @relation("SettlementPayer", fields: [paidByUserId], references: [id])
-  paidTo    User      @relation("SettlementReceiver", fields: [paidToUserId], references: [id])
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  paidBy    User      @relation("SettlementPayer", fields: [paidByUserId], references: [id], onDelete: Restrict)
+  paidTo    User      @relation("SettlementReceiver", fields: [paidToUserId], references: [id], onDelete: Restrict)
 
   @@unique([householdId, month, year])
   @@map("settlements")
@@ -455,8 +455,8 @@ model ExpensePaymentStatus {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  expense Expense @relation(fields: [expenseId], references: [id])
-  paidBy  User    @relation("PaymentStatusPayer", fields: [paidById], references: [id])
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  paidBy  User    @relation("PaymentStatusPayer", fields: [paidById], references: [id], onDelete: Restrict)
 
   @@unique([expenseId, month, year])
   @@index([expenseId])
@@ -485,7 +485,7 @@ model RecurringOverride {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  expense Expense @relation(fields: [expenseId], references: [id])
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
 
   @@unique([expenseId, month, year])
   @@index([expenseId])
@@ -516,8 +516,8 @@ model Saving {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user      User      @relation(fields: [userId], references: [id])
-  household Household @relation(fields: [householdId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@unique([userId, month, year, isShared])
   @@index([householdId])
