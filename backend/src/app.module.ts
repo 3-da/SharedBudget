@@ -39,6 +39,7 @@ import { SavingModule } from './saving/saving.module';
                 REDIS_HOST: Joi.string().default('localhost'),
                 REDIS_PORT: Joi.number().default(6379),
                 REDIS_PASSWORD: Joi.string().allow('').default(''),
+                REDIS_TLS: Joi.string().valid('true', 'false').default('false'),
                 JWT_ACCESS_SECRET: Joi.string().min(32).required(),
                 JWT_ACCESS_EXPIRATION: Joi.string().required(),
                 JWT_REFRESH_SECRET: Joi.string().min(32).required(),

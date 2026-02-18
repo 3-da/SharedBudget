@@ -72,7 +72,7 @@ export class ResetPasswordComponent {
   onSubmit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
-    this.authService.resetPassword({ token: this.token(), password: this.form.getRawValue().password }).pipe(
+    this.authService.resetPassword({ token: this.token(), newPassword: this.form.getRawValue().password }).pipe(
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
       next: () => {

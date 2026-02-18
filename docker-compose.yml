@@ -47,6 +47,7 @@ services:
     env_file: ./backend/.env
     environment:
       NODE_ENV: production
+      REDIS_TLS: "false"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('net').connect(3000,'localhost').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\""]

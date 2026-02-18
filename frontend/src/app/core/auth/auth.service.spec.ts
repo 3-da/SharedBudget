@@ -112,7 +112,7 @@ describe('AuthService', () => {
 
   describe('resetPassword', () => {
     it('should call reset-password endpoint', () => {
-      service.resetPassword({ token: 'tok', password: 'newpass' }).subscribe();
+      service.resetPassword({ token: 'tok', newPassword: 'newpass' }).subscribe();
       const req = httpMock.expectOne(`${baseUrl}/auth/reset-password`);
       expect(req.request.method).toBe('POST');
       req.flush({ message: 'ok' });
