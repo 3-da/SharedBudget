@@ -17,8 +17,17 @@ export class SharedExpenseStore {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
+  reset(): void {
+    this.expenses.set([]);
+    this.paymentStatuses.set(new Map());
+    this.selectedExpense.set(null);
+    this.loading.set(false);
+    this.error.set(null);
+  }
+
   loadExpenses(month?: number, year?: number): void {
-    this.loading.set(true);
+    const showSpinner = this.expenses().length === 0;
+    if (showSpinner) this.loading.set(true);
     const now = new Date();
     const m = month ?? now.getMonth() + 1;
     const y = year ?? now.getFullYear();
@@ -29,7 +38,7 @@ export class SharedExpenseStore {
         this.loadBatchPaymentStatuses(m, y);
       },
       error: err => {
-        this.error.set(err.error?.message?.join(', ') ?? 'Failed to load expenses');
+        this.error.set(this.extractError(err) ?? 'Failed to load expenses');
         this.expenses.set([]);
         this.loading.set(false);
       },
@@ -40,59 +49,53 @@ export class SharedExpenseStore {
     this.loading.set(true);
     this.service.get(id).subscribe({
       next: e => { this.selectedExpense.set(e); this.loading.set(false); },
-      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
+      error: err => { this.error.set(this.extractError(err) ?? null); this.loading.set(false); },
     });
   }
 
   proposeCreate(dto: CreateExpenseRequest, month?: number, year?: number, onSuccess?: () => void): void {
-    this.loading.set(true);
     this.service.proposeCreate(dto).subscribe({
       next: () => {
         this.snackBar.open('Proposal submitted for approval', '', { duration: 3000 });
-        this.loading.set(false);
         this.loadExpenses(month, year);
         onSuccess?.();
       },
-      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
+      error: err => { this.error.set(this.extractError(err) ?? null); },
     });
   }
 
   proposeUpdate(id: string, dto: UpdateExpenseRequest, month?: number, year?: number, onSuccess?: () => void): void {
-    this.loading.set(true);
     this.service.proposeUpdate(id, dto).subscribe({
       next: () => {
         this.snackBar.open('Update proposal submitted', '', { duration: 3000 });
-        this.loading.set(false);
         this.loadExpenses(month, year);
         onSuccess?.();
       },
-      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
+      error: err => { this.error.set(this.extractError(err) ?? null); },
     });
   }
 
   proposeDelete(id: string, month?: number, year?: number): void {
-    this.loading.set(true);
     this.service.proposeDelete(id).subscribe({
       next: () => {
         this.snackBar.open('Delete proposal submitted', '', { duration: 3000 });
-        this.loading.set(false);
         this.loadExpenses(month, year);
       },
-      error: err => { this.error.set(err.error?.message?.join(', ') ?? null); this.loading.set(false); },
+      error: err => { this.error.set(this.extractError(err) ?? null); },
     });
   }
 
   markPaid(expenseId: string, month: number, year: number): void {
     this.paymentService.markPaid(expenseId, { month, year }).subscribe({
       next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Marked as paid', '', { duration: 2000 }); },
-      error: err => this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed', '', { duration: 4000 }),
+      error: err => this.snackBar.open(this.extractError(err) ?? 'Failed', '', { duration: 4000 }),
     });
   }
 
   undoPaid(expenseId: string, month: number, year: number): void {
     this.paymentService.undoPaid(expenseId, { month, year }).subscribe({
       next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
-      error: err => this.snackBar.open(err.error?.message?.join(', ') ?? 'Failed', '', { duration: 4000 }),
+      error: err => this.snackBar.open(this.extractError(err) ?? 'Failed', '', { duration: 4000 }),
     });
   }
 
@@ -107,6 +110,12 @@ export class SharedExpenseStore {
       },
       error: () => {},
     });
+  }
+
+  private extractError(err: any): string | null {
+    const msg = err?.error?.message;
+    if (!msg) return null;
+    return Array.isArray(msg) ? msg.join(', ') : msg;
   }
 
   private updatePaymentMap(expenseId: string, status: PaymentStatus): void {

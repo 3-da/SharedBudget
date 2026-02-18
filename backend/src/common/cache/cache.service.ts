@@ -65,8 +65,9 @@ export class CacheService {
 
         this.logger.debug(`Cache miss: ${key}`);
 
-        if (useLock) {
-            const lockKey = `lock:${key}`;
+        const lockKey = useLock ? `lock:${key}` : null;
+
+        if (lockKey) {
             const acquired = await this.redis.set(lockKey, '1', 'EX', 10, 'NX');
             if (!acquired) {
                 // Another process is fetching — wait briefly and retry from cache
@@ -80,12 +81,18 @@ export class CacheService {
             }
         }
 
-        const data = await fetchFn();
+        try {
+            const data = await fetchFn();
 
-        await this.redis.set(key, JSON.stringify(data), 'EX', ttl);
-        this.logger.debug(`Cache set: ${key} (TTL: ${ttl}s)`);
+            await this.redis.set(key, JSON.stringify(data), 'EX', ttl);
+            this.logger.debug(`Cache set: ${key} (TTL: ${ttl}s)`);
 
-        return data;
+            return data;
+        } finally {
+            if (lockKey) {
+                await this.redis.del(lockKey);
+            }
+        }
     }
     //#endregion
 

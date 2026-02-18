@@ -371,7 +371,16 @@ export class RecurringOverrideService {
         await this.cacheService.invalidateDashboard(householdId);
     }
 
-    private mapToResponse(record: any): RecurringOverrideResponseDto {
+    private mapToResponse(record: {
+        id: string;
+        expenseId: string;
+        month: number;
+        year: number;
+        amount: number | { toNumber(): number } | null;
+        skipped: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+    }): RecurringOverrideResponseDto {
         return {
             id: record.id,
             expenseId: record.expenseId,

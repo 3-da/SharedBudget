@@ -101,6 +101,28 @@ describe('CacheService', () => {
             expect(mockRedis.set).not.toHaveBeenCalled();
         });
 
+        it('should release lock after successful fetch', async () => {
+            mockRedis.get.mockResolvedValue(null);
+            mockRedis.set.mockResolvedValue('OK');
+            const freshData = { value: 'test' };
+            const fetchFn = vi.fn().mockResolvedValue(freshData);
+
+            await cacheService.getOrSet('cache:test:locked', 300, fetchFn, true);
+
+            expect(mockRedis.set).toHaveBeenCalledWith('lock:cache:test:locked', '1', 'EX', 10, 'NX');
+            expect(mockRedis.del).toHaveBeenCalledWith('lock:cache:test:locked');
+        });
+
+        it('should release lock after fetch error', async () => {
+            mockRedis.get.mockResolvedValue(null);
+            mockRedis.set.mockResolvedValue('OK');
+            const fetchFn = vi.fn().mockRejectedValue(new Error('Fetch failed'));
+
+            await expect(cacheService.getOrSet('cache:test:locked', 300, fetchFn, true)).rejects.toThrow('Fetch failed');
+
+            expect(mockRedis.del).toHaveBeenCalledWith('lock:cache:test:locked');
+        });
+
         it('should handle complex nested objects', async () => {
             mockRedis.get.mockResolvedValue(null);
             const complexData = {

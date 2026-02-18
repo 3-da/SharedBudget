@@ -11,7 +11,7 @@ Chart.register(...registerables);
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<canvas #chartCanvas></canvas>`,
-  styles: [`:host { display: block; position: relative; }`],
+  styles: [`:host { display: block; position: relative; height: 100%; }`],
 })
 export class BaseChartComponent implements OnDestroy {
   readonly config = input.required<ChartConfiguration>();

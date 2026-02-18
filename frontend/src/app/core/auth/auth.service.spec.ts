@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
+import { StoreResetService } from '../stores/store-reset.service';
 import { environment } from '../../environments/environment';
 
 describe('AuthService', () => {
@@ -15,7 +16,12 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: StoreResetService, useValue: { resetAll: vi.fn() } },
+      ],
     });
     service = TestBed.inject(AuthService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -26,16 +32,15 @@ describe('AuthService', () => {
   afterEach(() => httpMock.verify());
 
   describe('login', () => {
-    it('should store tokens on successful login', () => {
+    it('should store access token on successful login', () => {
       const spy = vi.spyOn(tokenService, 'setAccessToken');
-      const spyRefresh = vi.spyOn(tokenService, 'setRefreshToken');
 
       service.login({ email: 'a@b.com', password: 'pass' }).subscribe();
       const req = httpMock.expectOne(`${baseUrl}/auth/login`);
-      req.flush({ accessToken: 'at', refreshToken: 'rt' });
+      expect(req.request.withCredentials).toBe(true);
+      req.flush({ accessToken: 'at' });
 
       expect(spy).toHaveBeenCalledWith('at');
-      expect(spyRefresh).toHaveBeenCalledWith('rt');
     });
   });
 
@@ -46,6 +51,7 @@ describe('AuthService', () => {
 
       service.logout().subscribe();
       const req = httpMock.expectOne(`${baseUrl}/auth/logout`);
+      expect(req.request.withCredentials).toBe(true);
       req.flush({ message: 'ok' });
 
       expect(clearSpy).toHaveBeenCalled();
@@ -64,12 +70,25 @@ describe('AuthService', () => {
   });
 
   describe('verifyCode', () => {
-    it('should call verify-code and store tokens', () => {
+    it('should call verify-code and store access token', () => {
       const spy = vi.spyOn(tokenService, 'setAccessToken');
       service.verifyCode({ email: 'a@b.com', code: '123456' }).subscribe();
       const req = httpMock.expectOne(`${baseUrl}/auth/verify-code`);
-      req.flush({ accessToken: 'at', refreshToken: 'rt' });
+      expect(req.request.withCredentials).toBe(true);
+      req.flush({ accessToken: 'at' });
       expect(spy).toHaveBeenCalledWith('at');
+    });
+  });
+
+  describe('refresh', () => {
+    it('should send empty body with credentials', () => {
+      const spy = vi.spyOn(tokenService, 'setAccessToken');
+      service.refresh().subscribe();
+      const req = httpMock.expectOne(`${baseUrl}/auth/refresh`);
+      expect(req.request.withCredentials).toBe(true);
+      expect(req.request.body).toEqual({});
+      req.flush({ accessToken: 'new-at' });
+      expect(spy).toHaveBeenCalledWith('new-at');
     });
   });
 

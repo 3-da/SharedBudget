@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '../generated/prisma/client';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import {
     ApprovalStatus,
@@ -311,7 +312,7 @@ export class DashboardCalculatorService {
      * @returns Number of pending approvals
      */
     async getPendingApprovalsCount(householdId: string, userId?: string): Promise<number> {
-        const where: any = {
+        const where: Prisma.ExpenseApprovalWhereInput = {
             householdId,
             status: ApprovalStatus.PENDING,
         };

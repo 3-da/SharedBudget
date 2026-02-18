@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, Injector } from '@angular/core';
 import { Household, HouseholdInvitation } from '../../../shared/models/household.model';
 import { DashboardOverview } from '../../../shared/models/dashboard.model';
 import { HouseholdRole } from '../../../shared/models/enums';
@@ -12,7 +12,8 @@ export class HouseholdStore {
   private readonly householdService = inject(HouseholdService);
   private readonly invitationService = inject(InvitationService);
   private readonly dashboardService = inject(DashboardService);
-  private readonly authService = inject(AuthService);
+  // Use Injector for lazy resolution to break: HouseholdStore → AuthService → StoreResetService → HouseholdStore
+  private readonly injector = inject(Injector);
 
   readonly household = signal<Household | null>(null);
   readonly overview = signal<DashboardOverview | null>(null);
@@ -27,17 +28,29 @@ export class HouseholdStore {
   readonly hasHousehold = computed(() => !!this.household());
   readonly members = computed(() => this.household()?.members ?? []);
   readonly isOwner = computed(() => {
-    const user = this.authService.currentUser();
+    const user = this.injector.get(AuthService).currentUser();
     if (!user) return false;
     return this.members().some(m => m.userId === user.id && m.role === HouseholdRole.OWNER);
   });
-  readonly currentUserId = computed(() => this.authService.currentUser()?.id ?? '');
+  readonly currentUserId = computed(() => this.injector.get(AuthService).currentUser()?.id ?? '');
 
   readonly monthLabel = computed(() => {
     const ov = this.overview();
     if (!ov) return '';
     return new Date(ov.year, ov.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   });
+
+  reset(): void {
+    this.household.set(null);
+    this.overview.set(null);
+    this.invitations.set([]);
+    this.loading.set(false);
+    this.overviewLoading.set(false);
+    this.error.set(null);
+    this.viewMode.set('monthly');
+    this.selectedMonth.set(new Date().getMonth() + 1);
+    this.selectedYear.set(new Date().getFullYear());
+  }
 
   loadHousehold(): void {
     this.loading.set(true);
@@ -52,7 +65,7 @@ export class HouseholdStore {
   }
 
   loadOverview(): void {
-    this.overviewLoading.set(true);
+    if (!this.overview()) this.overviewLoading.set(true);
     this.dashboardService.getOverview(this.viewMode(), this.selectedMonth(), this.selectedYear()).subscribe({
       next: o => { this.overview.set(o); this.overviewLoading.set(false); },
       error: () => { this.overview.set(null); this.overviewLoading.set(false); },

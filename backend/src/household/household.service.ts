@@ -339,17 +339,31 @@ export class HouseholdService {
             },
         });
 
+        if (!household) throw new NotFoundException('Household not found');
         return this.mapToResponseDto(household);
     }
 
-    private mapToResponseDto(household: any) {
+    private mapToResponseDto(household: {
+        id: string;
+        name: string;
+        inviteCode: string;
+        maxMembers: number;
+        createdAt: Date;
+        members: Array<{
+            id: string;
+            userId: string;
+            user: { firstName: string; lastName: string };
+            role: HouseholdRole;
+            joinedAt: Date;
+        }>;
+    }): HouseholdResponseDto {
         return {
             id: household.id,
             name: household.name,
             inviteCode: household.inviteCode,
             maxMembers: household.maxMembers,
             createdAt: household.createdAt,
-            members: household.members.map((member: any) => ({
+            members: household.members.map((member) => ({
                 id: member.id,
                 userId: member.userId,
                 firstName: member.user.firstName,

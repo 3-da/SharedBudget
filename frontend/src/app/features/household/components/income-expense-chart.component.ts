@@ -21,6 +21,10 @@ import { cssVar } from '../../../shared/utils/chart-colors';
       </mat-card-content>
     </mat-card>
   `,
+  styles: [`
+    mat-card-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    app-base-chart { flex: 1; min-height: 0; }
+  `],
 })
 export class IncomeExpenseChartComponent {
   readonly data = input.required<DashboardOverview>();

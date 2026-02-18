@@ -19,8 +19,8 @@ export class DashboardController {
     constructor(private readonly dashboardService: DashboardService) {}
 
     @GetDashboardEndpoint()
-    async getOverview(@CurrentUser('id') userId: string, @Query('mode') mode?: string, @Query() query?: DashboardQueryDto): Promise<DashboardResponseDto> {
-        return this.dashboardService.getOverview(userId, mode === 'yearly' ? 'yearly' : 'monthly', query?.month, query?.year);
+    async getOverview(@CurrentUser('id') userId: string, @Query() query?: DashboardQueryDto): Promise<DashboardResponseDto> {
+        return this.dashboardService.getOverview(userId, query?.mode === 'yearly' ? 'yearly' : 'monthly', query?.month, query?.year);
     }
 
     @GetSavingsEndpoint()

@@ -9,19 +9,19 @@ describe('SessionService', () => {
 
     const userId = 'user-123';
     const token = 'refresh-token-abc';
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)';
 
     const mockPipeline = {
+        set: vi.fn().mockReturnThis(),
+        sadd: vi.fn().mockReturnThis(),
+        srem: vi.fn().mockReturnThis(),
+        expire: vi.fn().mockReturnThis(),
         del: vi.fn().mockReturnThis(),
         exec: vi.fn().mockResolvedValue([]),
     };
 
     const mockRedis = {
         get: vi.fn(),
-        set: vi.fn(),
-        del: vi.fn(),
-        sadd: vi.fn(),
-        srem: vi.fn(),
-        expire: vi.fn(),
         smembers: vi.fn().mockResolvedValue([]),
         pipeline: vi.fn(() => mockPipeline),
     };
@@ -41,31 +41,79 @@ describe('SessionService', () => {
     });
 
     describe('storeRefreshToken', () => {
-        it('should store token in Redis with TTL and add to session set', async () => {
+        it('should store token as JSON with uaHash when userAgent provided', async () => {
+            await sessionService.storeRefreshToken(userId, token, userAgent);
+
+            expect(mockRedis.pipeline).toHaveBeenCalled();
+            const storedValue = mockPipeline.set.mock.calls[0][1];
+            const parsed = JSON.parse(storedValue);
+            expect(parsed.userId).toBe(userId);
+            expect(parsed.uaHash).toHaveLength(16);
+            expect(mockPipeline.sadd).toHaveBeenCalledWith(`user_sessions:${userId}`, token);
+            expect(mockPipeline.expire).toHaveBeenCalledWith(`user_sessions:${userId}`, 604800);
+            expect(mockPipeline.exec).toHaveBeenCalled();
+        });
+
+        it('should store token as JSON with null uaHash when no userAgent', async () => {
             await sessionService.storeRefreshToken(userId, token);
 
-            expect(mockRedis.set).toHaveBeenCalledWith(`refresh:${token}`, userId, 'EX', 604800);
-            expect(mockRedis.sadd).toHaveBeenCalledWith(`user_sessions:${userId}`, token);
-            expect(mockRedis.expire).toHaveBeenCalledWith(`user_sessions:${userId}`, 604800);
+            const storedValue = mockPipeline.set.mock.calls[0][1];
+            const parsed = JSON.parse(storedValue);
+            expect(parsed.userId).toBe(userId);
+            expect(parsed.uaHash).toBeNull();
         });
 
         it('should refresh session set TTL on every new token', async () => {
             await sessionService.storeRefreshToken(userId, 'token-1');
             await sessionService.storeRefreshToken(userId, 'token-2');
 
-            expect(mockRedis.expire).toHaveBeenCalledTimes(2);
-            expect(mockRedis.expire).toHaveBeenNthCalledWith(1, `user_sessions:${userId}`, 604800);
-            expect(mockRedis.expire).toHaveBeenNthCalledWith(2, `user_sessions:${userId}`, 604800);
+            expect(mockPipeline.expire).toHaveBeenCalledTimes(2);
+            expect(mockPipeline.expire).toHaveBeenNthCalledWith(1, `user_sessions:${userId}`, 604800);
+            expect(mockPipeline.expire).toHaveBeenNthCalledWith(2, `user_sessions:${userId}`, 604800);
+        });
+    });
+
+    describe('getSessionFromRefreshToken', () => {
+        it('should parse JSON format and return session with uaHash', async () => {
+            mockRedis.get.mockResolvedValue(JSON.stringify({ userId, uaHash: 'abc123def4567890' }));
+
+            const result = await sessionService.getSessionFromRefreshToken(token);
+
+            expect(mockRedis.get).toHaveBeenCalledWith(`refresh:${token}`);
+            expect(result).toEqual({ userId, uaHash: 'abc123def4567890' });
+        });
+
+        it('should handle old plain-string format (graceful migration)', async () => {
+            mockRedis.get.mockResolvedValue(userId);
+
+            const result = await sessionService.getSessionFromRefreshToken(token);
+
+            expect(result).toEqual({ userId, uaHash: null });
+        });
+
+        it('should return null for expired or invalid token', async () => {
+            mockRedis.get.mockResolvedValue(null);
+
+            const result = await sessionService.getSessionFromRefreshToken(token);
+
+            expect(result).toBeNull();
         });
     });
 
     describe('getUserIdFromRefreshToken', () => {
-        it('should return userId for valid token', async () => {
+        it('should return userId for JSON format token', async () => {
+            mockRedis.get.mockResolvedValue(JSON.stringify({ userId, uaHash: 'abc' }));
+
+            const result = await sessionService.getUserIdFromRefreshToken(token);
+
+            expect(result).toBe(userId);
+        });
+
+        it('should return userId for old plain-string format', async () => {
             mockRedis.get.mockResolvedValue(userId);
 
             const result = await sessionService.getUserIdFromRefreshToken(token);
 
-            expect(mockRedis.get).toHaveBeenCalledWith(`refresh:${token}`);
             expect(result).toBe(userId);
         });
 
@@ -79,24 +127,25 @@ describe('SessionService', () => {
     });
 
     describe('removeRefreshToken', () => {
-        it('should delete token and remove from session set when userId exists', async () => {
-            mockRedis.get.mockResolvedValue(userId);
+        it('should delete token and remove from session set when session exists', async () => {
+            mockRedis.get.mockResolvedValue(JSON.stringify({ userId, uaHash: 'abc' }));
 
             const result = await sessionService.removeRefreshToken(token);
 
-            expect(mockRedis.get).toHaveBeenCalledWith(`refresh:${token}`);
-            expect(mockRedis.del).toHaveBeenCalledWith(`refresh:${token}`);
-            expect(mockRedis.srem).toHaveBeenCalledWith(`user_sessions:${userId}`, token);
+            expect(mockRedis.pipeline).toHaveBeenCalled();
+            expect(mockPipeline.del).toHaveBeenCalledWith(`refresh:${token}`);
+            expect(mockPipeline.srem).toHaveBeenCalledWith(`user_sessions:${userId}`, token);
+            expect(mockPipeline.exec).toHaveBeenCalled();
             expect(result).toBe(userId);
         });
 
-        it('should delete token but skip srem when userId is not found', async () => {
+        it('should delete token but skip srem when session is not found', async () => {
             mockRedis.get.mockResolvedValue(null);
 
             const result = await sessionService.removeRefreshToken(token);
 
-            expect(mockRedis.del).toHaveBeenCalledWith(`refresh:${token}`);
-            expect(mockRedis.srem).not.toHaveBeenCalled();
+            expect(mockPipeline.del).toHaveBeenCalledWith(`refresh:${token}`);
+            expect(mockPipeline.srem).not.toHaveBeenCalled();
             expect(result).toBeNull();
         });
     });
@@ -136,6 +185,29 @@ describe('SessionService', () => {
 
             expect(mockPipeline.del).toHaveBeenCalledTimes(2); // 1 token + 1 session set
             expect(result).toBe(1);
+        });
+    });
+
+    describe('hashUserAgent', () => {
+        it('should return a 16-character hex string', () => {
+            const hash = sessionService.hashUserAgent(userAgent);
+
+            expect(hash).toHaveLength(16);
+            expect(hash).toMatch(/^[a-f0-9]{16}$/);
+        });
+
+        it('should return consistent hash for same input', () => {
+            const hash1 = sessionService.hashUserAgent(userAgent);
+            const hash2 = sessionService.hashUserAgent(userAgent);
+
+            expect(hash1).toBe(hash2);
+        });
+
+        it('should return different hashes for different user agents', () => {
+            const hash1 = sessionService.hashUserAgent('Chrome/120');
+            const hash2 = sessionService.hashUserAgent('Firefox/115');
+
+            expect(hash1).not.toBe(hash2);
         });
     });
 });

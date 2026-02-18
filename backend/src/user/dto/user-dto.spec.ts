@@ -58,14 +58,14 @@ describe('ChangePasswordDto', () => {
 
     describe('newPassword', () => {
         it('should accept password at minimum length (boundary: 8 chars)', async () => {
-            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: '12345678' });
+            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: 'Abcdef1x' });
             const errors = await validate(dto);
 
             expect(errors.length).toBe(0);
         });
 
         it('should reject password below minimum length (boundary: 7 chars)', async () => {
-            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: '1234567' });
+            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: 'Abcde1x' });
             const errors = await validate(dto);
 
             expect(errors.length).toBeGreaterThan(0);
@@ -74,14 +74,14 @@ describe('ChangePasswordDto', () => {
         });
 
         it('should accept password at maximum length (boundary: 72 chars)', async () => {
-            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: 'a'.repeat(72) });
+            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: 'Aa1' + 'x'.repeat(69) });
             const errors = await validate(dto);
 
             expect(errors.length).toBe(0);
         });
 
         it('should reject password above maximum length (boundary: 73 chars)', async () => {
-            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: 'a'.repeat(73) });
+            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: 'Aa1' + 'x'.repeat(70) });
             const errors = await validate(dto);
 
             expect(errors.length).toBeGreaterThan(0);
@@ -95,6 +95,15 @@ describe('ChangePasswordDto', () => {
 
             expect(errors.length).toBeGreaterThan(0);
             expect(errors[0].property).toBe('newPassword');
+        });
+
+        it('should reject password without complexity (lowercase only)', async () => {
+            const dto = plainToInstance(ChangePasswordDto, { ...validData, newPassword: 'abcdefgh' });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBeGreaterThan(0);
+            expect(errors[0].property).toBe('newPassword');
+            expect(errors[0].constraints).toHaveProperty('matches');
         });
     });
 

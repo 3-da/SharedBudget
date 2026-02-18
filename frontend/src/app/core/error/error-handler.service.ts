@@ -1,4 +1,4 @@
-import { ErrorHandler, Injectable, inject, NgZone } from '@angular/core';
+import { ErrorHandler, Injectable, inject, isDevMode, NgZone } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
 
@@ -8,7 +8,9 @@ export class GlobalErrorHandler implements ErrorHandler {
   private readonly zone = inject(NgZone);
 
   handleError(error: unknown): void {
-    console.error('Unhandled error:', error);
+    if (isDevMode()) {
+      console.error('Unhandled error:', error);
+    }
 
     const message = this.extractMessage(error);
     this.zone.run(() => {
@@ -22,7 +24,7 @@ export class GlobalErrorHandler implements ErrorHandler {
   private extractMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       if (error.error?.message) {
-        return (error.error.message as string[]).join(', ');
+        return Array.isArray(error.error.message) ? error.error.message.join(', ') : error.error.message;
       }
       return `Server error: ${error.status}`;
     }

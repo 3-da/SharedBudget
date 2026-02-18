@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
 import { UserProfileResponseDto } from './dto/user-profile-response.dto';
@@ -10,11 +11,19 @@ import * as argon2 from 'argon2';
 @Injectable()
 export class UserService {
     private readonly logger = new Logger(UserService.name);
+    private readonly argon2Options: argon2.Options;
 
     constructor(
         private readonly prismaService: PrismaService,
         private readonly sessionService: SessionService,
-    ) {}
+        private readonly configService: ConfigService,
+    ) {
+        this.argon2Options = {
+            memoryCost: this.configService.get<number>('ARGON2_MEMORY_COST', 65536),
+            timeCost: this.configService.get<number>('ARGON2_TIME_COST', 3),
+            parallelism: this.configService.get<number>('ARGON2_PARALLELISM', 4),
+        };
+    }
 
     async getProfile(userId: string): Promise<UserProfileResponseDto> {
         this.logger.debug(`Get profile for user: ${userId}`);
@@ -82,7 +91,7 @@ export class UserService {
             throw new UnauthorizedException('Current password is incorrect.');
         }
 
-        const hashedNewPassword = await argon2.hash(dto.newPassword);
+        const hashedNewPassword = await argon2.hash(dto.newPassword, this.argon2Options);
 
         await this.prismaService.user.update({
             where: { id: userId },
@@ -95,7 +104,7 @@ export class UserService {
         return { message: 'Password changed successfully. Please log in again.' };
     }
 
-    private mapToProfileDto(user: any): UserProfileResponseDto {
+    private mapToProfileDto(user: { id: string; email: string; firstName: string; lastName: string; createdAt: Date; updatedAt: Date }): UserProfileResponseDto {
         return {
             id: user.id,
             email: user.email,

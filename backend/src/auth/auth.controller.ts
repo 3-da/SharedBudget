@@ -1,9 +1,9 @@
-import { Body, Controller } from '@nestjs/common';
+import { Body, Controller, Headers, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import express from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { RefreshDto } from './dto/refresh.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResendCodeDto } from './dto/resend-code.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -32,8 +32,12 @@ export class AuthController {
     }
 
     @VerifyCodeEndpoint()
-    async verifyCode(@Body() verifyCodeDto: VerifyCodeDto): Promise<AuthResponseDto> {
-        return this.authService.verifyCode(verifyCodeDto.email, verifyCodeDto.code);
+    async verifyCode(
+        @Body() verifyCodeDto: VerifyCodeDto,
+        @Res({ passthrough: true }) res: express.Response,
+        @Headers('user-agent') userAgent?: string,
+    ): Promise<AuthResponseDto> {
+        return this.authService.verifyCode(verifyCodeDto.email, verifyCodeDto.code, res, userAgent);
     }
 
     @ResendCodeEndpoint()
@@ -42,18 +46,31 @@ export class AuthController {
     }
 
     @LoginEndpoint()
-    async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
-        return this.authService.login(loginDto);
+    async login(
+        @Body() loginDto: LoginDto,
+        @Res({ passthrough: true }) res: express.Response,
+        @Headers('user-agent') userAgent?: string,
+    ): Promise<AuthResponseDto> {
+        return this.authService.login(loginDto, res, userAgent);
     }
 
     @RefreshEndpoint()
-    async refresh(@Body() refreshDto: RefreshDto): Promise<AuthResponseDto> {
-        return this.authService.refresh(refreshDto.refreshToken);
+    async refresh(
+        @Req() req: express.Request,
+        @Res({ passthrough: true }) res: express.Response,
+        @Headers('user-agent') userAgent?: string,
+    ): Promise<AuthResponseDto> {
+        const refreshToken = req.cookies?.['refresh_token'];
+        if (!refreshToken) {
+            throw new UnauthorizedException('No refresh token provided.');
+        }
+        return this.authService.refresh(refreshToken, res, userAgent);
     }
 
     @LogoutEndpoint()
-    async logout(@Body() refreshDto: RefreshDto): Promise<MessageResponseDto> {
-        await this.authService.logout(refreshDto.refreshToken);
+    async logout(@Req() req: express.Request, @Res({ passthrough: true }) res: express.Response): Promise<MessageResponseDto> {
+        const refreshToken = req.cookies?.['refresh_token'] || '';
+        await this.authService.logout(refreshToken, res);
         return { message: 'Logged out successfully.' };
     }
 

@@ -14,7 +14,7 @@ type SavingsViewMode = 'total' | 'personal' | 'shared';
   standalone: true,
   imports: [MatCardModule, MatButtonToggleModule, BaseChartComponent],
   template: `
-    <mat-card>
+    <mat-card style="height: 100%">
       <mat-card-header>
         <mat-card-title>Savings Breakdown</mat-card-title>
         <mat-card-subtitle>Per member</mat-card-subtitle>
@@ -30,7 +30,9 @@ type SavingsViewMode = 'total' | 'personal' | 'shared';
     </mat-card>
   `,
   styles: [`
-    mat-button-toggle-group { margin-bottom: 12px; }
+    mat-card-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    mat-button-toggle-group { margin-bottom: 12px; flex-shrink: 0; }
+    app-base-chart { flex: 1; min-height: 0; }
   `],
 })
 export class SavingsChartComponent {

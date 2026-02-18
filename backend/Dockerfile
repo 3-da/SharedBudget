@@ -34,6 +34,8 @@ RUN npx prisma generate --config prisma.config.ts
 COPY --from=build /app/dist ./dist
 
 ENV NODE_ENV=production
+
+USER node
 EXPOSE 3000
 
 CMD ["node", "dist/main"]

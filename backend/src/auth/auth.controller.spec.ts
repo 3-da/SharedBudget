@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
+import { UnauthorizedException } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { RefreshDto } from './dto/refresh.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResendCodeDto } from './dto/resend-code.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { Request, Response } from 'express';
 
 describe('AuthController', () => {
     let controller: AuthController;
@@ -17,7 +18,6 @@ describe('AuthController', () => {
 
     const mockAuthResponse: AuthResponseDto = {
         accessToken: 'mock-access-token',
-        refreshToken: 'mock-refresh-token',
         user: {
             id: 'user-123',
             email: 'test@example.com',
@@ -37,7 +37,18 @@ describe('AuthController', () => {
         resetPassword: vi.fn(() => Promise.resolve({ message: 'Password reset successfully. You can now log in with your new password.' })),
     };
 
-    const refreshDto: RefreshDto = { refreshToken: 'mock-refresh-token' };
+    const mockRes = {
+        cookie: vi.fn(),
+        clearCookie: vi.fn(),
+    } as unknown as Response;
+
+    const mockReqWithCookie = {
+        cookies: { refresh_token: 'mock-refresh-token' },
+    } as unknown as Request;
+
+    const mockReqWithoutCookie = {
+        cookies: {},
+    } as unknown as Request;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -71,10 +82,10 @@ describe('AuthController', () => {
     describe('verifyCode', () => {
         const verifyCodeDto: VerifyCodeDto = { email: 'test@example.com', code: '123456' };
 
-        it('should call authService.verifyCode and return tokens', async () => {
-            const result = await controller.verifyCode(verifyCodeDto);
+        it('should call authService.verifyCode with response and return tokens', async () => {
+            const result = await controller.verifyCode(verifyCodeDto, mockRes);
 
-            expect(authService.verifyCode).toHaveBeenCalledWith(verifyCodeDto.email, verifyCodeDto.code);
+            expect(authService.verifyCode).toHaveBeenCalledWith(verifyCodeDto.email, verifyCodeDto.code, mockRes, undefined);
             expect(authService.verifyCode).toHaveBeenCalledTimes(1);
             expect(result).toEqual(mockAuthResponse);
         });
@@ -95,31 +106,43 @@ describe('AuthController', () => {
     describe('login', () => {
         const loginDto: LoginDto = { email: 'test@example.com', password: 'password123' };
 
-        it('should call authService.login and return tokens', async () => {
-            const result = await controller.login(loginDto);
+        it('should call authService.login with response and return tokens', async () => {
+            const result = await controller.login(loginDto, mockRes);
 
-            expect(authService.login).toHaveBeenCalledWith(loginDto);
+            expect(authService.login).toHaveBeenCalledWith(loginDto, mockRes, undefined);
             expect(authService.login).toHaveBeenCalledTimes(1);
             expect(result).toEqual(mockAuthResponse);
         });
     });
 
     describe('refresh', () => {
-        it('should call authService.refresh and return new tokens', async () => {
-            const result = await controller.refresh(refreshDto);
+        it('should read refresh token from cookie and call authService.refresh', async () => {
+            const result = await controller.refresh(mockReqWithCookie, mockRes);
 
-            expect(authService.refresh).toHaveBeenCalledWith(refreshDto.refreshToken);
+            expect(authService.refresh).toHaveBeenCalledWith('mock-refresh-token', mockRes, undefined);
             expect(authService.refresh).toHaveBeenCalledTimes(1);
             expect(result).toEqual(mockAuthResponse);
+        });
+
+        it('should throw UnauthorizedException when no refresh token cookie', async () => {
+            await expect(controller.refresh(mockReqWithoutCookie, mockRes)).rejects.toThrow(UnauthorizedException);
+            await expect(controller.refresh(mockReqWithoutCookie, mockRes)).rejects.toThrow('No refresh token provided.');
         });
     });
 
     describe('logout', () => {
-        it('should call authService.logout and return success message', async () => {
-            const result = await controller.logout(refreshDto);
+        it('should read refresh token from cookie and call authService.logout', async () => {
+            const result = await controller.logout(mockReqWithCookie, mockRes);
 
-            expect(authService.logout).toHaveBeenCalledWith(refreshDto.refreshToken);
+            expect(authService.logout).toHaveBeenCalledWith('mock-refresh-token', mockRes);
             expect(authService.logout).toHaveBeenCalledTimes(1);
+            expect(result).toEqual({ message: 'Logged out successfully.' });
+        });
+
+        it('should pass empty string when no refresh token cookie', async () => {
+            const result = await controller.logout(mockReqWithoutCookie, mockRes);
+
+            expect(authService.logout).toHaveBeenCalledWith('', mockRes);
             expect(result).toEqual({ message: 'Logged out successfully.' });
         });
     });

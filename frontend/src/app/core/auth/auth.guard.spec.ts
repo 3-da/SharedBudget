@@ -1,42 +1,38 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { authGuard } from './auth.guard';
-import { TokenService } from './token.service';
+import { AuthService } from './auth.service';
+import { StoreResetService } from '../stores/store-reset.service';
 
 describe('authGuard', () => {
-  let tokenService: TokenService;
+  let authService: AuthService;
   let router: Router;
   const mockRoute = {} as ActivatedRouteSnapshot;
 
   beforeEach(() => {
-    localStorage.clear();
     TestBed.configureTestingModule({
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        { provide: StoreResetService, useValue: { resetAll: vi.fn() } },
+      ],
     });
-    tokenService = TestBed.inject(TokenService);
+    authService = TestBed.inject(AuthService);
     router = TestBed.inject(Router);
   });
 
-  afterEach(() => localStorage.clear());
-
-  it('should allow access when access token exists', () => {
-    tokenService.setAccessToken('valid-token');
+  it('should allow access when user is authenticated', () => {
+    authService.currentUser.set({ id: '1', email: 'a@b.com', firstName: 'A', lastName: 'B' } as any);
     const result = TestBed.runInInjectionContext(() =>
       authGuard(mockRoute, { url: '/dashboard' } as RouterStateSnapshot),
     );
     expect(result).toBe(true);
   });
 
-  it('should allow access when refresh token exists', () => {
-    tokenService.setRefreshToken('valid-refresh');
-    const result = TestBed.runInInjectionContext(() =>
-      authGuard(mockRoute, { url: '/dashboard' } as RouterStateSnapshot),
-    );
-    expect(result).toBe(true);
-  });
-
-  it('should redirect to /auth/login when no tokens', () => {
+  it('should redirect to /auth/login when not authenticated', () => {
+    authService.currentUser.set(null);
     const result = TestBed.runInInjectionContext(() =>
       authGuard(mockRoute, { url: '/dashboard' } as RouterStateSnapshot),
     );
@@ -46,6 +42,7 @@ describe('authGuard', () => {
   });
 
   it('should pass returnUrl as query param', () => {
+    authService.currentUser.set(null);
     const result = TestBed.runInInjectionContext(() =>
       authGuard(mockRoute, { url: '/expenses/personal' } as RouterStateSnapshot),
     );

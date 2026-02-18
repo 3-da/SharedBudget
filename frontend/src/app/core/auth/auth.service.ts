@@ -12,16 +12,17 @@ import {
   ResendCodeRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
-  RefreshTokenRequest,
   MessageResponse,
 } from '../../shared/models/auth.model';
 import { User } from '../../shared/models/user.model';
+import { StoreResetService } from '../stores/store-reset.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenService = inject(TokenService);
   private readonly router = inject(Router);
+  private readonly storeReset = inject(StoreResetService);
   private readonly baseUrl = environment.apiUrl;
 
   readonly currentUser = signal<User | null>(null);
@@ -33,7 +34,9 @@ export class AuthService {
   }
 
   verifyCode(dto: VerifyCodeRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/verify-code`, dto).pipe(
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/verify-code`, dto, {
+      withCredentials: true,
+    }).pipe(
       tap(res => this.handleAuthResponse(res)),
     );
   }
@@ -43,26 +46,29 @@ export class AuthService {
   }
 
   login(dto: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/login`, dto).pipe(
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/login`, dto, {
+      withCredentials: true,
+    }).pipe(
       tap(res => this.handleAuthResponse(res)),
     );
   }
 
   refresh(): Observable<AuthResponse> {
-    const refreshToken = this.tokenService.getRefreshToken();
-    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/refresh`, {
-      refreshToken,
-    } as RefreshTokenRequest).pipe(
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/refresh`, {}, {
+      withCredentials: true,
+    }).pipe(
       tap(res => this.handleAuthResponse(res)),
     );
   }
 
   logout(): Observable<MessageResponse> {
-    const refreshToken = this.tokenService.getRefreshToken();
-    return this.http.post<MessageResponse>(`${this.baseUrl}/auth/logout`, { refreshToken }).pipe(
+    return this.http.post<MessageResponse>(`${this.baseUrl}/auth/logout`, {}, {
+      withCredentials: true,
+    }).pipe(
       tap(() => {
         this.tokenService.clearTokens();
         this.currentUser.set(null);
+        this.storeReset.resetAll();
         this.router.navigate(['/auth/login']);
       }),
     );
@@ -85,10 +91,10 @@ export class AuthService {
   clearAuth(): void {
     this.tokenService.clearTokens();
     this.currentUser.set(null);
+    this.storeReset.resetAll();
   }
 
   private handleAuthResponse(res: AuthResponse): void {
     this.tokenService.setAccessToken(res.accessToken);
-    this.tokenService.setRefreshToken(res.refreshToken);
   }
 }

@@ -17,8 +17,14 @@ export class DashboardStore {
   readonly settlement = computed(() => this.overview()?.settlement ?? null);
   readonly pendingApprovalsCount = computed(() => this.overview()?.pendingApprovalsCount ?? 0);
 
+  reset(): void {
+    this.overview.set(null);
+    this.loading.set(false);
+    this.error.set(null);
+  }
+
   loadAll(): void {
-    this.loading.set(true);
+    if (!this.overview()) this.loading.set(true);
     this.error.set(null);
     this.service.getOverview().subscribe({
       next: o => { this.overview.set(o); this.loading.set(false); },

@@ -6,6 +6,7 @@ import { ApprovalAction, ApprovalStatus, ExpenseType } from '../generated/prisma
 import { ApprovalResponseDto } from '../approval/dto/approval-response.dto';
 import { CreateSharedExpenseDto } from './dto/create-shared-expense.dto';
 import { UpdateSharedExpenseDto } from './dto/update-shared-expense.dto';
+import { Prisma } from '../generated/prisma/client';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { buildExpenseNullableFields, EXPENSE_FIELDS, mapToApprovalResponse, mapToSharedExpenseResponse } from '../common/expense/expense.mappers';
 import { pickDefined } from '../common/utils/pick-defined';
@@ -44,7 +45,7 @@ export class SharedExpenseService {
         const cacheKey = this.cacheService.sharedExpensesKey(membership.householdId, filterHash);
 
         return this.cacheService.getOrSet(cacheKey, this.cacheService.expensesTTL, async () => {
-            const where: any = {
+            const where: Prisma.ExpenseWhereInput = {
                 householdId: membership.householdId,
                 type: ExpenseType.SHARED,
             };
