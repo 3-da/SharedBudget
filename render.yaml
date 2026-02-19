@@ -72,15 +72,16 @@ services:
       - key: SWAGGER_PASSWORD
         sync: false # Optional: Set in Render dashboard to protect Swagger on staging
 
+  - type: redis
+    name: sharedbudget-redis
+    plan: free
+    region: frankfurt
+    maxmemoryPolicy: volatile-lru
+    ipAllowList: []
+
 databases:
   - name: sharedbudget-db
     plan: free
     databaseName: sharedbudget
     user: sharedbudget
     region: frankfurt
-
-  - name: sharedbudget-redis
-    type: redis
-    plan: free
-    region: frankfurt
-    maxmemoryPolicy: volatile-lru
