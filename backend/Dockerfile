@@ -9,8 +9,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY prisma ./prisma/
-# Prisma 7 validates env vars during generate; provide a dummy URL for schema validation
-RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate --schema ./prisma/schema.prisma
+RUN npx prisma generate --schema ./prisma/schema.prisma
 
 COPY . .
 RUN npm run build
@@ -37,4 +36,5 @@ EXPOSE 3000
 
 # Run pending migrations then start the server.
 # preDeployCommand is not available on Render's free tier, so migrations run here instead.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]
+# --url passes DATABASE_URL directly to avoid needing prisma.config.ts (which imports dotenv, a devDep)
+CMD ["sh", "-c", "npx prisma migrate deploy --url \"$DATABASE_URL\" && node dist/src/main"]
