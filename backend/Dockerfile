@@ -26,11 +26,14 @@ RUN npm ci --omit=dev && apk del python3 make g++
 
 # Copy built application (includes compiled Prisma client at dist/src/generated/prisma)
 COPY --from=build /app/dist ./dist
+# Migrations must be present at runtime so prisma migrate deploy can run on startup
+COPY --from=build /app/prisma ./prisma
 
 ENV NODE_ENV=production
 
 USER node
 EXPOSE 3000
 
-# TypeScript compiles src/ → dist/src/ (no rootDir set, so tsc preserves the src/ prefix)
-CMD ["node", "dist/src/main"]
+# Run pending migrations then start the server.
+# preDeployCommand is not available on Render's free tier, so migrations run here instead.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]

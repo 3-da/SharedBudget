@@ -34,22 +34,30 @@ const logger = new Logger('RedisModule');
             provide: REDIS_CLIENT,
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => {
-                const client = new Redis({
-                    host: configService.get('REDIS_HOST'),
-                    port: configService.get<number>('REDIS_PORT'),
-                    password: configService.get('REDIS_PASSWORD'),
-                    ...(configService.get('REDIS_TLS') === 'true' ? { tls: {} } : {}),
+                const redisUrl = configService.get<string>('REDIS_URL');
+                const sharedOptions = {
                     maxRetriesPerRequest: 3,
                     enableOfflineQueue: true,
-                    retryStrategy(times) {
+                    retryStrategy(times: number) {
                         if (times > 10) return null; // Stop retrying after 10 attempts
                         return Math.min(times * 200, 2000); // Exponential backoff, max 2s
                     },
-                    reconnectOnError(err) {
+                    reconnectOnError(err: Error) {
                         const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT'];
                         return targetErrors.some((e) => err.message.includes(e));
                     },
-                });
+                };
+                // On Render, REDIS_URL (connectionString) is provided and carries auth.
+                // Locally, fall back to separate REDIS_HOST / REDIS_PORT / REDIS_PASSWORD vars.
+                const client = redisUrl
+                    ? new Redis(redisUrl, sharedOptions)
+                    : new Redis({
+                          host: configService.get('REDIS_HOST'),
+                          port: configService.get<number>('REDIS_PORT'),
+                          password: configService.get('REDIS_PASSWORD'),
+                          ...(configService.get('REDIS_TLS') === 'true' ? { tls: {} } : {}),
+                          ...sharedOptions,
+                      });
 
                 client.on('error', (err) => logger.error(`Redis error: ${err.message}`));
                 client.on('reconnecting', (delay: number) => logger.warn(`Redis reconnecting in ${delay}ms`));
