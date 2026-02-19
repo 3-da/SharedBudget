@@ -5,32 +5,33 @@ WORKDIR /app
 # argon2 requires native compilation tools
 RUN apk add --no-cache python3 make g++
 
+# deterministic install (uses package-lock.json)
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-COPY prisma ./prisma/
-COPY prisma.config.ts ./
-# Prisma 7 uses config file to locate schema; dummy DATABASE_URL satisfies env() validation
+# IMPORTANT: copy repo BEFORE prisma generate so tsconfig/nodenext is present
+COPY . .
+
+# prisma generate (dummy DB URL satisfies env() validation)
 RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npx prisma generate
 
-COPY . .
+# build NestJS
 RUN npm run build
 
-# ── Stage 2: Production ────────────────────────────────────
+
+# ── Stage 2: Production ─────────────────────────────────────
 FROM node:22-alpine@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34 AS production
 WORKDIR /app
 
-# argon2 native bindings need rebuilding for production image
+# argon2 native bindings need compilation tools
 RUN apk add --no-cache python3 make g++
 
 COPY package*.json ./
-RUN npm install --omit=dev && apk del python3 make g++
+RUN npm ci --omit=dev && apk del python3 make g++
 
-# Copy built application (includes compiled Prisma client at dist/src/generated/prisma)
+# Copy built application
 COPY --from=build /app/dist ./dist
-# Migrations must be present at runtime so prisma migrate deploy can run on startup
 COPY --from=build /app/prisma ./prisma
-# Production config for prisma migrate deploy (no dotenv/ts-node needed)
 COPY --from=build /app/prisma.config.production.mjs ./prisma.config.production.mjs
 
 ENV NODE_ENV=production
@@ -38,6 +39,5 @@ ENV NODE_ENV=production
 USER node
 EXPOSE 3000
 
-# Run pending migrations then start the server.
-# preDeployCommand is not available on Render's free tier, so migrations run here instead.
-CMD ["sh", "-c", "npx prisma migrate deploy --config ./prisma.config.production.mjs && node dist/src/main"]
+# If prisma CLI is NOT installed in prod deps, this pins the downloaded CLI version to match your client.
+CMD ["sh", "-c", "npx prisma@7.3.0 migrate deploy --config ./prisma.config.production.mjs && node dist/src/main"]
