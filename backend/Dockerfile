@@ -28,6 +28,8 @@ RUN npm install --omit=dev && apk del python3 make g++
 COPY --from=build /app/dist ./dist
 # Migrations must be present at runtime so prisma migrate deploy can run on startup
 COPY --from=build /app/prisma ./prisma
+# Production config for prisma migrate deploy (no dotenv/ts-node needed)
+COPY --from=build /app/prisma.config.production.mjs ./prisma.config.production.mjs
 
 ENV NODE_ENV=production
 
@@ -36,5 +38,4 @@ EXPOSE 3000
 
 # Run pending migrations then start the server.
 # preDeployCommand is not available on Render's free tier, so migrations run here instead.
-# --url passes DATABASE_URL directly to avoid needing prisma.config.ts (which imports dotenv, a devDep)
-CMD ["sh", "-c", "npx prisma migrate deploy --url \"$DATABASE_URL\" && node dist/src/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy --config ./prisma.config.production.mjs && node dist/src/main"]
