@@ -1,7 +1,7 @@
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider     = "prisma-client-js"
+  // output       = "../src/generated/prisma"
+  // moduleFormat = "cjs"
 }
 
 datasource db {
@@ -19,30 +19,30 @@ datasource db {
 // But your API often needs custom action DTOs and response DTOs
 // -------------------------------------------------
 
-generator nestjsDto {
-  provider                        = "prisma-generator-nestjs-dto"
-  output                          = "../src/generated/dto"
-  prismaClientImportPath          = "../../prisma/client.js"
-  outputToNestJsResourceStructure = "true"
-  flatResourceStructure           = "true"
-  exportRelationModifierClasses   = "true"
-  reExport                        = "true"
-  generateFileTypes               = "all"
-  createDtoPrefix                 = "Create"
-  updateDtoPrefix                 = "Update"
-  dtoSuffix                       = "Dto"
-  entityPrefix                    = ""
-  entitySuffix                    = ""
-  classValidation                 = "true"
-  fileNamingStyle                 = "kebab"
-  noDependencies                  = "false"
-  outputType                      = "class"
-  definiteAssignmentAssertion     = "false"
-  requiredResponseApiProperty     = "true"
-  prettier                        = "true"
-  wrapRelationsAsType             = "false"
-  showDefaultValues               = "false"
-}
+// generator nestjsDto {
+//   provider                        = "prisma-generator-nestjs-dto"
+//   output                          = "../src/generated/dto"
+//   prismaClientImportPath          = "../../prisma/client.js"
+//   outputToNestJsResourceStructure = "true"
+//   flatResourceStructure           = "true"
+//   exportRelationModifierClasses   = "true"
+//   reExport                        = "true"
+//   generateFileTypes               = "all"
+//   createDtoPrefix                 = "Create"
+//   updateDtoPrefix                 = "Update"
+//   dtoSuffix                       = "Dto"
+//   entityPrefix                    = ""
+//   entitySuffix                    = ""
+//   classValidation                 = "true"
+//   fileNamingStyle                 = "kebab"
+//   noDependencies                  = "false"
+//   outputType                      = "class"
+//   definiteAssignmentAssertion     = "false"
+//   requiredResponseApiProperty     = "true"
+//   prettier                        = "true"
+//   wrapRelationsAsType             = "false"
+//   showDefaultValues               = "false"
+// }
 
 // -------------------------------------------------
 // Type Generator for React Frontend
