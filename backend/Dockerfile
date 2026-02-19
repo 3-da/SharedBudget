@@ -5,6 +5,9 @@ WORKDIR /app
 # argon2 requires native compilation tools
 RUN apk add --no-cache python3 make g++
 
+# Upgrade npm to match the version used to generate package-lock.json
+RUN npm install -g npm@11
+
 COPY package*.json ./
 RUN npm ci
 
@@ -20,6 +23,9 @@ WORKDIR /app
 
 # argon2 native bindings need rebuilding for production image
 RUN apk add --no-cache python3 make g++
+
+# Upgrade npm to match the version used to generate package-lock.json
+RUN npm install -g npm@11
 
 COPY package*.json ./
 RUN npm ci --omit=dev && apk del python3 make g++
