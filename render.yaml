@@ -8,7 +8,6 @@ services:
     plan: free
     branch: main
     healthCheckPath: /api/v1/health
-    preDeployCommand: npx prisma migrate deploy --config prisma.config.ts
     envVars:
       - key: NODE_ENV
         value: production
@@ -22,21 +21,11 @@ services:
         fromDatabase:
           name: sharedbudget-db
           property: connectionString
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
           name: sharedbudget-redis
           type: redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          name: sharedbudget-redis
-          type: redis
-          property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          name: sharedbudget-redis
-          type: redis
-          property: password
+          property: connectionString
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_ACCESS_EXPIRATION
