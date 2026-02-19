@@ -5,9 +5,9 @@ WORKDIR /app
 # argon2 requires native compilation tools
 RUN apk add --no-cache python3 make g++
 
-# deterministic install (uses package-lock.json)
+# install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # IMPORTANT: copy repo BEFORE prisma generate so tsconfig/nodenext is present
 COPY . .
@@ -27,7 +27,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 COPY package*.json ./
-RUN npm ci --omit=dev && apk del python3 make g++
+RUN npm install --omit=dev && apk del python3 make g++
 
 # Copy built application
 COPY --from=build /app/dist ./dist
