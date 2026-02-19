@@ -15,8 +15,6 @@ RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npx prisma gene
 
 COPY . .
 RUN npm run build
-# Prisma 7 generates .ts source files that Node needs at runtime alongside compiled .js
-RUN cp -r src/generated dist/src/generated 2>/dev/null || true
 
 # ── Stage 2: Production ────────────────────────────────────
 FROM node:22-alpine@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34 AS production

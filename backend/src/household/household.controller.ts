@@ -17,7 +17,7 @@ import {
 } from './decorators/api-household.decorators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { HouseholdResponseDto } from './dto/household-response.dto';
-import { CreateHouseholdDto } from '../generated/dto';
+import { CreateHouseholdDto } from './dto/create-household.dto';
 import { InviteToHouseholdDto } from './dto/invite-to-household.dto';
 import { HouseholdInvitationResponseDto } from './dto/household-invitation-response.dto';
 import { HouseholdInvitationService } from './household-invitation.service';
