@@ -5,11 +5,8 @@ WORKDIR /app
 # argon2 requires native compilation tools
 RUN apk add --no-cache python3 make g++
 
-# Upgrade npm to match the version used to generate package-lock.json
-RUN npm install -g npm@11
-
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY prisma ./prisma/
 RUN npx prisma generate --schema ./prisma/schema.prisma
@@ -24,11 +21,8 @@ WORKDIR /app
 # argon2 native bindings need rebuilding for production image
 RUN apk add --no-cache python3 make g++
 
-# Upgrade npm to match the version used to generate package-lock.json
-RUN npm install -g npm@11
-
 COPY package*.json ./
-RUN npm ci --omit=dev && apk del python3 make g++
+RUN npm install --omit=dev && apk del python3 make g++
 
 # Copy built application (includes compiled Prisma client at dist/src/generated/prisma)
 COPY --from=build /app/dist ./dist
