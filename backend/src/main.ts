@@ -31,12 +31,23 @@ async function bootstrap() {
     app.setGlobalPrefix(apiPrefix);
 
     // CORS — parse comma-separated origins, validate each
+    // Supports exact strings and wildcard patterns (e.g. "*.vercel.app")
     const corsOriginRaw = configService.get('CORS_ORIGIN', 'http://localhost:4200');
     const corsOrigins = corsOriginRaw.split(',').map((o: string) => o.trim()).filter(Boolean);
+
+    const corsOriginRegexes = corsOrigins
+        .filter((o: string) => o.includes('*'))
+        .map((o: string) => new RegExp('^https?://' + o.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'));
+    const corsOriginExact = corsOrigins.filter((o: string) => !o.includes('*'));
+
     app.enableCors({
         origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
             // Allow requests with no origin (server-to-server, curl, mobile)
-            if (!origin || corsOrigins.includes(origin)) {
+            if (!origin) {
+                callback(null, true);
+                return;
+            }
+            if (corsOriginExact.includes(origin) || corsOriginRegexes.some((re: RegExp) => re.test(origin))) {
                 callback(null, true);
             } else {
                 callback(new Error(`Origin ${origin} not allowed by CORS`));
