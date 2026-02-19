@@ -9,7 +9,8 @@ COPY package*.json ./
 RUN npm install
 
 COPY prisma ./prisma/
-RUN npx prisma generate --schema ./prisma/schema.prisma
+# Prisma 7 validates env vars during generate; provide a dummy URL for schema validation
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate --schema ./prisma/schema.prisma
 
 COPY . .
 RUN npm run build
