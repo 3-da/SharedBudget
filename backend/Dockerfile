@@ -9,11 +9,13 @@ COPY package*.json ./
 RUN npm install
 
 COPY prisma ./prisma/
-RUN npx prisma generate --schema ./prisma/schema.prisma
+COPY prisma.config.ts ./
+# Prisma 7 uses config file to locate schema; dummy DATABASE_URL satisfies env() validation
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npx prisma generate
 
 COPY . .
 RUN npm run build
-# Ensure Prisma generated .ts files are available at runtime (Prisma 7 uses .ts extension imports)
+# Prisma 7 generates .ts source files that Node needs at runtime alongside compiled .js
 RUN cp -r src/generated dist/src/generated 2>/dev/null || true
 
 # ── Stage 2: Production ────────────────────────────────────
