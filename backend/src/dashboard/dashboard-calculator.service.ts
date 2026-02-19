@@ -1,7 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../generated/prisma/client';
-import { ExpenseHelperService } from '../common/expense/expense-helper.service';
+import { Expense, Prisma } from '../generated/prisma/client';
 import {
     ApprovalStatus,
     ExpenseCategory,
@@ -11,20 +10,14 @@ import {
     PaymentStatus,
     YearlyPaymentStrategy,
 } from '../generated/prisma/enums';
-import { Expense } from '../generated/dto/expense/expense.entity';
 import { MemberIncomeDto } from './dto/member-income.dto';
 import { ExpenseSummaryDto, MemberExpenseSummaryDto } from './dto/expense-summary.dto';
-import { SavingsResponseDto, MemberSavingsDto } from './dto/member-savings.dto';
+import { MemberSavingsDto, SavingsResponseDto } from './dto/member-savings.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
 
 @Injectable()
 export class DashboardCalculatorService {
-    private readonly logger = new Logger(DashboardCalculatorService.name);
-
-    constructor(
-        private readonly prismaService: PrismaService,
-        private readonly expenseHelper: ExpenseHelperService,
-    ) {}
+    constructor(private readonly prismaService: PrismaService) {}
 
     /**
      * Fetches income data (salaries) for all household members in a given period.
@@ -86,15 +79,13 @@ export class DashboardCalculatorService {
                 status: PaymentStatus.PAID,
             },
         });
-        const paidExpenseIds = new Set(paymentStatuses.map(p => p.expenseId));
+        const paidExpenseIds = new Set(paymentStatuses.map((p) => p.expenseId));
 
         // Calculate personal expenses per member
         const personalExpenses: MemberExpenseSummaryDto[] = members.map((member) => {
             const memberExpenses = expenses.filter((e) => e.type === ExpenseType.PERSONAL && e.createdById === member.userId);
             const total = memberExpenses.reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
-            const remaining = memberExpenses
-                .filter(e => !paidExpenseIds.has(e.id))
-                .reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
+            const remaining = memberExpenses.filter((e) => !paidExpenseIds.has(e.id)).reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
 
             return {
                 userId: member.userId,
@@ -114,9 +105,7 @@ export class DashboardCalculatorService {
 
         // Calculate remaining household expenses (total - paid)
         const totalPaidPersonal = personalExpenses.reduce((sum, pe) => sum + pe.personalExpensesTotal - pe.remainingExpenses, 0);
-        const paidShared = sharedExpenses
-            .filter(e => paidExpenseIds.has(e.id))
-            .reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
+        const paidShared = sharedExpenses.filter((e) => paidExpenseIds.has(e.id)).reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
         const remainingHouseholdExpenses = Math.round((totalHouseholdExpenses - totalPaidPersonal - paidShared) * 100) / 100;
 
         return {
@@ -159,9 +148,7 @@ export class DashboardCalculatorService {
             const sharedSavings = sharedSavingRecord ? Number(sharedSavingRecord.amount) : 0;
 
             // Remaining budget = salary - expenses - savings
-            const remainingBudget = Math.round(
-                (memberIncome.currentSalary - personalTotal - sharedShare - personalSavings - sharedSavings) * 100,
-            ) / 100;
+            const remainingBudget = Math.round((memberIncome.currentSalary - personalTotal - sharedShare - personalSavings - sharedSavings) * 100) / 100;
 
             return {
                 userId: memberIncome.userId,
@@ -424,7 +411,7 @@ export class DashboardCalculatorService {
      * @returns True if the month is an installment month
      */
     isInstallmentMonth(month: number, anchorMonth: number, stepMonths: number): boolean {
-        return ((month - anchorMonth) % stepMonths + stepMonths) % stepMonths === 0;
+        return (((month - anchorMonth) % stepMonths) + stepMonths) % stepMonths === 0;
     }
 
     /**
@@ -435,10 +422,14 @@ export class DashboardCalculatorService {
      */
     getStepMonths(freq: InstallmentFrequency): number {
         switch (freq) {
-            case InstallmentFrequency.MONTHLY: return 1;
-            case InstallmentFrequency.QUARTERLY: return 3;
-            case InstallmentFrequency.SEMI_ANNUAL: return 6;
-            default: return 1;
+            case InstallmentFrequency.MONTHLY:
+                return 1;
+            case InstallmentFrequency.QUARTERLY:
+                return 3;
+            case InstallmentFrequency.SEMI_ANNUAL:
+                return 6;
+            default:
+                return 1;
         }
     }
 }
