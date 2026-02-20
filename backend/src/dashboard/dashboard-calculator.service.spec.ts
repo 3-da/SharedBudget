@@ -198,9 +198,9 @@ describe('DashboardCalculatorService', () => {
             const result = await service.getExpenseData(mockHouseholdId, currentMonth, currentYear);
 
             expect(result.personalExpenses).toHaveLength(2);
-            const alexExpense = result.personalExpenses.find(pe => pe.userId === mockUserId);
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
             expect(alexExpense!.personalExpensesTotal).toBe(50);
-            const samExpense = result.personalExpenses.find(pe => pe.userId === mockPartnerId);
+            const samExpense = result.personalExpenses.find((pe) => pe.userId === mockPartnerId);
             expect(samExpense!.personalExpensesTotal).toBe(30);
 
             expect(result.sharedExpensesTotal).toBe(920);
@@ -208,13 +208,11 @@ describe('DashboardCalculatorService', () => {
         });
 
         it('should calculate remaining expenses excluding paid ones', async () => {
-            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
-                { expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' },
-            ]);
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' }]);
 
             const result = await service.getExpenseData(mockHouseholdId, currentMonth, currentYear);
 
-            const alexExpense = result.personalExpenses.find(pe => pe.userId === mockUserId);
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
             expect(alexExpense!.remainingExpenses).toBe(0); // Gym is paid
             expect(result.remainingHouseholdExpenses).toBe(950); // 1000 - 50
         });
@@ -268,13 +266,11 @@ describe('DashboardCalculatorService', () => {
         });
 
         it('should subtract savings from remaining budget', async () => {
-            mockPrismaService.saving.findMany.mockResolvedValue([
-                { userId: mockUserId, amount: { valueOf: () => 1000 }, isShared: false },
-            ]);
+            mockPrismaService.saving.findMany.mockResolvedValue([{ userId: mockUserId, amount: { valueOf: () => 1000 }, isShared: false }]);
 
             const result = await service.calculateSavings(mockHouseholdId, currentMonth, currentYear);
 
-            const alexSavings = result.members.find(m => m.userId === mockUserId);
+            const alexSavings = result.members.find((m) => m.userId === mockUserId);
             // 3200 - 50 - 460 - 1000 - 0 = 1690
             expect(alexSavings!.remainingBudget).toBe(1690);
         });
@@ -287,7 +283,7 @@ describe('DashboardCalculatorService', () => {
 
             const result = await service.calculateSavings(mockHouseholdId, currentMonth, currentYear);
 
-            const alexSavings = result.members.find(m => m.userId === mockUserId);
+            const alexSavings = result.members.find((m) => m.userId === mockUserId);
             // 100 - 50 - 460 - 0 - 0 = -410
             expect(alexSavings!.remainingBudget).toBe(-410);
         });
@@ -304,7 +300,7 @@ describe('DashboardCalculatorService', () => {
         });
 
         it('should return zero settlement when all expenses are split equally', async () => {
-            const splitOnlyExpenses = mockExpenses.filter(e => e.paidByUserId === null);
+            const splitOnlyExpenses = mockExpenses.filter((e) => e.paidByUserId === null);
             mockPrismaService.expense.findMany.mockResolvedValue(splitOnlyExpenses);
 
             const result = await service.calculateSettlement(mockHouseholdId, mockUserId, currentMonth, currentYear);

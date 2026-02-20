@@ -106,9 +106,7 @@ describe('SavingService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.getMySavings(mockUserId);
@@ -223,9 +221,7 @@ describe('SavingService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.upsertPersonalSaving(mockUserId, dto);
@@ -282,7 +278,17 @@ describe('SavingService', () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             const mappedSavings = [
-                { id: 'saving-001', userId: mockUserId, householdId: mockHouseholdId, amount: 200, month: 6, year: 2026, isShared: false, createdAt: mockPersonalSaving.createdAt, updatedAt: mockPersonalSaving.updatedAt },
+                {
+                    id: 'saving-001',
+                    userId: mockUserId,
+                    householdId: mockHouseholdId,
+                    amount: 200,
+                    month: 6,
+                    year: 2026,
+                    isShared: false,
+                    createdAt: mockPersonalSaving.createdAt,
+                    updatedAt: mockPersonalSaving.updatedAt,
+                },
             ];
             mockCacheService.getOrSet.mockResolvedValue(mappedSavings);
 
@@ -291,23 +297,13 @@ describe('SavingService', () => {
 
             // Assert
             expect(mockExpenseHelper.requireMembership).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.savingsKey).toHaveBeenCalledWith(
-                mockHouseholdId,
-                expect.any(Number),
-                expect.any(Number),
-            );
-            expect(mockCacheService.getOrSet).toHaveBeenCalledWith(
-                'cache:savings:household-456:2026:6',
-                120,
-                expect.any(Function),
-            );
+            expect(mockCacheService.savingsKey).toHaveBeenCalledWith(mockHouseholdId, expect.any(Number), expect.any(Number));
+            expect(mockCacheService.getOrSet).toHaveBeenCalledWith('cache:savings:household-456:2026:6', 120, expect.any(Function));
             expect(result).toEqual(mappedSavings);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.getHouseholdSavings(mockUserId);
@@ -414,9 +410,7 @@ describe('SavingService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.upsertSharedSaving(mockUserId, dto);

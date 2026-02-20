@@ -11,10 +11,7 @@ describe('PrismaHealthIndicator', () => {
         prisma = { $queryRaw: vi.fn() };
 
         const module = await Test.createTestingModule({
-            providers: [
-                PrismaHealthIndicator,
-                { provide: PrismaService, useValue: prisma },
-            ],
+            providers: [PrismaHealthIndicator, { provide: PrismaService, useValue: prisma }],
         }).compile();
 
         indicator = module.get(PrismaHealthIndicator);

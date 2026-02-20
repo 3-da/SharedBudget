@@ -9,7 +9,13 @@ import { SavingsResponseDto } from './dto/member-savings.dto';
 import { SavingsHistoryItemDto } from './dto/savings-history.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
 import { MarkSettlementPaidResponseDto } from './dto/mark-settlement-paid-response.dto';
-import { GetDashboardEndpoint, GetSavingsEndpoint, GetSavingsHistoryEndpoint, GetSettlementEndpoint, MarkSettlementPaidEndpoint } from './decorators/api-dashboard.decorators';
+import {
+    GetDashboardEndpoint,
+    GetSavingsEndpoint,
+    GetSavingsHistoryEndpoint,
+    GetSettlementEndpoint,
+    MarkSettlementPaidEndpoint,
+} from './decorators/api-dashboard.decorators';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()

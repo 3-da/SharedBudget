@@ -54,7 +54,7 @@ describe('AuthService', () => {
         getSessionFromRefreshToken: vi.fn(),
         removeRefreshToken: vi.fn(),
         invalidateAllSessions: vi.fn().mockResolvedValue(0),
-        hashUserAgent: vi.fn((ua: string) => ua === 'Chrome/120' ? 'aaaa' : 'bbbb'),
+        hashUserAgent: vi.fn((ua: string) => (ua === 'Chrome/120' ? 'aaaa' : 'bbbb')),
     };
 
     const mockPrismaService = {
@@ -152,7 +152,7 @@ describe('AuthService', () => {
             expect(mockPrismaService.user.update).toHaveBeenCalledWith({ where: { id: mockUnverifiedUser.id }, data: { emailVerified: true } });
             expect(mockRedis.del).toHaveBeenCalledWith(`verify:${email}`);
             expect(result.accessToken).toBe('mock-access-token');
-            expect((mockRes.cookie as unknown as Mock)).toHaveBeenCalledWith('refresh_token', expect.any(String), expect.objectContaining({ httpOnly: true }));
+            expect(mockRes.cookie as unknown as Mock).toHaveBeenCalledWith('refresh_token', expect.any(String), expect.objectContaining({ httpOnly: true }));
         });
 
         it('should store token via SessionService after verification', async () => {
@@ -230,7 +230,7 @@ describe('AuthService', () => {
             expect(argon2.verify).toHaveBeenCalledWith(mockUser.password, loginDto.password);
             expect(mockSessionService.storeRefreshToken).toHaveBeenCalledWith(mockUser.id, expect.any(String), undefined);
             expect(result.accessToken).toBe('mock-access-token');
-            expect((mockRes.cookie as unknown as Mock)).toHaveBeenCalledWith('refresh_token', expect.any(String), expect.objectContaining({ httpOnly: true }));
+            expect(mockRes.cookie as unknown as Mock).toHaveBeenCalledWith('refresh_token', expect.any(String), expect.objectContaining({ httpOnly: true }));
         });
 
         it('should set XSRF-TOKEN cookie on login', async () => {
@@ -239,7 +239,7 @@ describe('AuthService', () => {
 
             await authService.login(loginDto, mockRes);
 
-            expect((mockRes.cookie as unknown as Mock)).toHaveBeenCalledWith('XSRF-TOKEN', expect.any(String), expect.objectContaining({ httpOnly: false }));
+            expect(mockRes.cookie as unknown as Mock).toHaveBeenCalledWith('XSRF-TOKEN', expect.any(String), expect.objectContaining({ httpOnly: false }));
         });
 
         it('should throw UnauthorizedException if user not found', async () => {
@@ -334,7 +334,7 @@ describe('AuthService', () => {
             expect(mockSessionService.removeRefreshToken).toHaveBeenCalledWith(refreshToken);
             expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({ where: { id: mockUser.id } });
             expect(result.accessToken).toBe('mock-access-token');
-            expect((mockRes.cookie as unknown as Mock)).toHaveBeenCalledWith('refresh_token', expect.any(String), expect.objectContaining({ httpOnly: true }));
+            expect(mockRes.cookie as unknown as Mock).toHaveBeenCalledWith('refresh_token', expect.any(String), expect.objectContaining({ httpOnly: true }));
         });
 
         it('should store new token via SessionService after refresh', async () => {
@@ -367,7 +367,9 @@ describe('AuthService', () => {
             mockSessionService.hashUserAgent.mockReturnValue('bbbb');
 
             await expect(authService.refresh(refreshToken, mockRes, 'Firefox/115')).rejects.toThrow(UnauthorizedException);
-            await expect(authService.refresh(refreshToken, mockRes, 'Firefox/115')).rejects.toThrow('Session expired due to device change. Please sign in again.');
+            await expect(authService.refresh(refreshToken, mockRes, 'Firefox/115')).rejects.toThrow(
+                'Session expired due to device change. Please sign in again.',
+            );
             expect(mockSessionService.removeRefreshToken).toHaveBeenCalledWith(refreshToken);
         });
 
@@ -398,8 +400,8 @@ describe('AuthService', () => {
             await authService.logout(refreshToken, mockRes);
 
             expect(mockSessionService.removeRefreshToken).toHaveBeenCalledWith(refreshToken);
-            expect((mockRes.clearCookie as unknown as Mock)).toHaveBeenCalledWith('refresh_token', { path: '/api/v1/auth' });
-            expect((mockRes.clearCookie as unknown as Mock)).toHaveBeenCalledWith('XSRF-TOKEN', { path: '/' });
+            expect(mockRes.clearCookie as unknown as Mock).toHaveBeenCalledWith('refresh_token', { path: '/api/v1/auth' });
+            expect(mockRes.clearCookie as unknown as Mock).toHaveBeenCalledWith('XSRF-TOKEN', { path: '/' });
         });
 
         it('should still clear cookies even if token was already gone', async () => {
@@ -408,7 +410,7 @@ describe('AuthService', () => {
             await authService.logout(refreshToken, mockRes);
 
             expect(mockSessionService.removeRefreshToken).toHaveBeenCalledWith(refreshToken);
-            expect((mockRes.clearCookie as unknown as Mock)).toHaveBeenCalledWith('refresh_token', { path: '/api/v1/auth' });
+            expect(mockRes.clearCookie as unknown as Mock).toHaveBeenCalledWith('refresh_token', { path: '/api/v1/auth' });
         });
     });
 

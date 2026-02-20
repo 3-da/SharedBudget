@@ -11,10 +11,7 @@ describe('RedisHealthIndicator', () => {
         redis = { ping: vi.fn() };
 
         const module = await Test.createTestingModule({
-            providers: [
-                RedisHealthIndicator,
-                { provide: REDIS_CLIENT, useValue: redis },
-            ],
+            providers: [RedisHealthIndicator, { provide: REDIS_CLIENT, useValue: redis }],
         }).compile();
 
         indicator = module.get(RedisHealthIndicator);

@@ -15,7 +15,6 @@ import { MessageResponseDto } from '../common/dto/message-response.dto';
 import { maskEmail } from '../common/utils/mask-email';
 import { Response } from 'express';
 
-
 @Injectable()
 export class AuthService implements OnModuleInit {
     private readonly logger = new Logger(AuthService.name);
@@ -282,7 +281,11 @@ export class AuthService implements OnModuleInit {
         await pipeline.exec();
     }
 
-    private async generateTokens(user: { id: string; email: string; firstName: string; lastName: string }, res: Response, userAgent?: string): Promise<AuthResponseDto> {
+    private async generateTokens(
+        user: { id: string; email: string; firstName: string; lastName: string },
+        res: Response,
+        userAgent?: string,
+    ): Promise<AuthResponseDto> {
         const accessToken = this.jwtService.sign({ sub: user.id, email: user.email });
         const refreshToken = crypto.randomBytes(32).toString('hex');
 

@@ -61,7 +61,8 @@ export function GetSavingsHistoryEndpoint() {
         Get('savings-history'),
         ApiOperation({
             summary: 'Get savings history for past 12 months',
-            description: 'Returns monthly savings data (personal and shared) for the past 12 months, ordered chronologically. Useful for line chart visualizations.',
+            description:
+                'Returns monthly savings data (personal and shared) for the past 12 months, ordered chronologically. Useful for line chart visualizations.',
         }),
         ApiResponse({ status: 200, description: 'Savings history returned.', type: [SavingsHistoryItemDto] }),
         ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),

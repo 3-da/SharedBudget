@@ -183,9 +183,7 @@ describe('RecurringOverrideService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.upsertOverride(mockUserId, mockExpenseId, 2026, 7, dto);
@@ -338,9 +336,7 @@ describe('RecurringOverrideService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.updateDefaultAmount(mockUserId, mockExpenseId, dto);
@@ -433,9 +429,7 @@ describe('RecurringOverrideService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.listOverrides(mockUserId, mockExpenseId);
@@ -539,9 +533,7 @@ describe('RecurringOverrideService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.deleteOverride(mockUserId, mockExpenseId, 2026, 7);
@@ -607,9 +599,7 @@ describe('RecurringOverrideService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.deleteAllOverrides(mockUserId, mockExpenseId);
@@ -678,9 +668,7 @@ describe('RecurringOverrideService', () => {
 
             const result = await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
 
-            expect(mockPrismaService.$transaction).toHaveBeenCalledWith(
-                expect.arrayContaining([expect.anything(), expect.anything(), expect.anything()]),
-            );
+            expect(mockPrismaService.$transaction).toHaveBeenCalledWith(expect.arrayContaining([expect.anything(), expect.anything(), expect.anything()]));
             expect(result).toHaveLength(3);
             expect(result[0].month).toBe(7);
             expect(result[1].month).toBe(8);
@@ -723,9 +711,7 @@ describe('RecurringOverrideService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
@@ -795,10 +781,7 @@ describe('RecurringOverrideService', () => {
             expect(mockPrismaService.recurringOverride.deleteMany).toHaveBeenCalledWith({
                 where: {
                     expenseId: mockExpenseId,
-                    OR: [
-                        { year: { gt: 2026 } },
-                        { year: 2026, month: { gte: 7 } },
-                    ],
+                    OR: [{ year: { gt: 2026 } }, { year: 2026, month: { gte: 7 } }],
                 },
             });
             expect(result).toEqual({ message: 'Deleted 5 upcoming override(s)' });
@@ -814,10 +797,7 @@ describe('RecurringOverrideService', () => {
             expect(mockPrismaService.recurringOverride.deleteMany).toHaveBeenCalledWith({
                 where: {
                     expenseId: mockExpenseId,
-                    OR: [
-                        { year: { gt: 2026 } },
-                        { year: 2026, month: { gte: 12 } },
-                    ],
+                    OR: [{ year: { gt: 2026 } }, { year: 2026, month: { gte: 12 } }],
                 },
             });
         });
@@ -832,10 +812,7 @@ describe('RecurringOverrideService', () => {
             expect(mockPrismaService.recurringOverride.deleteMany).toHaveBeenCalledWith({
                 where: {
                     expenseId: mockExpenseId,
-                    OR: [
-                        { year: { gt: 2026 } },
-                        { year: 2026, month: { gte: 1 } },
-                    ],
+                    OR: [{ year: { gt: 2026 } }, { year: 2026, month: { gte: 1 } }],
                 },
             });
             expect(result).toEqual({ message: 'Deleted 12 upcoming override(s)' });
@@ -876,9 +853,7 @@ describe('RecurringOverrideService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);

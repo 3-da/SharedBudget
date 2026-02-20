@@ -226,9 +226,7 @@ describe('DashboardService', () => {
 
         it('should compute remainingHouseholdExpenses as total minus paid', async () => {
             // Mark exp-1 (Gym, €50) as PAID
-            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
-                { expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' },
-            ]);
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' }]);
 
             const result = await service.getOverview(mockUserId);
 
@@ -400,9 +398,7 @@ describe('DashboardService', () => {
         });
 
         it('should subtract savings from remaining budget', async () => {
-            mockPrismaService.saving.findMany.mockResolvedValue([
-                { userId: mockUserId, amount: { valueOf: () => 1000 }, isShared: false },
-            ]);
+            mockPrismaService.saving.findMany.mockResolvedValue([{ userId: mockUserId, amount: { valueOf: () => 1000 }, isShared: false }]);
 
             const result = await service.getSavings(mockUserId);
 
@@ -976,17 +972,15 @@ describe('DashboardService', () => {
     describe('remaining expenses', () => {
         it('should calculate per-member remaining expenses (unpaid)', async () => {
             // Mark exp-1 (Gym, €50 by Alex) as paid
-            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
-                { expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' },
-            ]);
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' }]);
 
             const result = await service.getOverview(mockUserId);
 
-            const alexExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockUserId);
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
             // Alex has Gym €50 (paid) → remaining = 0
             expect(alexExpense!.remainingExpenses).toBe(0);
 
-            const samExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockPartnerId);
+            const samExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockPartnerId);
             // Sam has Hairdresser €30 (unpaid) → remaining = 30
             expect(samExpense!.remainingExpenses).toBe(30);
         });
@@ -994,10 +988,10 @@ describe('DashboardService', () => {
         it('should return all expenses as remaining when nothing is paid', async () => {
             const result = await service.getOverview(mockUserId);
 
-            const alexExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockUserId);
+            const alexExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockUserId);
             expect(alexExpense!.remainingExpenses).toBe(50);
 
-            const samExpense = result.expenses.personalExpenses.find(pe => pe.userId === mockPartnerId);
+            const samExpense = result.expenses.personalExpenses.find((pe) => pe.userId === mockPartnerId);
             expect(samExpense!.remainingExpenses).toBe(30);
 
             // All household expenses unpaid
@@ -1149,7 +1143,14 @@ describe('DashboardService', () => {
         it('should correctly aggregate personal and shared savings per month', async () => {
             mockPrismaService.saving.findMany.mockResolvedValue([
                 { userId: mockUserId, householdId: mockHouseholdId, amount: { valueOf: () => 500 }, month: currentMonth, year: currentYear, isShared: false },
-                { userId: mockPartnerId, householdId: mockHouseholdId, amount: { valueOf: () => 300 }, month: currentMonth, year: currentYear, isShared: false },
+                {
+                    userId: mockPartnerId,
+                    householdId: mockHouseholdId,
+                    amount: { valueOf: () => 300 },
+                    month: currentMonth,
+                    year: currentYear,
+                    isShared: false,
+                },
                 { userId: mockUserId, householdId: mockHouseholdId, amount: { valueOf: () => 200 }, month: currentMonth, year: currentYear, isShared: true },
                 { userId: mockPartnerId, householdId: mockHouseholdId, amount: { valueOf: () => 150 }, month: currentMonth, year: currentYear, isShared: true },
             ]);
@@ -1158,7 +1159,7 @@ describe('DashboardService', () => {
 
             const currentMonthItem = result[11];
             expect(currentMonthItem.personalSavings).toBe(800); // 500 + 300
-            expect(currentMonthItem.sharedSavings).toBe(350);   // 200 + 150
+            expect(currentMonthItem.sharedSavings).toBe(350); // 200 + 150
         });
 
         it('should return zero savings for months with no saving records', async () => {
@@ -1187,9 +1188,7 @@ describe('DashboardService', () => {
             expect(mockPrismaService.saving.findMany).toHaveBeenCalledWith({
                 where: {
                     householdId: mockHouseholdId,
-                    OR: expect.arrayContaining([
-                        expect.objectContaining({ month: currentMonth, year: currentYear }),
-                    ]),
+                    OR: expect.arrayContaining([expect.objectContaining({ month: currentMonth, year: currentYear })]),
                 },
             });
 
@@ -1212,8 +1211,8 @@ describe('DashboardService', () => {
             const result = await service.getSavingsHistory(mockUserId);
 
             // Find the items for the specific months
-            const pastItem = result.find(r => r.month === pastMonth && r.year === pastYear);
-            const currentItem = result.find(r => r.month === currentMonth && r.year === currentYear);
+            const pastItem = result.find((r) => r.month === pastMonth && r.year === pastYear);
+            const currentItem = result.find((r) => r.month === currentMonth && r.year === currentYear);
 
             expect(pastItem!.personalSavings).toBe(100);
             expect(pastItem!.sharedSavings).toBe(0);

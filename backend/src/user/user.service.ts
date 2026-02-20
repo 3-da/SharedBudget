@@ -104,7 +104,14 @@ export class UserService {
         return { message: 'Password changed successfully. Please log in again.' };
     }
 
-    private mapToProfileDto(user: { id: string; email: string; firstName: string; lastName: string; createdAt: Date; updatedAt: Date }): UserProfileResponseDto {
+    private mapToProfileDto(user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }): UserProfileResponseDto {
         return {
             id: user.id,
             email: user.email,

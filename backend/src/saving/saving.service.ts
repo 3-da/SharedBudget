@@ -88,10 +88,7 @@ export class SavingService {
             },
         });
 
-        await Promise.all([
-            this.cacheService.invalidateSavings(membership.householdId),
-            this.cacheService.invalidateDashboard(membership.householdId),
-        ]);
+        await Promise.all([this.cacheService.invalidateSavings(membership.householdId), this.cacheService.invalidateDashboard(membership.householdId)]);
         this.logger.log(`Personal saving upserted for user ${userId}: ${month}/${year} = ${dto.amount}`);
         return this.mapToResponse(result);
     }
@@ -173,10 +170,7 @@ export class SavingService {
             },
         });
 
-        await Promise.all([
-            this.cacheService.invalidateSavings(membership.householdId),
-            this.cacheService.invalidateDashboard(membership.householdId),
-        ]);
+        await Promise.all([this.cacheService.invalidateSavings(membership.householdId), this.cacheService.invalidateDashboard(membership.householdId)]);
         this.logger.log(`Shared saving upserted for user ${userId}: ${month}/${year} = ${dto.amount}`);
         return this.mapToResponse(result);
     }

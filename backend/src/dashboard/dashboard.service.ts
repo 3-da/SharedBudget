@@ -95,7 +95,10 @@ export class DashboardService {
         for (let i = 0; i < 12; i++) {
             let m = currentMonth - i;
             let y = currentYear;
-            if (m <= 0) { m += 12; y -= 1; }
+            if (m <= 0) {
+                m += 12;
+                y -= 1;
+            }
             months.push({ month: m, year: y });
         }
 
@@ -112,70 +115,105 @@ export class DashboardService {
         const firstIncome = monthlyResults[0].income;
 
         // Average incomes — only count months that have at least one salary entry
-        const incomeMonths = monthlyResults.filter(r => r.income.some(i => i.currentSalary > 0 || i.defaultSalary > 0));
+        const incomeMonths = monthlyResults.filter((r) => r.income.some((i) => i.currentSalary > 0 || i.defaultSalary > 0));
         const incomeCount = incomeMonths.length || 1;
 
         const avgIncome: MemberIncomeDto[] = firstIncome.map((member) => {
-            const memberMonths = incomeMonths.filter(r => r.income.find(i => i.userId === member.userId && (i.currentSalary > 0 || i.defaultSalary > 0)));
+            const memberMonths = incomeMonths.filter((r) => r.income.find((i) => i.userId === member.userId && (i.currentSalary > 0 || i.defaultSalary > 0)));
             const memberCount = memberMonths.length || 1;
-            const avgDefault = Math.round(memberMonths.reduce((sum, r) => {
-                const m = r.income.find((i) => i.userId === member.userId);
-                return sum + (m?.defaultSalary ?? 0);
-            }, 0) / memberCount * 100) / 100;
-            const avgCurrent = Math.round(memberMonths.reduce((sum, r) => {
-                const m = r.income.find((i) => i.userId === member.userId);
-                return sum + (m?.currentSalary ?? 0);
-            }, 0) / memberCount * 100) / 100;
+            const avgDefault =
+                Math.round(
+                    (memberMonths.reduce((sum, r) => {
+                        const m = r.income.find((i) => i.userId === member.userId);
+                        return sum + (m?.defaultSalary ?? 0);
+                    }, 0) /
+                        memberCount) *
+                        100,
+                ) / 100;
+            const avgCurrent =
+                Math.round(
+                    (memberMonths.reduce((sum, r) => {
+                        const m = r.income.find((i) => i.userId === member.userId);
+                        return sum + (m?.currentSalary ?? 0);
+                    }, 0) /
+                        memberCount) *
+                        100,
+                ) / 100;
 
             return { ...member, defaultSalary: avgDefault, currentSalary: avgCurrent };
         });
 
         // Average expenses — only count months that have at least one expense
-        const expenseMonths = monthlyResults.filter(r => r.expenses.totalHouseholdExpenses > 0);
+        const expenseMonths = monthlyResults.filter((r) => r.expenses.totalHouseholdExpenses > 0);
         const expenseCount = expenseMonths.length || 1;
 
         const avgPersonalExpenses: MemberExpenseSummaryDto[] = monthlyResults[0].expenses.personalExpenses.map((pe) => {
-            const peMonths = expenseMonths.filter(r => {
-                const found = r.expenses.personalExpenses.find(p => p.userId === pe.userId);
+            const peMonths = expenseMonths.filter((r) => {
+                const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
                 return found && found.personalExpensesTotal > 0;
             });
             const peCount = peMonths.length || 1;
-            const avgTotal = Math.round(peMonths.reduce((sum, r) => {
-                const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
-                return sum + (found?.personalExpensesTotal ?? 0);
-            }, 0) / peCount * 100) / 100;
-            const avgRemaining = Math.round(peMonths.reduce((sum, r) => {
-                const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
-                return sum + (found?.remainingExpenses ?? 0);
-            }, 0) / peCount * 100) / 100;
+            const avgTotal =
+                Math.round(
+                    (peMonths.reduce((sum, r) => {
+                        const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
+                        return sum + (found?.personalExpensesTotal ?? 0);
+                    }, 0) /
+                        peCount) *
+                        100,
+                ) / 100;
+            const avgRemaining =
+                Math.round(
+                    (peMonths.reduce((sum, r) => {
+                        const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
+                        return sum + (found?.remainingExpenses ?? 0);
+                    }, 0) /
+                        peCount) *
+                        100,
+                ) / 100;
             return { ...pe, personalExpensesTotal: avgTotal, remainingExpenses: avgRemaining };
         });
-        const avgSharedTotal = Math.round(expenseMonths.reduce((sum, r) => sum + r.expenses.sharedExpensesTotal, 0) / expenseCount * 100) / 100;
-        const avgTotalHousehold = Math.round(expenseMonths.reduce((sum, r) => sum + r.expenses.totalHouseholdExpenses, 0) / expenseCount * 100) / 100;
-        const avgRemainingHousehold = Math.round(expenseMonths.reduce((sum, r) => sum + r.expenses.remainingHouseholdExpenses, 0) / expenseCount * 100) / 100;
+        const avgSharedTotal = Math.round((expenseMonths.reduce((sum, r) => sum + r.expenses.sharedExpensesTotal, 0) / expenseCount) * 100) / 100;
+        const avgTotalHousehold = Math.round((expenseMonths.reduce((sum, r) => sum + r.expenses.totalHouseholdExpenses, 0) / expenseCount) * 100) / 100;
+        const avgRemainingHousehold = Math.round((expenseMonths.reduce((sum, r) => sum + r.expenses.remainingHouseholdExpenses, 0) / expenseCount) * 100) / 100;
 
         // Average savings — only count months that have at least one saving record
-        const savingsMonths = monthlyResults.filter(r => r.savings.totalSavings > 0);
+        const savingsMonths = monthlyResults.filter((r) => r.savings.totalSavings > 0);
         const savingsCount = savingsMonths.length || 1;
 
         const avgSavingsMembers: MemberSavingsDto[] = monthlyResults[0].savings.members.map((sm) => {
-            const smMonths = savingsMonths.filter(r => {
-                const found = r.savings.members.find(s => s.userId === sm.userId);
+            const smMonths = savingsMonths.filter((r) => {
+                const found = r.savings.members.find((s) => s.userId === sm.userId);
                 return found && (found.personalSavings > 0 || found.sharedSavings > 0);
             });
             const smCount = smMonths.length || 1;
-            const avgPersonal = Math.round(smMonths.reduce((sum, r) => {
-                const found = r.savings.members.find((s) => s.userId === sm.userId);
-                return sum + (found?.personalSavings ?? 0);
-            }, 0) / smCount * 100) / 100;
-            const avgShared = Math.round(smMonths.reduce((sum, r) => {
-                const found = r.savings.members.find((s) => s.userId === sm.userId);
-                return sum + (found?.sharedSavings ?? 0);
-            }, 0) / smCount * 100) / 100;
-            const avgBudget = Math.round(smMonths.reduce((sum, r) => {
-                const found = r.savings.members.find((s) => s.userId === sm.userId);
-                return sum + (found?.remainingBudget ?? 0);
-            }, 0) / smCount * 100) / 100;
+            const avgPersonal =
+                Math.round(
+                    (smMonths.reduce((sum, r) => {
+                        const found = r.savings.members.find((s) => s.userId === sm.userId);
+                        return sum + (found?.personalSavings ?? 0);
+                    }, 0) /
+                        smCount) *
+                        100,
+                ) / 100;
+            const avgShared =
+                Math.round(
+                    (smMonths.reduce((sum, r) => {
+                        const found = r.savings.members.find((s) => s.userId === sm.userId);
+                        return sum + (found?.sharedSavings ?? 0);
+                    }, 0) /
+                        smCount) *
+                        100,
+                ) / 100;
+            const avgBudget =
+                Math.round(
+                    (smMonths.reduce((sum, r) => {
+                        const found = r.savings.members.find((s) => s.userId === sm.userId);
+                        return sum + (found?.remainingBudget ?? 0);
+                    }, 0) /
+                        smCount) *
+                        100,
+                ) / 100;
             return { ...sm, personalSavings: avgPersonal, sharedSavings: avgShared, remainingBudget: avgBudget };
         });
 
@@ -261,21 +299,17 @@ export class DashboardService {
         const savings = await this.prismaService.saving.findMany({
             where: {
                 householdId,
-                OR: months.map(m => ({ month: m.month, year: m.year })),
+                OR: months.map((m) => ({ month: m.month, year: m.year })),
             },
         });
 
-        return months.map(m => {
-            const monthSavings = savings.filter(s => s.month === m.month && s.year === m.year);
+        return months.map((m) => {
+            const monthSavings = savings.filter((s) => s.month === m.month && s.year === m.year);
             return {
                 month: m.month,
                 year: m.year,
-                personalSavings: monthSavings
-                    .filter(s => !s.isShared)
-                    .reduce((sum, s) => sum + Number(s.amount), 0),
-                sharedSavings: monthSavings
-                    .filter(s => s.isShared)
-                    .reduce((sum, s) => sum + Number(s.amount), 0),
+                personalSavings: monthSavings.filter((s) => !s.isShared).reduce((sum, s) => sum + Number(s.amount), 0),
+                sharedSavings: monthSavings.filter((s) => s.isShared).reduce((sum, s) => sum + Number(s.amount), 0),
             };
         });
     }
