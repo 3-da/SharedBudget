@@ -40,10 +40,7 @@ describe('MailService', () => {
     function createService(withApiKey: boolean): Promise<TestingModule> {
         mockConfigService.get.mockImplementation(configGetFactory(withApiKey));
         return Test.createTestingModule({
-            providers: [
-                MailService,
-                { provide: ConfigService, useValue: mockConfigService },
-            ],
+            providers: [MailService, { provide: ConfigService, useValue: mockConfigService }],
         }).compile();
     }
 
@@ -70,9 +67,7 @@ describe('MailService', () => {
             service = module.get<MailService>(MailService);
 
             expect(Resend).not.toHaveBeenCalled();
-            expect(Logger.prototype.warn).toHaveBeenCalledWith(
-                'RESEND_API_KEY not set — emails will be logged to console only',
-            );
+            expect(Logger.prototype.warn).toHaveBeenCalledWith('RESEND_API_KEY not set — emails will be logged to console only');
         });
     });
 
@@ -101,9 +96,7 @@ describe('MailService', () => {
                 expect(callArgs.html).toContain('123456');
                 expect(callArgs.html).toContain('Verify your email');
 
-                expect(Logger.prototype.log).toHaveBeenCalledWith(
-                    'Verification code sent to u***@example.com',
-                );
+                expect(Logger.prototype.log).toHaveBeenCalledWith('Verification code sent to u***@example.com');
             });
         });
 
@@ -121,9 +114,7 @@ describe('MailService', () => {
                 expect(callArgs.html).toContain(`${FRONTEND_URL}/auth/reset-password?token=${token}`);
                 expect(callArgs.html).toContain('Password Reset');
 
-                expect(Logger.prototype.log).toHaveBeenCalledWith(
-                    'Password reset link sent to u***@example.com',
-                );
+                expect(Logger.prototype.log).toHaveBeenCalledWith('Password reset link sent to u***@example.com');
             });
         });
 
@@ -140,9 +131,7 @@ describe('MailService', () => {
                 expect(callArgs.html).toContain('Alex');
                 expect(callArgs.html).toContain('Budget House');
 
-                expect(Logger.prototype.log).toHaveBeenCalledWith(
-                    'Household invitation sent to j***@example.com from Alex',
-                );
+                expect(Logger.prototype.log).toHaveBeenCalledWith('Household invitation sent to j***@example.com from Alex');
             });
         });
 
@@ -160,9 +149,7 @@ describe('MailService', () => {
                 expect(callArgs.html).toContain('accepted');
                 expect(callArgs.html).toContain('Budget House');
 
-                expect(Logger.prototype.log).toHaveBeenCalledWith(
-                    'Invitation response (accepted) sent to a***@example.com',
-                );
+                expect(Logger.prototype.log).toHaveBeenCalledWith('Invitation response (accepted) sent to a***@example.com');
             });
 
             it('should send "declined" response when accepted is false', async () => {
@@ -175,9 +162,7 @@ describe('MailService', () => {
                 expect(callArgs.html).toContain('Declined');
                 expect(callArgs.html).toContain('declined');
 
-                expect(Logger.prototype.log).toHaveBeenCalledWith(
-                    'Invitation response (declined) sent to a***@example.com',
-                );
+                expect(Logger.prototype.log).toHaveBeenCalledWith('Invitation response (declined) sent to a***@example.com');
             });
         });
 
@@ -194,9 +179,7 @@ describe('MailService', () => {
                 expect(callArgs.html).toContain('Budget House');
                 expect(callArgs.html).toContain('Removed from Household');
 
-                expect(Logger.prototype.log).toHaveBeenCalledWith(
-                    'Member removed notification sent to s***@example.com',
-                );
+                expect(Logger.prototype.log).toHaveBeenCalledWith('Member removed notification sent to s***@example.com');
             });
         });
 
@@ -204,13 +187,9 @@ describe('MailService', () => {
             it('should log error and not re-throw when resend.emails.send fails', async () => {
                 mockSend.mockRejectedValue(new Error('SMTP connection failed'));
 
-                await expect(
-                    service.sendVerificationCode('user@example.com', '123456'),
-                ).resolves.toBeUndefined();
+                await expect(service.sendVerificationCode('user@example.com', '123456')).resolves.toBeUndefined();
 
-                expect(Logger.prototype.error).toHaveBeenCalledWith(
-                    'Failed to send email to u***@example.com: SMTP connection failed',
-                );
+                expect(Logger.prototype.error).toHaveBeenCalledWith('Failed to send email to u***@example.com: SMTP connection failed');
             });
 
             it('should not call post-send logger.log when send fails', async () => {
@@ -222,9 +201,7 @@ describe('MailService', () => {
                 // The success log should still be called since it's after this.send()
                 // Actually looking at the code, logger.log is called AFTER await this.send()
                 // and send() catches the error internally, so the success log IS called
-                expect(Logger.prototype.log).toHaveBeenCalledWith(
-                    'Password reset link sent to u***@example.com',
-                );
+                expect(Logger.prototype.log).toHaveBeenCalledWith('Password reset link sent to u***@example.com');
             });
         });
     });
@@ -239,31 +216,23 @@ describe('MailService', () => {
         });
 
         it('should not throw and log email details to console', async () => {
-            await expect(
-                service.sendVerificationCode('user@example.com', '654321'),
-            ).resolves.toBeUndefined();
+            await expect(service.sendVerificationCode('user@example.com', '654321')).resolves.toBeUndefined();
 
             expect(mockSend).not.toHaveBeenCalled();
-            expect(Logger.prototype.log).toHaveBeenCalledWith(
-                '[DEV EMAIL] To: user@example.com | Subject: Your SharedBudget verification code',
-            );
+            expect(Logger.prototype.log).toHaveBeenCalledWith('[DEV EMAIL] To: user@example.com | Subject: Your SharedBudget verification code');
         });
 
         it('should extract and log verification code from HTML', async () => {
             await service.sendVerificationCode('user@example.com', '987654');
 
-            expect(Logger.prototype.log).toHaveBeenCalledWith(
-                '[DEV EMAIL] Verification code: 987654',
-            );
+            expect(Logger.prototype.log).toHaveBeenCalledWith('[DEV EMAIL] Verification code: 987654');
         });
 
         it('should not log verification code for non-verification emails', async () => {
             await service.sendPasswordResetLink('user@example.com', 'reset-token');
 
-            const logCalls = vi.mocked(Logger.prototype.log).mock.calls.map(c => c[0]);
-            const codeLogCalls = logCalls.filter(
-                (msg: string) => typeof msg === 'string' && msg.includes('[DEV EMAIL] Verification code'),
-            );
+            const logCalls = vi.mocked(Logger.prototype.log).mock.calls.map((c) => c[0]);
+            const codeLogCalls = logCalls.filter((msg: string) => typeof msg === 'string' && msg.includes('[DEV EMAIL] Verification code'));
             expect(codeLogCalls).toHaveLength(0);
         });
 

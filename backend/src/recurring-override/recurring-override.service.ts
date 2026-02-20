@@ -38,13 +38,7 @@ export class RecurringOverrideService {
      * @throws {NotFoundException} If expense not found in the user's household
      * @throws {BadRequestException} If expense is not recurring
      */
-    async upsertOverride(
-        userId: string,
-        expenseId: string,
-        year: number,
-        month: number,
-        dto: UpsertOverrideDto,
-    ): Promise<RecurringOverrideResponseDto> {
+    async upsertOverride(userId: string, expenseId: string, year: number, month: number, dto: UpsertOverrideDto): Promise<RecurringOverrideResponseDto> {
         this.logger.debug(`Upsert override for expense ${expenseId}: ${month}/${year}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
@@ -102,11 +96,7 @@ export class RecurringOverrideService {
      * @throws {NotFoundException} If expense not found in the user's household
      * @throws {BadRequestException} If expense is not recurring
      */
-    async updateDefaultAmount(
-        userId: string,
-        expenseId: string,
-        dto: UpdateDefaultAmountDto,
-    ): Promise<{ message: string }> {
+    async updateDefaultAmount(userId: string, expenseId: string, dto: UpdateDefaultAmountDto): Promise<{ message: string }> {
         this.logger.debug(`Update default amount for expense ${expenseId} to ${dto.amount}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
@@ -178,12 +168,7 @@ export class RecurringOverrideService {
      * @throws {NotFoundException} If user is not in a household
      * @throws {NotFoundException} If expense not found in the user's household
      */
-    async deleteOverride(
-        userId: string,
-        expenseId: string,
-        year: number,
-        month: number,
-    ): Promise<{ message: string }> {
+    async deleteOverride(userId: string, expenseId: string, year: number, month: number): Promise<{ message: string }> {
         this.logger.debug(`Delete override for expense ${expenseId}: ${month}/${year}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
@@ -220,10 +205,7 @@ export class RecurringOverrideService {
      * @throws {NotFoundException} If user is not in a household
      * @throws {NotFoundException} If expense not found in the user's household
      */
-    async deleteAllOverrides(
-        userId: string,
-        expenseId: string,
-    ): Promise<{ message: string }> {
+    async deleteAllOverrides(userId: string, expenseId: string): Promise<{ message: string }> {
         this.logger.debug(`Delete all overrides for expense ${expenseId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
@@ -265,11 +247,7 @@ export class RecurringOverrideService {
      * @throws {NotFoundException} If expense not found in the user's household
      * @throws {BadRequestException} If expense is not recurring
      */
-    async batchUpsertOverrides(
-        userId: string,
-        expenseId: string,
-        overrides: BatchOverrideItemDto[],
-    ): Promise<RecurringOverrideResponseDto[]> {
+    async batchUpsertOverrides(userId: string, expenseId: string, overrides: BatchOverrideItemDto[]): Promise<RecurringOverrideResponseDto[]> {
         this.logger.debug(`Batch upsert ${overrides.length} overrides for expense ${expenseId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
@@ -329,12 +307,7 @@ export class RecurringOverrideService {
      * @throws {NotFoundException} If user is not in a household
      * @throws {NotFoundException} If expense not found in the user's household
      */
-    async deleteUpcomingOverrides(
-        userId: string,
-        expenseId: string,
-        fromYear: number,
-        fromMonth: number,
-    ): Promise<{ message: string }> {
+    async deleteUpcomingOverrides(userId: string, expenseId: string, fromYear: number, fromMonth: number): Promise<{ message: string }> {
         this.logger.debug(`Delete upcoming overrides for expense ${expenseId} from ${fromMonth}/${fromYear}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
@@ -350,10 +323,7 @@ export class RecurringOverrideService {
         const { count } = await this.prismaService.recurringOverride.deleteMany({
             where: {
                 expenseId,
-                OR: [
-                    { year: { gt: fromYear } },
-                    { year: fromYear, month: { gte: fromMonth } },
-                ],
+                OR: [{ year: { gt: fromYear } }, { year: fromYear, month: { gte: fromMonth } }],
             },
         });
 

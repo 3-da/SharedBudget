@@ -520,9 +520,7 @@ describe('ApprovalService', () => {
             mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
 
             await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow(ConflictException);
-            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow(
-                'This approval has already been reviewed or cancelled',
-            );
+            await expect(service.acceptApproval(mockReviewerId, mockApprovalId, {})).rejects.toThrow('This approval has already been reviewed or cancelled');
             expect(mockTxExpense.create).not.toHaveBeenCalled();
         });
     });
@@ -589,7 +587,9 @@ describe('ApprovalService', () => {
             mockPrismaService.expenseApproval.updateMany.mockResolvedValue({ count: 0 });
 
             await expect(service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'No' })).rejects.toThrow(ConflictException);
-            await expect(service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'No' })).rejects.toThrow('This approval has already been reviewed or cancelled');
+            await expect(service.rejectApproval(mockReviewerId, mockApprovalId, { message: 'No' })).rejects.toThrow(
+                'This approval has already been reviewed or cancelled',
+            );
         });
 
         it('should throw ForbiddenException if user tries to reject their own approval', async () => {

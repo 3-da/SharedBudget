@@ -185,9 +185,7 @@ describe('BatchUpsertOverrideDto', () => {
 
     it('should reject invalid items within overrides array', async () => {
         const dto = plainToInstance(BatchUpsertOverrideDto, {
-            overrides: [
-                { year: 2026, month: 13, amount: -1 },
-            ],
+            overrides: [{ year: 2026, month: 13, amount: -1 }],
         });
         const errors = await validate(dto);
 

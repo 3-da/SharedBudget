@@ -31,10 +31,7 @@ export class SalaryController {
     }
 
     @GetMyYearlySalaryEndpoint()
-    async getMyYearlySalary(
-        @CurrentUser('id') userId: string,
-        @Param('year', ParseIntPipe) year: number,
-    ): Promise<SalaryResponseDto[]> {
+    async getMyYearlySalary(@CurrentUser('id') userId: string, @Param('year', ParseIntPipe) year: number): Promise<SalaryResponseDto[]> {
         return this.salaryService.getMyYearlySalary(userId, year);
     }
 

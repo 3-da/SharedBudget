@@ -94,9 +94,7 @@ describe('DashboardController', () => {
         paidAt: now,
     };
 
-    const mockSavingsHistoryResponse: SavingsHistoryItemDto[] = [
-        { month: currentMonth, year: currentYear, personalSavings: 800, sharedSavings: 350 },
-    ];
+    const mockSavingsHistoryResponse: SavingsHistoryItemDto[] = [{ month: currentMonth, year: currentYear, personalSavings: 800, sharedSavings: 350 }];
 
     const mockDashboardService = {
         getOverview: vi.fn(() => Promise.resolve(mockDashboardResponse)),

@@ -33,7 +33,10 @@ async function bootstrap() {
     // CORS — parse comma-separated origins, validate each
     // Supports exact strings and wildcard patterns (e.g. "*.vercel.app")
     const corsOriginRaw = configService.get('CORS_ORIGIN', 'http://localhost:4200');
-    const corsOrigins = corsOriginRaw.split(',').map((o: string) => o.trim()).filter(Boolean);
+    const corsOrigins = corsOriginRaw
+        .split(',')
+        .map((o: string) => o.trim())
+        .filter(Boolean);
 
     const corsOriginRegexes = corsOrigins
         .filter((o: string) => o.includes('*'))

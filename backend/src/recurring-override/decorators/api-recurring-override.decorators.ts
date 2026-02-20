@@ -100,7 +100,8 @@ export function DeleteUpcomingOverridesEndpoint() {
         Delete(':id/overrides/upcoming/:year/:month'),
         ApiOperation({
             summary: 'Delete all overrides from a given month forward',
-            description: 'Removes overrides for a recurring expense starting from the specified month/year onwards. Useful for undoing "apply to all upcoming" changes.',
+            description:
+                'Removes overrides for a recurring expense starting from the specified month/year onwards. Useful for undoing "apply to all upcoming" changes.',
         }),
         ApiParam({ name: 'id', description: 'Expense ID' }),
         ApiParam({ name: 'year', description: 'Starting year (inclusive)', example: 2026 }),

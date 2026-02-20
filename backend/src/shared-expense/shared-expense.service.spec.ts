@@ -132,7 +132,6 @@ describe('SharedExpenseService', () => {
                 where: {
                     householdId: mockHouseholdId,
                     type: ExpenseType.SHARED,
-
                 },
                 orderBy: { createdAt: 'desc' },
             });

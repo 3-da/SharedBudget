@@ -56,10 +56,7 @@ export class RecurringOverrideController {
     }
 
     @DeleteAllOverridesEndpoint()
-    async deleteAllOverrides(
-        @CurrentUser('id') userId: string,
-        @Param('id') expenseId: string,
-    ): Promise<MessageResponseDto> {
+    async deleteAllOverrides(@CurrentUser('id') userId: string, @Param('id') expenseId: string): Promise<MessageResponseDto> {
         return this.recurringOverrideService.deleteAllOverrides(userId, expenseId);
     }
 
@@ -83,10 +80,7 @@ export class RecurringOverrideController {
     }
 
     @ListOverridesEndpoint()
-    async listOverrides(
-        @CurrentUser('id') userId: string,
-        @Param('id') expenseId: string,
-    ): Promise<RecurringOverrideResponseDto[]> {
+    async listOverrides(@CurrentUser('id') userId: string, @Param('id') expenseId: string): Promise<RecurringOverrideResponseDto[]> {
         return this.recurringOverrideService.listOverrides(userId, expenseId);
     }
 }

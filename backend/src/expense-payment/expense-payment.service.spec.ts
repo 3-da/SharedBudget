@@ -164,9 +164,7 @@ describe('ExpensePaymentService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.markPaid(mockUserId, mockExpenseId, dto);
@@ -299,9 +297,7 @@ describe('ExpensePaymentService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.undoPaid(mockUserId, mockExpenseId, dto);
@@ -443,9 +439,7 @@ describe('ExpensePaymentService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.cancel(mockUserId, mockExpenseId, dto);
@@ -508,9 +502,7 @@ describe('ExpensePaymentService', () => {
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
-            mockExpenseHelper.requireMembership.mockRejectedValue(
-                new NotFoundException('You must be in a household to manage expenses'),
-            );
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
 
             try {
                 await service.getPaymentStatuses(mockUserId, mockExpenseId);

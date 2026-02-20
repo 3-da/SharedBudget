@@ -14,18 +14,12 @@ export class RedisHealthIndicator extends HealthIndicator {
             const result = await this.redis.ping();
             const isHealthy = result === 'PONG';
             if (!isHealthy) {
-                throw new HealthCheckError(
-                    'Redis health check failed',
-                    this.getStatus(key, false, { message: `Unexpected ping response: ${result}` }),
-                );
+                throw new HealthCheckError('Redis health check failed', this.getStatus(key, false, { message: `Unexpected ping response: ${result}` }));
             }
             return this.getStatus(key, true);
         } catch (error) {
             if (error instanceof HealthCheckError) throw error;
-            throw new HealthCheckError(
-                'Redis health check failed',
-                this.getStatus(key, false, { message: (error as Error).message }),
-            );
+            throw new HealthCheckError('Redis health check failed', this.getStatus(key, false, { message: (error as Error).message }));
         }
     }
 }

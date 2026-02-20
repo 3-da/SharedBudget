@@ -22,10 +22,7 @@ export class ExpensePaymentController {
     constructor(private readonly expensePaymentService: ExpensePaymentService) {}
 
     @GetBatchPaymentStatusEndpoint()
-    async getBatchPaymentStatus(
-        @CurrentUser('id') userId: string,
-        @Query() query: DashboardQueryDto,
-    ): Promise<ExpensePaymentResponseDto[]> {
+    async getBatchPaymentStatus(@CurrentUser('id') userId: string, @Query() query: DashboardQueryDto): Promise<ExpensePaymentResponseDto[]> {
         const now = new Date();
         const month = query.month ?? now.getMonth() + 1;
         const year = query.year ?? now.getFullYear();
@@ -33,37 +30,22 @@ export class ExpensePaymentController {
     }
 
     @MarkPaidEndpoint()
-    async markPaid(
-        @CurrentUser('id') userId: string,
-        @Param('id') expenseId: string,
-        @Body() dto: MarkPaidDto,
-    ): Promise<ExpensePaymentResponseDto> {
+    async markPaid(@CurrentUser('id') userId: string, @Param('id') expenseId: string, @Body() dto: MarkPaidDto): Promise<ExpensePaymentResponseDto> {
         return this.expensePaymentService.markPaid(userId, expenseId, dto);
     }
 
     @UndoPaidEndpoint()
-    async undoPaid(
-        @CurrentUser('id') userId: string,
-        @Param('id') expenseId: string,
-        @Body() dto: MarkPaidDto,
-    ): Promise<ExpensePaymentResponseDto> {
+    async undoPaid(@CurrentUser('id') userId: string, @Param('id') expenseId: string, @Body() dto: MarkPaidDto): Promise<ExpensePaymentResponseDto> {
         return this.expensePaymentService.undoPaid(userId, expenseId, dto);
     }
 
     @CancelExpenseEndpoint()
-    async cancelExpense(
-        @CurrentUser('id') userId: string,
-        @Param('id') expenseId: string,
-        @Body() dto: MarkPaidDto,
-    ): Promise<ExpensePaymentResponseDto> {
+    async cancelExpense(@CurrentUser('id') userId: string, @Param('id') expenseId: string, @Body() dto: MarkPaidDto): Promise<ExpensePaymentResponseDto> {
         return this.expensePaymentService.cancel(userId, expenseId, dto);
     }
 
     @GetPaymentStatusEndpoint()
-    async getPaymentStatus(
-        @CurrentUser('id') userId: string,
-        @Param('id') expenseId: string,
-    ): Promise<ExpensePaymentResponseDto[]> {
+    async getPaymentStatus(@CurrentUser('id') userId: string, @Param('id') expenseId: string): Promise<ExpensePaymentResponseDto[]> {
         return this.expensePaymentService.getPaymentStatuses(userId, expenseId);
     }
 }

@@ -92,7 +92,6 @@ describe('PersonalExpenseService', () => {
                 where: {
                     createdById: mockUserId,
                     type: ExpenseType.PERSONAL,
-
                 },
                 orderBy: { createdAt: 'desc' },
             });

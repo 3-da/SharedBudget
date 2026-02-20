@@ -16,7 +16,11 @@ export class MemberSavingsDto {
     @ApiProperty({ example: 200.0, type: 'number', description: 'Shared savings from Saving records (isShared=true)' })
     sharedSavings!: number;
 
-    @ApiProperty({ example: 1850.01, type: 'number', description: 'Remaining budget = salary - personal expenses - shared expense share - personal savings - shared savings' })
+    @ApiProperty({
+        example: 1850.01,
+        type: 'number',
+        description: 'Remaining budget = salary - personal expenses - shared expense share - personal savings - shared savings',
+    })
     remainingBudget!: number;
 }
 
