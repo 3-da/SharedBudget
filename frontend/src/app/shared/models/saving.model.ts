@@ -10,8 +10,19 @@ export interface Saving {
   updatedAt: string;
 }
 
-export interface UpsertSavingRequest {
+export interface AddSavingRequest {
   amount: number;
   month?: number;
   year?: number;
+}
+
+export interface WithdrawSavingRequest {
+  amount: number;
+  month?: number;
+  year?: number;
+}
+
+export interface SharedWithdrawalResponse {
+  approvalId: string;
+  message: string;
 }

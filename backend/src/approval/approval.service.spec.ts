@@ -5,6 +5,7 @@ import { ApprovalService } from './approval.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
+import { SavingService } from '../saving/saving.service';
 import { ApprovalAction, ApprovalStatus, ExpenseCategory, ExpenseFrequency, ExpenseType } from '../generated/prisma/enums';
 
 describe('ApprovalService', () => {
@@ -158,6 +159,10 @@ describe('ApprovalService', () => {
         summaryTTL: 120,
     };
 
+    const mockSavingService = {
+        executeSharedWithdrawal: vi.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -165,6 +170,7 @@ describe('ApprovalService', () => {
                 { provide: PrismaService, useValue: mockPrismaService },
                 { provide: ExpenseHelperService, useValue: mockExpenseHelper },
                 { provide: CacheService, useValue: mockCacheService },
+                { provide: SavingService, useValue: mockSavingService },
             ],
         }).compile();
 
@@ -451,6 +457,51 @@ describe('ApprovalService', () => {
                 data: { deletedAt: expect.any(Date) },
             });
             expect(result.status).toBe(ApprovalStatus.ACCEPTED);
+        });
+
+        it('should accept a WITHDRAW_SAVINGS approval and execute the withdrawal', async () => {
+            const withdrawApproval = {
+                id: 'approval-004',
+                expenseId: null,
+                householdId: mockHouseholdId,
+                action: ApprovalAction.WITHDRAW_SAVINGS,
+                status: ApprovalStatus.PENDING,
+                requestedById: mockUserId,
+                requestedBy: mockRequestedByUser,
+                reviewedById: null,
+                reviewedBy: null,
+                message: null,
+                proposedData: { amount: 50, month: 6, year: 2026 },
+                createdAt: new Date('2026-01-18'),
+                reviewedAt: null,
+            };
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(withdrawApproval);
+            const updatedApproval = {
+                ...withdrawApproval,
+                status: ApprovalStatus.ACCEPTED,
+                reviewedById: mockReviewerId,
+                reviewedBy: mockReviewerUser,
+                message: null,
+                reviewedAt: expect.any(Date),
+            };
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockTxExpenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
+            mockSavingService.executeSharedWithdrawal.mockResolvedValue(undefined);
+            mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
+
+            const result = await service.acceptApproval(mockReviewerId, 'approval-004', {});
+
+            expect(mockSavingService.executeSharedWithdrawal).toHaveBeenCalledWith(
+                mockUserId,
+                mockHouseholdId,
+                50,
+                6,
+                2026,
+                mockTx,
+            );
+            expect(result.status).toBe(ApprovalStatus.ACCEPTED);
+            expect(mockCacheService.invalidateHousehold).toHaveBeenCalledWith(mockHouseholdId);
         });
 
         it('should throw NotFoundException if user has no household', async () => {

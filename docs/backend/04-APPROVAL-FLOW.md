@@ -10,7 +10,9 @@ Shared expenses belong to the entire household, not one person. If Sam could uni
 
 **Scenario.** Alex (OWNER) and Sam (MEMBER) share a household. Sam wants to add a monthly internet bill. Sam proposes the expense. Alex sees it in the pending approvals list, reviews the amount, and accepts. Only then does the expense appear in the household ledger. If Alex disagrees, they reject it with a message explaining why. Sam can also cancel the proposal before anyone reviews it.
 
-This pattern applies uniformly: creating a new shared expense, editing an existing one, or deleting one all follow the same propose-review-resolve cycle.
+The approval flow also extends beyond expenses. Shared savings withdrawals follow the same pattern -- a member proposes a withdrawal, and another member must approve it before the savings balance is reduced.
+
+This pattern applies uniformly: creating a new shared expense, editing an existing one, deleting one, or withdrawing from shared savings all follow the same propose-review-resolve cycle.
 
 ### Interview Questions This Section Answers
 - Why did you add an approval workflow instead of letting any member modify shared expenses directly?
@@ -58,7 +60,7 @@ model ExpenseApproval {
   id            String         @id @default(uuid())
   expenseId     String?                              // null for CREATE actions
   householdId   String
-  action        ApprovalAction                       // CREATE, UPDATE, DELETE
+  action        ApprovalAction                       // CREATE, UPDATE, DELETE, WITHDRAW_SAVINGS
   status        ApprovalStatus @default(PENDING)     // PENDING, ACCEPTED, REJECTED
   requestedById String
   reviewedById  String?
@@ -74,7 +76,7 @@ model ExpenseApproval {
 
 **Why `expenseId` is nullable.** A CREATE proposal has no expense yet -- the expense only comes into existence when the approval is accepted. UPDATE and DELETE proposals reference the existing expense they target.
 
-**Why `proposedData` is JSON.** For CREATE, it stores the full proposed expense (name, amount, category, frequency, paidByUserId). For UPDATE, it stores only the changed fields. For DELETE, it is null -- there is nothing to propose beyond the intent to remove. Using a JSON column avoids a separate "proposed expenses" table and keeps the proposal self-contained. The tradeoff is the loss of type safety at the database level, but the application layer validates the shape through DTOs before it reaches Prisma.
+**Why `proposedData` is JSON.** For CREATE, it stores the full proposed expense (name, amount, category, frequency, paidByUserId). For UPDATE, it stores only the changed fields. For DELETE, it is null -- there is nothing to propose beyond the intent to remove. For WITHDRAW_SAVINGS, it stores the withdrawal amount, month, and year. The `expenseId` is null since this action targets savings, not expenses. Using a JSON column avoids a separate "proposed expenses" table and keeps the proposal self-contained. The tradeoff is the loss of type safety at the database level, but the application layer validates the shape through DTOs before it reaches Prisma.
 
 **Indexes.** The composite `(householdId, status)` index supports the most common query: "give me all pending approvals for this household." The `(requestedById)` index supports the dashboard query that counts pending approvals excluding the current user's own.
 
@@ -169,6 +171,12 @@ async acceptApproval(
                 where: { id: approval.expenseId! },
                 data: { deletedAt: now }   // SOFT DELETE
             });
+        } else if (approval.action === ApprovalAction.WITHDRAW_SAVINGS) {
+            const proposed = approval.proposedData as { amount: number; month: number; year: number };
+            await this.savingService.executeSharedWithdrawal(
+                approval.requestedById, approval.householdId,
+                proposed.amount, proposed.month, proposed.year, tx,
+            );
         }
         return updatedApproval;
     });
@@ -180,7 +188,7 @@ async acceptApproval(
 
 **Why the `$transaction` is critical.** Without it, you could end up with an approval marked as ACCEPTED but the expense creation failing -- or worse, the expense created but the approval still showing as PENDING. The interactive transaction (callback form) ensures both the approval status update and the expense mutation succeed or fail together. If any query inside the callback throws, Prisma rolls back the entire transaction.
 
-**The three action branches.** CREATE instantiates a new expense from `proposedData`. UPDATE patches an existing expense with the proposed fields. DELETE sets `deletedAt` on the expense rather than removing the row -- this is a soft delete that preserves history for the settlement and timeline features.
+**The four action branches.** CREATE instantiates a new expense from `proposedData`. UPDATE patches an existing expense with the proposed fields. DELETE sets `deletedAt` on the expense rather than removing the row -- this is a soft delete that preserves history for the settlement and timeline features. WITHDRAW_SAVINGS delegates to `SavingService.executeSharedWithdrawal`, which subtracts the withdrawal amount from the requester's shared savings within the same transaction.
 
 ### Interview Questions This Section Answers
 - Why did you use a Prisma `$transaction` in the accept flow?
@@ -285,6 +293,8 @@ Every approval action runs through a consistent set of guards. The table below s
 *Only for UPDATE and DELETE proposals. CREATE proposals have no expense to conflict with.
 
 The self-review prevention rule (`requestedById === userId`) throws `ForbiddenException` on accept and reject, ensuring no member can rubber-stamp their own proposal. For cancel, the same comparison is *required* rather than forbidden -- you can only withdraw what you proposed.
+
+Note that not all proposals originate from `SharedExpenseService`. WITHDRAW_SAVINGS proposals enter through the same approval system but are created by `SavingService.requestSharedWithdrawal`. The validation rules in the table above still apply identically -- household membership is verified, self-review is prevented, and the approval must be PENDING before it can be resolved.
 
 ### Interview Questions This Section Answers
 - What validation checks are shared across all approval actions?

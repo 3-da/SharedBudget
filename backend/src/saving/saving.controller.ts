@@ -3,14 +3,17 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SavingService } from './saving.service';
-import { UpsertSavingDto } from './dto/upsert-saving.dto';
+import { AddSavingDto } from './dto/add-saving.dto';
+import { WithdrawSavingDto } from './dto/withdraw-saving.dto';
 import { SavingResponseDto } from './dto/saving-response.dto';
 import { DashboardQueryDto } from '../dashboard/dto/dashboard-query.dto';
 import {
     GetMySavingsEndpoint,
-    UpsertPersonalSavingEndpoint,
+    AddPersonalSavingEndpoint,
+    WithdrawPersonalSavingEndpoint,
     GetHouseholdSavingsEndpoint,
-    UpsertSharedSavingEndpoint,
+    AddSharedSavingEndpoint,
+    RequestSharedWithdrawalEndpoint,
 } from './decorators/api-saving.decorators';
 
 @ApiTags('Savings')
@@ -25,9 +28,14 @@ export class SavingController {
         return this.savingService.getMySavings(userId, query?.month, query?.year);
     }
 
-    @UpsertPersonalSavingEndpoint()
-    async upsertPersonalSaving(@CurrentUser('id') userId: string, @Body() dto: UpsertSavingDto): Promise<SavingResponseDto> {
-        return this.savingService.upsertPersonalSaving(userId, dto);
+    @AddPersonalSavingEndpoint()
+    async addPersonalSaving(@CurrentUser('id') userId: string, @Body() dto: AddSavingDto): Promise<SavingResponseDto> {
+        return this.savingService.addPersonalSaving(userId, dto);
+    }
+
+    @WithdrawPersonalSavingEndpoint()
+    async withdrawPersonalSaving(@CurrentUser('id') userId: string, @Body() dto: WithdrawSavingDto): Promise<SavingResponseDto> {
+        return this.savingService.withdrawPersonalSaving(userId, dto);
     }
 
     @GetHouseholdSavingsEndpoint()
@@ -35,8 +43,13 @@ export class SavingController {
         return this.savingService.getHouseholdSavings(userId, query?.month, query?.year);
     }
 
-    @UpsertSharedSavingEndpoint()
-    async upsertSharedSaving(@CurrentUser('id') userId: string, @Body() dto: UpsertSavingDto): Promise<SavingResponseDto> {
-        return this.savingService.upsertSharedSaving(userId, dto);
+    @AddSharedSavingEndpoint()
+    async addSharedSaving(@CurrentUser('id') userId: string, @Body() dto: AddSavingDto): Promise<SavingResponseDto> {
+        return this.savingService.addSharedSaving(userId, dto);
+    }
+
+    @RequestSharedWithdrawalEndpoint()
+    async requestSharedWithdrawal(@CurrentUser('id') userId: string, @Body() dto: WithdrawSavingDto) {
+        return this.savingService.requestSharedWithdrawal(userId, dto);
     }
 }

@@ -1,9 +1,9 @@
 # Household Budget Tracker — Feature Specification
 
-**Document Version:** 5.0
+**Document Version:** 6.0
 **Created:** January 28, 2026
-**Updated:** February 14, 2026
-**Project Status:** Phase 1 — Backend complete (47 endpoints, 723 tests), Frontend complete (Angular 21, 33 unit test files), E2E complete (8 Playwright suites)
+**Updated:** February 20, 2026
+**Project Status:** Phase 1 — Backend complete (54 endpoints), Frontend complete (Angular 21), E2E complete (8 Playwright suites)
 
 > **Related docs:**
 > - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
@@ -37,8 +37,8 @@ Phase 1 supports max 2 members (couple). Phase 2 will support unlimited members 
   - **Split into installments:** Divide total by installment frequency — SEMI_ANNUAL (2 payments), QUARTERLY (4 payments), or MONTHLY (12 payments). Each installment can be paid by one person or split among members.
   - For budget calculations, yearly expenses are always normalized to their **monthly equivalent** (total ÷ 12) regardless of payment strategy.
 
-### Approval Workflow (Shared Expenses Only)
-When a household member proposes a change to a shared expense (create, edit, or delete):
+### Approval Workflow (Shared Expenses & Savings Withdrawals)
+When a household member proposes a change to a shared expense (create, edit, or delete) or requests a shared savings withdrawal:
 1. A **pending approval** is created
 2. The other household member(s) are notified
 3. Each reviewer can **accept** or **reject** with a short message
@@ -70,6 +70,7 @@ The system automatically calculates who owes whom based on shared expenses. Each
 - **Reset Password:** Validates token, updates password, invalidates ALL user sessions
 - **Profile:** User can view and update their name (not email) ✅
 - **Password Change:** Requires current password + new password, invalidates all sessions ✅
+- **Account Deletion:** Multi-scenario deletion with data anonymization (see Feature 10) ✅
 
 ### 1.1 Email Verification Flow (6-Digit Code) ✅
 When a user registers, their account is created but marked as **unverified**. They must verify via a 6-digit code before accessing the app.
@@ -238,7 +239,29 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
   - Yearly expenses: divided by 12 for monthly equivalent
   - One-time expenses: included only if month/year matches current period
 
-### 9. User Experience
+### 9. Savings Withdrawal ✅
+- **Personal savings:** Owner can withdraw any amount up to the current balance. Takes effect immediately.
+- **Shared savings:** Withdrawal requires approval from another household member (uses `WITHDRAW_SAVINGS` approval action).
+- **Validation:** Withdrawal amount must be > 0 and ≤ current savings balance.
+- **Month/year scoping:** Optional month/year parameters; defaults to current month/year.
+- **Cache invalidation:** Savings and dashboard caches cleared after withdrawal.
+- **Frontend:** Withdraw dialog with amount input and confirmation. Shows "requires approval" for shared savings.
+
+### 10. Account Deletion ✅
+- **Solo user (no household):** Immediate deletion. User data anonymized (email randomized, name set to "Deleted Account", `deletedAt` set).
+- **Sole owner (no other members):** Household deleted (cascade), then user anonymized.
+- **Owner with members (two-phase flow):**
+  1. Owner sends deletion request targeting a specific member (`POST /users/me/delete-account-request`)
+  2. Target member responds (`POST /users/me/delete-account-request/:id/respond`)
+     - **Accept:** Target becomes OWNER, old owner's personal data (expenses, savings, salary, membership) deleted, account anonymized.
+     - **Reject:** Entire household deleted, owner anonymized.
+  3. Only one pending request per owner at a time. Requests expire after 7 days (Redis TTL).
+  4. Owner can cancel pending request (`DELETE /users/me/delete-account-request`).
+- **Regular member:** Personal data removed from household, account anonymized.
+- **Anonymization:** Email → `deleted_{uuid}@deleted.invalid`, password → re-hashed random, firstName → "Deleted", lastName → "Account". Row preserved for referential integrity.
+- **Frontend:** Settings page with conditional UI based on role and household status.
+
+### 11. User Experience
 - **Responsive Design:** Mobile-first, works on phones/tablets/desktop
 - **Real-Time Updates:** All calculations update instantly as values change
 - **Navigation:** Clear sections — Dashboard, My Expenses, Shared Expenses, Approvals, Salary, Settings
@@ -250,7 +273,7 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 
 ---
 
-## User Stories (13 Total)
+## User Stories (15 Total)
 
 ### User Story 1: Registration & Email Verification ✅
 **As a** new user
@@ -443,7 +466,39 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 - [x] All non-auth endpoints protected with JWT guard
 - [x] Consistent error response format: { statusCode, message, error, timestamp, requestId }
 
-### User Story 12: Caching & Performance
+### User Story 12: Savings Withdrawal ✅
+**As a** household member
+**I want to** withdraw from my personal or shared savings
+**So that** I can access saved money when needed
+
+**Acceptance Criteria:**
+- [x] Personal savings withdrawal: immediate, amount ≤ current balance
+- [x] Shared savings withdrawal: creates WITHDRAW_SAVINGS approval
+- [x] Approval acceptance executes withdrawal within a transaction
+- [x] Validation: amount > 0 and ≤ current savings
+- [x] Optional month/year (defaults to current)
+- [x] Cache invalidation (savings + dashboard) after withdrawal
+- [x] Frontend: WithdrawDialog with amount input, shows approval requirement for shared
+
+### User Story 13: Account Deletion ✅
+**As a** registered user
+**I want to** permanently delete my account and associated data
+**So that** I can exercise my right to data removal
+
+**Acceptance Criteria:**
+- [x] Solo user: DELETE /users/me → anonymize immediately
+- [x] Sole owner: delete household + anonymize
+- [x] Owner with members: two-phase deletion request flow
+- [x] Target member can accept (becomes owner) or reject (household deleted)
+- [x] Only one pending deletion request per owner
+- [x] Deletion requests stored in Redis with 7-day TTL
+- [x] Owner can cancel pending request
+- [x] Regular member: remove from household + anonymize
+- [x] Anonymization preserves row for referential integrity
+- [x] All user sessions invalidated on deletion
+- [x] Frontend: Settings page with role-aware deletion UI
+
+### User Story 14: Caching & Performance
 **As a** performance-conscious developer
 **I want to** cache frequently accessed data
 **So that** the app responds instantly and reduces database load
@@ -459,4 +514,4 @@ Yearly expenses (both personal and shared) support flexible payment strategies:
 
 ---
 
-> **API Endpoints:** See [`PROJECT_INDEX.md`](./PROJECT_INDEX.md) for the full list of all 47 API endpoints with descriptions.
+> **API Endpoints:** See [`PROJECT_INDEX.md`](./PROJECT_INDEX.md) for the full list of all 54 API endpoints with descriptions.

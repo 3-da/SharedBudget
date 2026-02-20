@@ -10,6 +10,7 @@ import { Prisma } from '../generated/prisma/client';
 import { buildExpenseNullableFields, mapToApprovalResponse } from '../common/expense/expense.mappers';
 import { CacheService } from '../common/cache/cache.service';
 import { validateProposedData } from './interfaces/proposed-expense-data.interface';
+import { SavingService } from '../saving/saving.service';
 
 @Injectable()
 export class ApprovalService {
@@ -19,6 +20,7 @@ export class ApprovalService {
         private readonly prismaService: PrismaService,
         private readonly expenseHelper: ExpenseHelperService,
         private readonly cacheService: CacheService,
+        private readonly savingService: SavingService,
     ) {}
 
     /**
@@ -192,6 +194,16 @@ export class ApprovalService {
                     where: { id: approval.expenseId! },
                     data: { deletedAt: now },
                 });
+            } else if (approval.action === ApprovalAction.WITHDRAW_SAVINGS) {
+                const proposed = approval.proposedData as { amount: number; month: number; year: number };
+                await this.savingService.executeSharedWithdrawal(
+                    approval.requestedById,
+                    approval.householdId,
+                    proposed.amount,
+                    proposed.month,
+                    proposed.year,
+                    tx,
+                );
             }
 
             return updatedApproval;

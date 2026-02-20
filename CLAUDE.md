@@ -221,6 +221,7 @@ Use these names **consistently** in all JSDoc scenarios throughout the app:
 | **Alex**   | OWNER     | The household creator and administrator                           |
 | **Sam**    | MEMBER    | A household member (joined via code or invitation)                |
 | **Jordan** | OUTSIDER  | A registered user not yet in any household (invitee, applicant)   |
+| **Riley**  | DELETED   | A user whose account has been anonymized (for deletion scenarios) |
 
 ```typescript
 /**
@@ -252,6 +253,14 @@ Use these names **consistently** in all JSDoc scenarios throughout the app:
 - A global `HttpExceptionFilter` (registered via `APP_FILTER` in `app.module.ts`) catches **all** exceptions and returns a consistent shape with `timestamp` and `requestId` — services do NOT need to handle this themselves
 - Services should still throw specific `HttpException` subclasses with clear messages — the filter passes them through as-is
 - Prisma errors that slip through uncaught are mapped automatically (P2002 → 409, P2025 → 404)
+
+### Redis-Based Workflows
+Some features use Redis for temporary state instead of database tables:
+- **Email verification codes:** `verify:{email}` with 10-min TTL
+- **Password reset tokens:** `reset:{token}` with 1-hour TTL
+- **Account deletion requests:** `delete_request:{id}` with 7-day TTL (3 keys per request)
+
+Pattern: Store JSON payload with TTL, use pipeline for atomic multi-key writes, clean up all related keys on resolution.
 
 ### Security Checklist
 - [ ] Hash passwords with argon2

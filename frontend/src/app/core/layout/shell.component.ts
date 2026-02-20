@@ -55,7 +55,7 @@ import { map } from 'rxjs';
       .content-wrapper { padding: var(--space-md); }
     }
     @media (max-width: 600px) {
-      .content-wrapper { padding: var(--space-sm); }
+      .content-wrapper { padding: var(--space-sm); padding-bottom: var(--space-xl); }
     }
   `],
 })

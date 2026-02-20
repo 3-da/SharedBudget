@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/api/api.service';
-import { Saving, UpsertSavingRequest } from '../../../shared/models/saving.model';
+import { Saving, AddSavingRequest, WithdrawSavingRequest, SharedWithdrawalResponse } from '../../../shared/models/saving.model';
 
 @Injectable({ providedIn: 'root' })
 export class SavingService {
@@ -15,8 +15,12 @@ export class SavingService {
     return this.api.get<Saving[]>(`/savings/me${qs ? '?' + qs : ''}`);
   }
 
-  upsertPersonal(dto: UpsertSavingRequest): Observable<Saving> {
-    return this.api.put<Saving>('/savings/me', dto);
+  addPersonal(dto: AddSavingRequest): Observable<Saving> {
+    return this.api.post<Saving>('/savings/personal/add', dto);
+  }
+
+  withdrawPersonal(dto: WithdrawSavingRequest): Observable<Saving> {
+    return this.api.post<Saving>('/savings/personal/withdraw', dto);
   }
 
   getHousehold(month?: number, year?: number): Observable<Saving[]> {
@@ -27,7 +31,11 @@ export class SavingService {
     return this.api.get<Saving[]>(`/savings/household${qs ? '?' + qs : ''}`);
   }
 
-  upsertShared(dto: UpsertSavingRequest): Observable<Saving> {
-    return this.api.put<Saving>('/savings/shared', dto);
+  addShared(dto: AddSavingRequest): Observable<Saving> {
+    return this.api.post<Saving>('/savings/shared/add', dto);
+  }
+
+  withdrawShared(dto: WithdrawSavingRequest): Observable<SharedWithdrawalResponse> {
+    return this.api.post<SharedWithdrawalResponse>('/savings/shared/withdraw', dto);
   }
 }

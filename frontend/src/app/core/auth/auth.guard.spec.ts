@@ -23,17 +23,17 @@ describe('authGuard', () => {
     router = TestBed.inject(Router);
   });
 
-  it('should allow access when user is authenticated', () => {
+  it('should allow access when user is authenticated', async () => {
     authService.currentUser.set({ id: '1', email: 'a@b.com', firstName: 'A', lastName: 'B' } as any);
-    const result = TestBed.runInInjectionContext(() =>
+    const result = await TestBed.runInInjectionContext(() =>
       authGuard(mockRoute, { url: '/dashboard' } as RouterStateSnapshot),
     );
     expect(result).toBe(true);
   });
 
-  it('should redirect to /auth/login when not authenticated', () => {
+  it('should redirect to /auth/login when not authenticated', async () => {
     authService.currentUser.set(null);
-    const result = TestBed.runInInjectionContext(() =>
+    const result = await TestBed.runInInjectionContext(() =>
       authGuard(mockRoute, { url: '/dashboard' } as RouterStateSnapshot),
     );
     expect(result).toBeInstanceOf(UrlTree);
@@ -41,9 +41,9 @@ describe('authGuard', () => {
     expect(tree.toString()).toContain('/auth/login');
   });
 
-  it('should pass returnUrl as query param', () => {
+  it('should pass returnUrl as query param', async () => {
     authService.currentUser.set(null);
-    const result = TestBed.runInInjectionContext(() =>
+    const result = await TestBed.runInInjectionContext(() =>
       authGuard(mockRoute, { url: '/expenses/personal' } as RouterStateSnapshot),
     );
     const tree = result as UrlTree;

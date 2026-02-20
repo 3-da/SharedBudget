@@ -1,10 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, Min, IsOptional, IsInt, Max } from 'class-validator';
 
-export class UpsertSavingDto {
-    @ApiProperty({ example: 200.0, description: 'Savings amount for the month', minimum: 0 })
+export class WithdrawSavingDto {
+    @ApiProperty({ example: 50.0, description: 'Amount to withdraw from savings', minimum: 0.01 })
     @IsNumber()
-    @Min(0)
+    @Min(0.01)
     amount!: number;
 
     @ApiPropertyOptional({ example: 6, description: 'Month (1-12). Defaults to current month.', minimum: 1, maximum: 12 })

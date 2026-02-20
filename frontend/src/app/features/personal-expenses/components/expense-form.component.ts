@@ -166,6 +166,9 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
     form { display: flex; flex-direction: column; gap: 8px; }
     .row { display: flex; gap: 12px; }
     .row mat-form-field { flex: 1; }
+    @media (max-width: 400px) {
+      .row { flex-direction: column; gap: 8px; }
+    }
   `],
 })
 export class ExpenseFormComponent {

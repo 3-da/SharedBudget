@@ -53,7 +53,7 @@ The version is configurable via the `API_PREFIX` environment variable, so a v2 c
 |--------|--------------------------|-------------|
 | GET | Read resources. Never mutates. | Yes |
 | POST | Create resources or trigger actions (login, join, refresh). | No |
-| PUT | Full replacement or **upsert** (salary, savings). | Yes |
+| PUT | Full replacement or **upsert** (salary, savings). POST for actions (withdraw, delete requests). | Yes |
 | DELETE | Soft-delete (expenses) or hard-delete (invitations, overrides). | Yes |
 
 **Why all auth endpoints use POST:** Credentials and tokens must never appear in URLs, query strings, or server access logs. `GET /auth/login?email=alex@example.com&password=secret` would leak credentials into browser history, proxy logs, and referrer headers. Every auth endpoint uses POST with a request body.
@@ -80,7 +80,7 @@ CORS is restricted to a single configurable origin. In development, this is the 
 
 ## 2. Endpoint Inventory
 
-SharedBudget has **47 endpoints across 11 controllers**. Every endpoint requires JWT authentication except the 8 auth endpoints marked with `@Public()`.
+SharedBudget has **54 endpoints across 11 controllers**. Every endpoint requires JWT authentication except the 8 auth endpoints marked with `@Public()`.
 
 ### 2.1 Authentication (8 endpoints)
 
@@ -115,15 +115,22 @@ Auth endpoints have the strictest rate limits. Registration and forgot-password 
 
 The household controller is the largest because household management has the most distinct operations. Notice that "leave" and "remove" are separate endpoints even though both result in membership deletion — they have different authorization rules (any member can leave, only OWNER can remove others) and different side effects (OWNER cannot leave without first transferring ownership).
 
-### 2.3 User (3 endpoints)
+### 2.3 User (8 endpoints)
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/users/me` | Get own profile |
-| PUT | `/users/me` | Update profile (name) |
-| PUT | `/users/me/password` | Change password |
+| Method | Path | Purpose | Role |
+|--------|------|---------|------|
+| GET | `/users/me` | Get own profile | - |
+| PUT | `/users/me` | Update profile (name) | - |
+| PUT | `/users/me/password` | Change password | - |
+| DELETE | `/users/me` | Delete account (anonymizes user data) | - |
+| POST | `/users/me/delete-account-request` | Request account deletion (owner with members) | OWNER |
+| GET | `/users/me/pending-delete-requests` | List pending deletion requests targeting me | - |
+| POST | `/users/me/delete-account-request/:id/respond` | Accept or reject deletion request | - |
+| DELETE | `/users/me/delete-account-request` | Cancel pending deletion request | OWNER |
 
 The `/me` convention means the server derives the user ID from the JWT token. Users never pass their own ID in the URL, which eliminates a class of IDOR vulnerabilities — see [07-SECURITY.md](./07-SECURITY.md).
+
+Account deletion uses a two-phase flow for owners with household members. The owner sends a deletion request to another member, who can accept (becoming the new owner while the old owner's account is anonymized) or reject (the household is deleted and the owner is anonymized). Solo users and regular members can delete directly. Deletion requests are stored in Redis with a 7-day TTL.
 
 ### 2.4 Salary (4 endpoints)
 
@@ -198,7 +205,7 @@ The dashboard endpoint is the most expensive query in the system — it aggregat
 
 The batch endpoint exists because changing a recurring expense's base amount often requires updating all future overrides in one operation.
 
-### 2.11 Savings (4 endpoints)
+### 2.11 Savings (6 endpoints)
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -206,6 +213,10 @@ The batch endpoint exists because changing a recurring expense's base amount oft
 | PUT | `/savings/me/personal` | Upsert personal savings |
 | PUT | `/savings/me/shared` | Upsert shared savings |
 | GET | `/savings/household` | All household savings |
+| POST | `/savings/me/personal/withdraw` | Withdraw from personal savings |
+| POST | `/savings/me/shared/withdraw` | Request shared savings withdrawal (approval) |
+
+Personal savings withdrawals take effect immediately. Shared savings withdrawals create a `WITHDRAW_SAVINGS` approval that another household member must accept before the savings balance is reduced.
 
 ### Interview Questions This Section Answers
 - "How many endpoints does your API have?"
