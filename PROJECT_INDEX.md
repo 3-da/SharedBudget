@@ -1,6 +1,6 @@
 # SharedBudget — Project Index
 
-> **Generated:** 2026-02-12 | **Backend:** Complete (47 endpoints, 723 tests) | **Frontend:** Complete (Angular 21, builds clean) | **E2E:** 8 Playwright test suites
+> **Generated:** 2026-02-20 | **Backend:** Complete (54 endpoints) | **Frontend:** Complete (Angular 21, builds clean) | **E2E:** 8 Playwright test suites
 
 A household budget management app where members track personal/shared expenses, manage salaries, savings, and settle debts.
 
@@ -46,7 +46,7 @@ SharedBudget/
 │   │   ├── main.ts             # Entry point (port 3000)
 │   │   ├── app.module.ts       # Root module (19 modules)
 │   │   ├── auth/               # Register, login, verify, password reset, refresh
-│   │   ├── user/               # Profile CRUD, change password
+│   │   ├── user/               # Profile CRUD, change password, account deletion
 │   │   ├── household/          # Household CRUD, membership, invitations
 │   │   ├── salary/             # Salary upsert, monthly tracking
 │   │   ├── personal-expense/   # Personal expense CRUD
@@ -55,7 +55,7 @@ SharedBudget/
 │   │   ├── dashboard/          # Financial overview, settlement calc, mark-paid
 │   │   ├── expense-payment/    # Mark expense months as paid/pending
 │   │   ├── recurring-override/ # Override recurring expense amounts per month
-│   │   ├── saving/             # Personal & shared savings CRUD
+│   │   ├── saving/             # Personal & shared savings add/withdraw
 │   │   ├── session/            # Redis session management
 │   │   ├── common/             # Filters, DTOs, helpers, logger, cache, utils
 │   │   ├── prisma/             # PrismaService (PostgreSQL via @prisma/adapter-pg)
@@ -109,7 +109,7 @@ SharedBudget/
 |-------------------------|-----------|-----------------------------------------------|-----------|--------------------------------------------------|
 | **auth**                | Yes       | AuthService                                   | 8         | Register, verify, login, refresh, logout, pwd reset |
 | **household**           | Yes       | HouseholdService, HouseholdInvitationService  | 11        | CRUD, join/leave, invite, transfer ownership     |
-| **user**                | Yes       | UserService                                   | 3         | Profile get/update, change password              |
+| **user**                | Yes       | UserService                                   | 8         | Profile get/update, change password, account deletion |
 | **salary**              | Yes       | SalaryService                                 | 4         | Upsert salary, get own/household/monthly         |
 | **personal-expense**    | Yes       | PersonalExpenseService                        | 5         | CRUD for personal expenses                       |
 | **shared-expense**      | Yes       | SharedExpenseService                          | 5         | Propose create/update/delete (needs approval)    |
@@ -117,7 +117,7 @@ SharedBudget/
 | **dashboard**           | Yes       | DashboardService                              | 4         | Overview, savings, settlement, mark-paid         |
 | **expense-payment**     | Yes       | ExpensePaymentService                         | 3         | Mark expense months as paid/pending              |
 | **recurring-override**  | Yes       | RecurringOverrideService                      | 4         | Override amounts per month, batch upsert, delete upcoming |
-| **saving**              | Yes       | SavingService                                 | 4         | Personal/shared savings upsert, get own/household |
+| **saving**              | Yes       | SavingService                                 | 6         | Personal/shared savings add/withdraw, get own/household |
 | session                 | No        | SessionService                                | -         | Redis session CRUD                               |
 | cache                   | No        | CacheService                                  | -         | Redis caching layer with invalidation            |
 | prisma                  | No        | PrismaService                                 | -         | Database client                                  |
@@ -126,7 +126,7 @@ SharedBudget/
 | expense-helper          | No        | ExpenseHelperService                          | -         | Shared expense mappers and membership check      |
 | logger                  | No        | -                                             | -         | Pino logger config with redaction                |
 
-**Total: 47 API endpoints across 11 controllers**
+**Total: 54 API endpoints across 11 controllers**
 
 ---
 
@@ -141,14 +141,14 @@ SharedBudget/
 | **shared-expenses**  | SharedExpenseList, SharedExpenseFormPage, SharedRecurringTimeline | SharedExpenseCard                    | SharedExpenseStore | SharedExpenseService   |
 | **approvals**        | ApprovalList                            | ApprovalCard, RejectDialog                         | ApprovalStore      | ApprovalService        |
 | **dashboard**        | Dashboard                               | IncomeSummaryCard, ExpenseSummaryCard, SavingsCard, SettlementCard | DashboardStore | DashboardService |
-| **savings**          | SavingsOverview                         | SavingsHistoryChart                                | SavingStore        | SavingService          |
-| **settings**         | Settings                                | ProfileForm, ChangePasswordForm                    | -                  | UserService (core)     |
+| **savings**          | SavingsOverview                         | SavingsHistoryChart, WithdrawDialog                | SavingStore        | SavingService          |
+| **settings**         | Settings                                | ProfileForm, ChangePasswordForm, DeleteAccountDialog | -                | UserService (core)     |
 
 **9 feature areas | 19 pages | 28 feature components | 7 shared components | 7 signal stores | 10+ API services**
 
 ---
 
-## API Endpoints (47 total, all prefixed with `/api/v1`)
+## API Endpoints (54 total, all prefixed with `/api/v1`)
 
 ### Authentication (8)
 ```
@@ -177,11 +177,16 @@ DELETE /household/members/:userId          Remove member (OWNER)
 POST   /household/transfer-ownership       Transfer OWNER role
 ```
 
-### User (3)
+### User (8)
 ```
-GET /users/me           Get profile
-PUT /users/me           Update profile (name)
-PUT /users/me/password  Change password
+GET    /users/me                                  Get profile
+PUT    /users/me                                  Update profile (name)
+PUT    /users/me/password                         Change password
+DELETE /users/me                                  Delete account (anonymizes data)
+POST   /users/me/delete-account-request           Request account deletion (owner)
+GET    /users/me/pending-delete-requests           Pending deletion requests for me
+POST   /users/me/delete-account-request/:id/respond  Accept/reject deletion request
+DELETE /users/me/delete-account-request            Cancel deletion request
 ```
 
 ### Salary (4)
@@ -242,12 +247,14 @@ PUT    /recurring-overrides/:expenseId/batch               Batch upsert override
 DELETE /recurring-overrides/:expenseId/upcoming/:year/:month  Delete upcoming overrides
 ```
 
-### Savings (4)
+### Savings (6)
 ```
-GET /savings/me                     My savings (personal + shared)
-PUT /savings/me/personal            Upsert personal savings
-PUT /savings/me/shared              Upsert shared savings
-GET /savings/household              All household savings
+GET  /savings/me                     My savings (personal + shared)
+POST /savings/me/personal            Add personal savings
+POST /savings/me/shared              Add shared savings
+POST /savings/me/personal/withdraw   Withdraw personal savings
+POST /savings/me/shared/withdraw     Request shared withdrawal -> approval
+GET  /savings/household              All household savings
 ```
 
 ---
@@ -277,7 +284,7 @@ GET /savings/household              All household savings
 | ExpenseFrequency      | MONTHLY, YEARLY                        |
 | YearlyPaymentStrategy | FULL, INSTALLMENTS                     |
 | InstallmentFrequency  | MONTHLY, QUARTERLY, SEMI_ANNUAL        |
-| ApprovalAction        | CREATE, UPDATE, DELETE                  |
+| ApprovalAction        | CREATE, UPDATE, DELETE, WITHDRAW_SAVINGS |
 | ApprovalStatus        | PENDING, ACCEPTED, REJECTED, CANCELLED |
 | InvitationStatus      | PENDING, ACCEPTED, DECLINED, CANCELLED |
 | PaymentStatus         | PENDING, PAID, CANCELLED               |
@@ -288,10 +295,10 @@ GET /savings/household              All household savings
 
 | Area                | Spec Files | Tests | Scope                                               |
 |---------------------|-----------|-------|------------------------------------------------------|
-| Backend unit        | 42        | 723   | Services, controllers, DTOs, filters, helpers        |
+| Backend unit        | 55        | 723   | Services, controllers, DTOs, filters, helpers        |
 | Frontend unit       | 33        | -     | Services, stores, pipes, directives, components      |
 | E2E (Playwright)    | 8         | -     | Auth, expenses, approvals, dashboard, settlement, savings, salary, timeline |
-| **Total**           | **83**    |       |                                                      |
+| **Total**           | **96**    |       |                                                      |
 
 ### E2E Test Suites (`e2e/tests/`)
 | File                        | Coverage                                          |
@@ -307,7 +314,7 @@ GET /savings/household              All household savings
 
 ```bash
 # Run tests
-cd backend && npm run test       # Backend (vitest run) — 723 tests, 42 files
+cd backend && npm run test       # Backend (vitest run) — 55 spec files
 cd frontend && npm run test      # Frontend (vitest run)
 cd e2e && npm test               # E2E (playwright test) — requires running backend
 ```
@@ -326,7 +333,7 @@ Each module has `decorators/api-*.decorators.ts` bundling route + Swagger + thro
 All errors return consistent JSON with `timestamp` and `requestId`. Prisma errors auto-mapped (P2002->409, P2025->404).
 
 ### Approval Workflow
-Shared expense changes (create/update/delete) create `ExpenseApproval` records with `requestedBy` user relation. Another household member must accept/reject. Accept/reject responses include full `requestedBy`/`reviewedBy` user objects.
+Shared expense changes (create/update/delete) and shared savings withdrawals create `ExpenseApproval` records with `requestedBy` user relation. Another household member must accept/reject. Accept/reject responses include full `requestedBy`/`reviewedBy` user objects.
 
 ### Expense Types
 - **RECURRING MONTHLY**: Appears every month at full amount (supports per-month overrides)
@@ -359,6 +366,9 @@ Each feature uses Angular signals for state management. Pattern: load/create/upd
 | `cache:dashboard:{householdId}:...`         | Dashboard overview/savings   | 120s      |
 | `cache:approvals:pending:{householdId}`     | Pending approvals list       | 120s      |
 | `cache:approvals:history:{householdId}:...` | Approval history             | 120s      |
+| `delete_request:{requestId}`                | Account deletion request payload | 7 days |
+| `delete_request_owner:{ownerId}`            | Owner's pending delete request ID | 7 days |
+| `delete_request_target:{targetId}`          | Target member's pending delete request ID | 7 days |
 
 ---
 

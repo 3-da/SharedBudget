@@ -3,13 +3,25 @@
 @use 'styles/mixins';
 @use 'styles/reset';
 
-// Self-hosted fonts (no CDN dependency)
-@import '@fontsource/inter/300.css';
+// Self-hosted fonts — load most-used weights eagerly, defer the rest
 @import '@fontsource/inter/400.css';
 @import '@fontsource/inter/500.css';
 @import '@fontsource/inter/600.css';
-@import '@fontsource/inter/700.css';
 @import 'material-icons/iconfont/material-icons.css';
+
+// Deferred weights (300, 700) — loaded async after initial render
+@font-face {
+  font-family: 'Inter';
+  font-weight: 300;
+  font-display: swap;
+  src: url('@fontsource/inter/files/inter-latin-300-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/inter/files/inter-latin-700-normal.woff2') format('woff2');
+}
 
 html {
   height: 100%;

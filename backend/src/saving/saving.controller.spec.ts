@@ -31,9 +31,11 @@ describe('SavingController', () => {
 
     const mockSavingService = {
         getMySavings: vi.fn(() => Promise.resolve([mockPersonalSavingResponse, mockSharedSavingResponse])),
-        upsertPersonalSaving: vi.fn(() => Promise.resolve(mockPersonalSavingResponse)),
+        addPersonalSaving: vi.fn(() => Promise.resolve(mockPersonalSavingResponse)),
+        withdrawPersonalSaving: vi.fn(() => Promise.resolve(mockPersonalSavingResponse)),
         getHouseholdSavings: vi.fn(() => Promise.resolve([mockPersonalSavingResponse])),
-        upsertSharedSaving: vi.fn(() => Promise.resolve(mockSharedSavingResponse)),
+        addSharedSaving: vi.fn(() => Promise.resolve(mockSharedSavingResponse)),
+        requestSharedWithdrawal: vi.fn(() => Promise.resolve({ approvalId: 'approval-001', message: 'Withdrawal request submitted for approval' })),
     };
 
     beforeEach(async () => {
@@ -67,14 +69,24 @@ describe('SavingController', () => {
         });
     });
 
-    describe('upsertPersonalSaving', () => {
-        it('should call service.upsertPersonalSaving with userId and dto', async () => {
-            const dto = { amount: 200 };
-            const result = await controller.upsertPersonalSaving(mockUserId, dto);
+    describe('addPersonalSaving', () => {
+        it('should call service.addPersonalSaving with userId and dto', async () => {
+            const dto = { amount: 50 };
+            const result = await controller.addPersonalSaving(mockUserId, dto);
 
-            expect(service.upsertPersonalSaving).toHaveBeenCalledWith(mockUserId, dto);
+            expect(service.addPersonalSaving).toHaveBeenCalledWith(mockUserId, dto);
             expect(result.id).toBe('saving-001');
             expect(result.isShared).toBe(false);
+        });
+    });
+
+    describe('withdrawPersonalSaving', () => {
+        it('should call service.withdrawPersonalSaving with userId and dto', async () => {
+            const dto = { amount: 50 };
+            const result = await controller.withdrawPersonalSaving(mockUserId, dto);
+
+            expect(service.withdrawPersonalSaving).toHaveBeenCalledWith(mockUserId, dto);
+            expect(result.id).toBe('saving-001');
         });
     });
 
@@ -95,14 +107,25 @@ describe('SavingController', () => {
         });
     });
 
-    describe('upsertSharedSaving', () => {
-        it('should call service.upsertSharedSaving with userId and dto', async () => {
-            const dto = { amount: 100 };
-            const result = await controller.upsertSharedSaving(mockUserId, dto);
+    describe('addSharedSaving', () => {
+        it('should call service.addSharedSaving with userId and dto', async () => {
+            const dto = { amount: 50 };
+            const result = await controller.addSharedSaving(mockUserId, dto);
 
-            expect(service.upsertSharedSaving).toHaveBeenCalledWith(mockUserId, dto);
+            expect(service.addSharedSaving).toHaveBeenCalledWith(mockUserId, dto);
             expect(result.id).toBe('saving-002');
             expect(result.isShared).toBe(true);
+        });
+    });
+
+    describe('requestSharedWithdrawal', () => {
+        it('should call service.requestSharedWithdrawal with userId and dto', async () => {
+            const dto = { amount: 50 };
+            const result = await controller.requestSharedWithdrawal(mockUserId, dto);
+
+            expect(service.requestSharedWithdrawal).toHaveBeenCalledWith(mockUserId, dto);
+            expect(result.approvalId).toBe('approval-001');
+            expect(result.message).toBe('Withdrawal request submitted for approval');
         });
     });
 });

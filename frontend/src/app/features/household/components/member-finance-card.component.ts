@@ -3,6 +3,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MemberIncome, MemberExpenseSummary, MemberSavings } from '../../../shared/models/dashboard.model';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
+import { HouseholdRole } from '../../../shared/models/enums';
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -14,7 +15,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card-header>
         <mat-icon matCardAvatar>person</mat-icon>
         <mat-card-title>{{ income().firstName }} {{ income().lastName }}</mat-card-title>
-        <mat-card-subtitle>Member</mat-card-subtitle>
+        <mat-card-subtitle>{{ role() === 'OWNER' ? 'Owner' : 'Member' }}</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <div class="stat-row">
@@ -85,6 +86,7 @@ export class MemberFinanceCardComponent {
   readonly expenses = input<MemberExpenseSummary | null>(null);
   readonly savings = input<MemberSavings | null>(null);
   readonly sharedExpensesShare = input(0);
+  readonly role = input<HouseholdRole | null>(null);
 
   readonly personalTotal = computed(() => this.expenses()?.personalExpensesTotal ?? 0);
   readonly personalSavingsAmount = computed(() => this.savings()?.personalSavings ?? 0);

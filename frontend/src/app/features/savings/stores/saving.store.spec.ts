@@ -33,8 +33,10 @@ describe('SavingStore', () => {
     savingService = {
       getMine: vi.fn(),
       getHousehold: vi.fn(),
-      upsertPersonal: vi.fn(),
-      upsertShared: vi.fn(),
+      addPersonal: vi.fn(),
+      withdrawPersonal: vi.fn(),
+      addShared: vi.fn(),
+      withdrawShared: vi.fn(),
     };
     dashboardService = {
       getSavingsHistory: vi.fn(),
@@ -184,8 +186,8 @@ describe('SavingStore', () => {
     });
   });
 
-  describe('upsertPersonal', () => {
-    const dto = { amount: 600, month: 2, year: 2026 };
+  describe('addPersonal', () => {
+    const dto = { amount: 50, month: 2, year: 2026 };
 
     beforeEach(() => {
       savingService['getMine'].mockReturnValue(of([]));
@@ -194,35 +196,35 @@ describe('SavingStore', () => {
     });
 
     it('should show success snackbar and reload on success', () => {
-      savingService['upsertPersonal'].mockReturnValue(of(personalSaving));
-      store.upsertPersonal(dto);
-      expect(snackBar['open']).toHaveBeenCalledWith('Personal savings updated', '', { duration: 3000 });
+      savingService['addPersonal'].mockReturnValue(of(personalSaving));
+      store.addPersonal(dto);
+      expect(snackBar['open']).toHaveBeenCalledWith('Savings added', '', { duration: 3000 });
       expect(savingService['getMine']).toHaveBeenCalled();
     });
 
     it('should call onSuccess callback', () => {
-      savingService['upsertPersonal'].mockReturnValue(of(personalSaving));
+      savingService['addPersonal'].mockReturnValue(of(personalSaving));
       const onSuccess = vi.fn();
-      store.upsertPersonal(dto, onSuccess);
+      store.addPersonal(dto, onSuccess);
       expect(onSuccess).toHaveBeenCalled();
     });
 
     it('should show error snackbar and set error on failure', () => {
-      savingService['upsertPersonal'].mockReturnValue(throwError(() => ({ error: { message: 'Limit exceeded' } })));
-      store.upsertPersonal(dto);
+      savingService['addPersonal'].mockReturnValue(throwError(() => ({ error: { message: 'Limit exceeded' } })));
+      store.addPersonal(dto);
       expect(snackBar['open']).toHaveBeenCalledWith('Limit exceeded', '', { duration: 4000 });
       expect(store.error()).toBe('Limit exceeded');
     });
 
     it('should show fallback message if error has no message', () => {
-      savingService['upsertPersonal'].mockReturnValue(throwError(() => ({ error: {} })));
-      store.upsertPersonal(dto);
+      savingService['addPersonal'].mockReturnValue(throwError(() => ({ error: {} })));
+      store.addPersonal(dto);
       expect(snackBar['open']).toHaveBeenCalledWith('Failed', '', { duration: 4000 });
     });
   });
 
-  describe('upsertShared', () => {
-    const dto = { amount: 200, month: 2, year: 2026 };
+  describe('withdrawPersonal', () => {
+    const dto = { amount: 50, month: 2, year: 2026 };
 
     beforeEach(() => {
       savingService['getMine'].mockReturnValue(of([]));
@@ -231,15 +233,59 @@ describe('SavingStore', () => {
     });
 
     it('should show success snackbar and reload on success', () => {
-      savingService['upsertShared'].mockReturnValue(of(sharedSaving));
-      store.upsertShared(dto);
-      expect(snackBar['open']).toHaveBeenCalledWith('Shared savings updated', '', { duration: 3000 });
+      savingService['withdrawPersonal'].mockReturnValue(of(personalSaving));
+      store.withdrawPersonal(dto);
+      expect(snackBar['open']).toHaveBeenCalledWith('Savings withdrawn', '', { duration: 3000 });
+      expect(savingService['getMine']).toHaveBeenCalled();
     });
 
     it('should show error snackbar on failure', () => {
-      savingService['upsertShared'].mockReturnValue(throwError(() => ({ error: { message: 'Bad request' } })));
-      store.upsertShared(dto);
+      savingService['withdrawPersonal'].mockReturnValue(throwError(() => ({ error: { message: 'Exceeds savings' } })));
+      store.withdrawPersonal(dto);
+      expect(snackBar['open']).toHaveBeenCalledWith('Exceeds savings', '', { duration: 4000 });
+    });
+  });
+
+  describe('addShared', () => {
+    const dto = { amount: 50, month: 2, year: 2026 };
+
+    beforeEach(() => {
+      savingService['getMine'].mockReturnValue(of([]));
+      savingService['getHousehold'].mockReturnValue(of([]));
+      dashboardService['getSavingsHistory'].mockReturnValue(of([]));
+    });
+
+    it('should show success snackbar and reload on success', () => {
+      savingService['addShared'].mockReturnValue(of(sharedSaving));
+      store.addShared(dto);
+      expect(snackBar['open']).toHaveBeenCalledWith('Shared savings added', '', { duration: 3000 });
+    });
+
+    it('should show error snackbar on failure', () => {
+      savingService['addShared'].mockReturnValue(throwError(() => ({ error: { message: 'Bad request' } })));
+      store.addShared(dto);
       expect(snackBar['open']).toHaveBeenCalledWith('Bad request', '', { duration: 4000 });
+    });
+  });
+
+  describe('withdrawShared', () => {
+    const dto = { amount: 50, month: 2, year: 2026 };
+
+    beforeEach(() => {
+      savingService['getMine'].mockReturnValue(of([]));
+      savingService['getHousehold'].mockReturnValue(of([]));
+    });
+
+    it('should show approval snackbar and reload on success', () => {
+      savingService['withdrawShared'].mockReturnValue(of({ approvalId: 'a1', message: 'Withdrawal request submitted for approval' }));
+      store.withdrawShared(dto);
+      expect(snackBar['open']).toHaveBeenCalledWith('Withdrawal request submitted for approval', '', { duration: 4000 });
+    });
+
+    it('should show error snackbar on failure', () => {
+      savingService['withdrawShared'].mockReturnValue(throwError(() => ({ error: { message: 'Exceeds shared savings' } })));
+      store.withdrawShared(dto);
+      expect(snackBar['open']).toHaveBeenCalledWith('Exceeds shared savings', '', { duration: 4000 });
     });
   });
 

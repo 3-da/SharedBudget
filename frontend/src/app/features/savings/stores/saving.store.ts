@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Saving, UpsertSavingRequest } from '../../../shared/models/saving.model';
+import { Saving, AddSavingRequest, WithdrawSavingRequest } from '../../../shared/models/saving.model';
 import { SavingsHistoryItem } from '../../../shared/models/dashboard.model';
 import { SavingService } from '../services/saving.service';
 import { DashboardService } from '../../dashboard/services/dashboard.service';
@@ -54,16 +54,30 @@ export class SavingStore {
     });
   }
 
-  upsertPersonal(dto: UpsertSavingRequest, onSuccess?: () => void): void {
-    this.service.upsertPersonal(dto).subscribe({
-      next: () => { this.snackBar.open('Personal savings updated', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
+  addPersonal(dto: AddSavingRequest, onSuccess?: () => void): void {
+    this.service.addPersonal(dto).subscribe({
+      next: () => { this.snackBar.open('Savings added', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
       error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
     });
   }
 
-  upsertShared(dto: UpsertSavingRequest, onSuccess?: () => void): void {
-    this.service.upsertShared(dto).subscribe({
-      next: () => { this.snackBar.open('Shared savings updated', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
+  withdrawPersonal(dto: WithdrawSavingRequest, onSuccess?: () => void): void {
+    this.service.withdrawPersonal(dto).subscribe({
+      next: () => { this.snackBar.open('Savings withdrawn', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
+      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
+    });
+  }
+
+  addShared(dto: AddSavingRequest, onSuccess?: () => void): void {
+    this.service.addShared(dto).subscribe({
+      next: () => { this.snackBar.open('Shared savings added', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
+      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
+    });
+  }
+
+  withdrawShared(dto: WithdrawSavingRequest, onSuccess?: () => void): void {
+    this.service.withdrawShared(dto).subscribe({
+      next: () => { this.snackBar.open('Withdrawal request submitted for approval', '', { duration: 4000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); onSuccess?.(); },
       error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
     });
   }

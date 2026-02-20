@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, of, switchMap, tap } from 'rxjs';
 import { TokenService } from './token.service';
 import { environment } from '../../environments/environment';
 import {
@@ -28,6 +28,16 @@ export class AuthService {
   readonly currentUser = signal<User | null>(null);
   readonly isAuthenticated = computed(() => !!this.currentUser());
   readonly isLoading = signal(false);
+
+  /** True while the initial session restore (refresh + loadUser) is in progress */
+  readonly isRestoring = signal(false);
+  /** Resolves when the initial session restore finishes (success or failure) */
+  private restoreResolve: (() => void) | null = null;
+  readonly restored = new Promise<void>(resolve => {
+    // Will be resolved in constructor via the field initializer timing quirk;
+    // reassign in tryRestoreSession
+    this.restoreResolve = resolve;
+  });
 
   register(dto: RegisterRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.baseUrl}/auth/register`, dto);
@@ -86,6 +96,22 @@ export class AuthService {
     return this.http.get<User>(`${this.baseUrl}/users/me`).pipe(
       tap(user => this.currentUser.set(user)),
     );
+  }
+
+  /**
+   * Attempts to restore the session by refreshing the token and loading the user.
+   * Non-blocking — the app renders immediately while this runs in the background.
+   * The auth guard awaits `restored` before making its decision.
+   */
+  tryRestoreSession(): void {
+    this.isRestoring.set(true);
+    this.refresh().pipe(
+      switchMap(() => this.loadCurrentUser()),
+      catchError(() => of(null)),
+    ).subscribe({
+      next: () => { this.isRestoring.set(false); this.restoreResolve?.(); },
+      error: () => { this.isRestoring.set(false); this.restoreResolve?.(); },
+    });
   }
 
   clearAuth(): void {

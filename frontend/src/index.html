@@ -6,8 +6,52 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <style>
+    /* Inline loading skeleton — shown while Angular boots, replaced automatically */
+    .app-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      color: #555;
+      background: #fafafa;
+    }
+    @media (prefers-color-scheme: dark) {
+      .app-loading { background: #1a1a1a; color: #aaa; }
+      .app-loading .bar { background: #333; }
+      .app-loading .bar::after { background: #555; }
+    }
+    .app-loading .bar {
+      width: 200px;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    .app-loading .bar::after {
+      content: '';
+      display: block;
+      width: 40%;
+      height: 100%;
+      background: #00bcd4;
+      border-radius: 2px;
+      animation: loading-bar 1.2s ease-in-out infinite;
+    }
+    @keyframes loading-bar {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+  </style>
 </head>
 <body>
-  <app-root></app-root>
+  <app-root>
+    <div class="app-loading">
+      <div>Loading SharedBudget...</div>
+      <div class="bar"></div>
+    </div>
+  </app-root>
 </body>
 </html>

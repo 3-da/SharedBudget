@@ -103,6 +103,12 @@ export class AuthService implements OnModuleInit {
             throw new UnauthorizedException('Incorrect email or password.');
         }
 
+        // Check if account has been deleted
+        if (user.deletedAt) {
+            this.logger.warn(`Login attempt on deleted account: ${user.id}`);
+            throw new UnauthorizedException('Incorrect email or password.');
+        }
+
         // Check if email is verified
         if (!user.emailVerified) {
             this.logger.warn(`Failed login attempt for email: ${maskEmail(loginDto.email)}`);
@@ -247,21 +253,23 @@ export class AuthService implements OnModuleInit {
     }
 
     private setRefreshTokenCookie(res: Response, refreshToken: string): void {
+        const isProduction = this.configService.get('NODE_ENV') === 'production';
         res.cookie('refresh_token', refreshToken, {
             httpOnly: true,
             secure: true,
-            sameSite: 'strict',
+            sameSite: isProduction ? 'none' : 'lax',
             path: '/api/v1/auth',
             maxAge: Number(this.refreshTokenTTL) * 1000,
         });
     }
 
     private setXsrfTokenCookie(res: Response): void {
+        const isProduction = this.configService.get('NODE_ENV') === 'production';
         const xsrfToken = crypto.randomBytes(32).toString('hex');
         res.cookie('XSRF-TOKEN', xsrfToken, {
             httpOnly: false,
             secure: true,
-            sameSite: 'strict',
+            sameSite: isProduction ? 'none' : 'lax',
             path: '/',
             maxAge: Number(this.refreshTokenTTL) * 1000,
         });

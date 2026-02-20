@@ -1,6 +1,6 @@
 # Household Budget Tracker — Architecture & Technical Reference
 
-**Updated:** February 14, 2026
+**Updated:** February 20, 2026
 
 > **Related docs:**
 > - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
@@ -58,7 +58,7 @@
 
 ## Data Model (Prisma Schema)
 
-**11 models, 10 enums**
+**11 models, 10 enums** (ApprovalAction extended with WITHDRAW_SAVINGS)
 
 ### Enums
 | Enum                  | Values                                 | Purpose                                                  |
@@ -69,7 +69,7 @@
 | ExpenseFrequency      | MONTHLY, YEARLY                        | Payment frequency                                        |
 | YearlyPaymentStrategy | FULL, INSTALLMENTS                     | How yearly expenses are paid                             |
 | InstallmentFrequency  | MONTHLY, QUARTERLY, SEMI_ANNUAL        | Installment payment schedule (12, 4, or 2 payments/year) |
-| ApprovalAction        | CREATE, UPDATE, DELETE                 | Type of proposed change                                  |
+| ApprovalAction        | CREATE, UPDATE, DELETE, WITHDRAW_SAVINGS | Type of proposed change                               |
 | ApprovalStatus        | PENDING, ACCEPTED, REJECTED, CANCELLED | Approval lifecycle state                                 |
 | InvitationStatus      | PENDING, ACCEPTED, DECLINED, CANCELLED | Invitation lifecycle state                               |
 | PaymentStatus         | PENDING, PAID, CANCELLED               | Expense payment tracking                                 |
@@ -186,6 +186,7 @@
 - CREATE: `proposedData` holds the full new expense. On accept → expense is created.
 - UPDATE: `proposedData` holds the changed fields. On accept → expense is updated.
 - DELETE: No `proposedData` needed. On accept → expense is soft-deleted (`deletedAt` set).
+- WITHDRAW_SAVINGS: `proposedData` holds `{ amount, month, year }`. On accept → shared savings reduced via `SavingService.executeSharedWithdrawal()`.
 - CANCEL: Original requester can cancel own pending approval.
 
 **Indexes:** (householdId, status), (requestedById)
@@ -349,6 +350,58 @@ User ──1:1──→ HouseholdMember ──N:1──→ Household
 
 ---
 
+## Account Deletion Flow
+
+Account deletion handles three scenarios based on the user's household role:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ CASE 1: No household (or regular MEMBER)                    │
+│                                                             │
+│ DELETE /users/me                                            │
+│ 1. Invalidate all sessions                                  │
+│ 2. If member: delete personal expenses, savings, salary,    │
+│    remove from household (Prisma $transaction)              │
+│ 3. Anonymize user (random email, hashed random password,    │
+│    firstName="Deleted", lastName="Account", set deletedAt)  │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ CASE 2: Sole OWNER (no other members)                       │
+│                                                             │
+│ DELETE /users/me                                            │
+│ 1. Invalidate all sessions                                  │
+│ 2. Delete household (cascades all related data)             │
+│ 3. Anonymize user                                           │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ CASE 3: OWNER with members (two-phase)                      │
+│                                                             │
+│ Phase 1: POST /users/me/delete-account-request              │
+│ - Owner picks a target member to receive ownership          │
+│ - Request stored in Redis (3 keys, 7-day TTL)              │
+│ - Only one pending request per owner at a time              │
+│                                                             │
+│ Phase 2: POST /users/me/delete-account-request/:id/respond  │
+│ - Target member accepts OR rejects                          │
+│                                                             │
+│   ACCEPT:                                                   │
+│   1. Transfer ownership to target (target→OWNER)            │
+│   2. Delete owner's personal data (expenses, savings,       │
+│      salary, membership) via $transaction                   │
+│   3. Anonymize owner                                        │
+│                                                             │
+│   REJECT:                                                   │
+│   1. Delete entire household                                │
+│   2. Anonymize owner                                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Anonymization** replaces PII with random data (`deleted_{uuid}@deleted.invalid`, re-hashed password, "Deleted Account") and sets `deletedAt`. The user row is preserved for referential integrity (foreign keys from expenses, settlements, approvals).
+
+---
+
 ## Caching Strategy (Redis)
 
 ### TTL Configuration
@@ -374,6 +427,9 @@ User ──1:1──→ HouseholdMember ──N:1──→ Household
 | `cache:salaries:{householdId}:*`                | Household salaries           | 300s                            |
 | `cache:personal-expenses:{userId}:*`            | Personal expense lists       | 60s                             |
 | `cache:shared-expenses:{householdId}:*`         | Shared expense lists         | 60s                             |
+| `delete_request:{requestId}`                    | Account deletion request     | 7 days                          |
+| `delete_request_owner:{ownerId}`                | Owner's pending delete req   | 7 days                          |
+| `delete_request_target:{targetId}`              | Target's pending delete req  | 7 days                          |
 
 ### Cache Invalidation
 - `CacheService.invalidateHousehold(householdId)` — Nuclear: clears ALL caches for a household

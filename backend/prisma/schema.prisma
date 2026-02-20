@@ -45,6 +45,7 @@ enum ApprovalAction {
   CREATE
   UPDATE
   DELETE
+  WITHDRAW_SAVINGS
 }
 
 enum ApprovalStatus {

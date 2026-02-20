@@ -253,8 +253,8 @@ Each feature is a **self-contained business domain** with its own pages, compone
 | `approvals` | 1 (approval-list) | 2 (approval-card, reject-dialog) | 1 | 1 | `/approvals` |
 | `dashboard` | 1 (dashboard) | 4 (income-summary, expense-summary, savings-card, settlement-card) | 1 | 1 | `/dashboard` |
 | `salary` | 1 (salary-overview) | 3 (salary-form, salary-summary-card, salary-chart) | 1 | 1 | `/salary` |
-| `savings` | 1 (savings-overview) | 1 (savings-history-chart) | 1 | 1 | `/savings` |
-| `settings` | 1 (settings) | 2 (profile-form, change-password-form) | 0 (uses AuthService from core) | 0 | `/settings` |
+| `savings` | 1 (savings-overview) | 2 (savings-history-chart, withdraw-dialog) | 1 | 1 | `/savings` |
+| `settings` | 1 (settings) | 2 (profile-form, change-password-form) | 0 (uses AuthService + UserService from core) | 0 | `/settings` |
 
 **Totals**: 9 features | 19 pages | 28 feature components | 7 shared components | 7 signal stores | 10+ API services
 
@@ -2254,7 +2254,7 @@ it('should [expected behavior] when [condition]', () => {
 | `shared-expenses.spec.ts` | Shared expense proposal flow | Propose create → requires approval, edit proposal, delete proposal |
 | `approvals.spec.ts` | Approval workflow | View pending approvals, accept, reject with reason, cancel own approval, approval history |
 | `dashboard.spec.ts` | Financial overview | Income/expense summary cards, savings display, settlement calculation |
-| `savings.spec.ts` | Savings management | Personal savings upsert, shared savings upsert, savings display |
+| `savings.spec.ts` | Savings management | Personal/shared savings add, withdrawal (personal immediate, shared via approval), savings display |
 | `salary.spec.ts` | Salary management | Salary upsert, household salary view, monthly salary tracking |
 | `timeline-navigation.spec.ts` | Month navigation | Navigate between months, recurring override creation, timeline display |
 

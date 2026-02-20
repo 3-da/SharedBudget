@@ -1,13 +1,16 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy, viewChildren } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroupDirective, Validators } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
+import { filter } from 'rxjs';
 import { SavingStore } from '../stores/saving.store';
 import { HouseholdStore } from '../../household/stores/household.store';
 import { SavingsHistoryChartComponent } from '../components/savings-history-chart.component';
+import { WithdrawDialogComponent, WithdrawDialogData } from '../components/withdraw-dialog.component';
 import { MonthPickerComponent } from '../../../shared/components/month-picker.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
@@ -38,12 +41,19 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
           </mat-card-header>
           <mat-card-content>
             <div class="current-amount">{{ store.totalPersonal() | currencyEur }}</div>
-            <form [formGroup]="personalForm" (ngSubmit)="savePersonal()">
+            <form [formGroup]="personalForm" (ngSubmit)="addPersonal()">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Amount (EUR)</mat-label>
-                <input matInput type="number" formControlName="amount" min="0">
+                <input matInput type="number" formControlName="amount" min="0.01">
               </mat-form-field>
-              <button mat-flat-button type="submit" [disabled]="personalForm.invalid">Update</button>
+              <div class="action-buttons">
+                <button mat-flat-button type="submit" [disabled]="personalForm.invalid">Add to Savings</button>
+                @if (store.totalPersonal() > 0) {
+                  <button mat-stroked-button type="button" color="warn" (click)="withdrawPersonal()">
+                    <mat-icon>undo</mat-icon> Withdraw
+                  </button>
+                }
+              </div>
             </form>
           </mat-card-content>
         </mat-card>
@@ -56,12 +66,19 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
           </mat-card-header>
           <mat-card-content>
             <div class="current-amount">{{ store.totalShared() | currencyEur }}</div>
-            <form [formGroup]="sharedForm" (ngSubmit)="saveShared()">
+            <form [formGroup]="sharedForm" (ngSubmit)="addShared()">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Amount (EUR)</mat-label>
-                <input matInput type="number" formControlName="amount" min="0">
+                <input matInput type="number" formControlName="amount" min="0.01">
               </mat-form-field>
-              <button mat-flat-button type="submit" [disabled]="sharedForm.invalid">Update</button>
+              <div class="action-buttons">
+                <button mat-flat-button type="submit" [disabled]="sharedForm.invalid">Add to Savings</button>
+                @if (store.totalShared() > 0) {
+                  <button mat-stroked-button type="button" color="warn" (click)="withdrawShared()">
+                    <mat-icon>undo</mat-icon> Withdraw
+                  </button>
+                }
+              </div>
             </form>
           </mat-card-content>
         </mat-card>
@@ -107,7 +124,8 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     .current-amount { font-size: clamp(1.4rem, 2vw + 0.5rem, 1.8rem); font-weight: 500; margin-bottom: var(--space-sm); }
     .current-amount.large { font-size: clamp(1.6rem, 3vw + 0.5rem, 2.2rem); text-align: center; }
     .full-width { width: 100%; }
-    form { display: flex; gap: var(--space-sm); align-items: start; }
+    form { display: flex; flex-direction: column; gap: var(--space-sm); }
+    .action-buttons { display: flex; gap: var(--space-sm); align-items: center; }
     mat-icon[matCardAvatar] {
       background: var(--mat-sys-primary-container);
       color: var(--mat-sys-on-primary-container);
@@ -137,12 +155,15 @@ export class SavingsOverviewComponent implements OnInit {
   readonly store = inject(SavingStore);
   readonly householdStore = inject(HouseholdStore);
   private readonly fb = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
 
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
 
-  personalForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0)]] });
-  sharedForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0)]] });
+  private readonly formDirs = viewChildren(FormGroupDirective);
+
+  personalForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0.01)]] });
+  sharedForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0.01)]] });
 
   ngOnInit(): void {
     this.load();
@@ -159,20 +180,53 @@ export class SavingsOverviewComponent implements OnInit {
     this.householdStore.setMonth(event.month, event.year);
   }
 
-  savePersonal(): void {
+  addPersonal(): void {
     if (this.personalForm.invalid) return;
-    this.store.upsertPersonal(
+    this.store.addPersonal(
       { amount: this.personalForm.getRawValue().amount, month: this.month(), year: this.year() },
-      () => this.householdStore.loadOverview(),
+      () => { this.resetForm(this.personalForm); this.householdStore.loadOverview(); },
     );
   }
 
-  saveShared(): void {
+  addShared(): void {
     if (this.sharedForm.invalid) return;
-    this.store.upsertShared(
+    this.store.addShared(
       { amount: this.sharedForm.getRawValue().amount, month: this.month(), year: this.year() },
-      () => this.householdStore.loadOverview(),
+      () => { this.resetForm(this.sharedForm); this.householdStore.loadOverview(); },
     );
+  }
+
+  withdrawPersonal(): void {
+    const current = this.store.totalPersonal();
+    this.dialog.open<WithdrawDialogComponent, WithdrawDialogData, number | null>(WithdrawDialogComponent, {
+      data: { title: 'Withdraw Personal Savings', currentAmount: current },
+    }).afterClosed().pipe(filter(amount => amount != null && amount > 0)).subscribe(amount => {
+      this.store.withdrawPersonal(
+        { amount: amount!, month: this.month(), year: this.year() },
+        () => this.householdStore.loadOverview(),
+      );
+    });
+  }
+
+  withdrawShared(): void {
+    const current = this.store.totalShared();
+    this.dialog.open<WithdrawDialogComponent, WithdrawDialogData, number | null>(WithdrawDialogComponent, {
+      data: { title: 'Withdraw Shared Savings', currentAmount: current, requiresApproval: true },
+    }).afterClosed().pipe(filter(amount => amount != null && amount > 0)).subscribe(amount => {
+      this.store.withdrawShared(
+        { amount: amount!, month: this.month(), year: this.year() },
+        () => this.householdStore.loadOverview(),
+      );
+    });
+  }
+
+  private resetForm(form: typeof this.personalForm): void {
+    const dir = this.formDirs().find(d => d.form === form);
+    if (dir) {
+      dir.resetForm({ amount: 0 });
+    } else {
+      form.reset({ amount: 0 });
+    }
   }
 
   private load(): void {

@@ -89,7 +89,8 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
                 [income]="member"
                 [expenses]="getExpenseForMember(member.userId)"
                 [savings]="getSavingsForMember(member.userId)"
-                [sharedExpensesShare]="getSharedExpensesShare()" />
+                [sharedExpensesShare]="getSharedExpensesShare()"
+                [role]="getRoleForMember(member.userId)" />
             }
           </div>
         </section>
@@ -178,5 +179,9 @@ export class HouseholdDetailComponent implements OnInit {
     if (!ov) return 0;
     const memberCount = ov.income.length || 1;
     return Math.round((ov.expenses.sharedExpensesTotal / memberCount) * 100) / 100;
+  }
+
+  getRoleForMember(userId: string) {
+    return this.store.members().find(m => m.userId === userId)?.role ?? null;
   }
 }
