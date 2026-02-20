@@ -29,6 +29,8 @@ jobs:
 
       - run: npm ci
       - run: npx prisma generate --config prisma.config.ts
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
       - run: npm run test:cov
 
   backend-lint:
@@ -48,6 +50,8 @@ jobs:
 
       - run: npm ci
       - run: npx prisma generate --config prisma.config.ts
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
       - run: npm run lint
 
   backend-build:
@@ -68,6 +72,8 @@ jobs:
 
       - run: npm ci
       - run: npx prisma generate --config prisma.config.ts
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
       - run: npm run build
 
   # ── Frontend ───────────────────────────────────────────────
@@ -146,6 +152,8 @@ jobs:
 
       - name: Generate Prisma client
         run: cd backend && npx prisma generate --config prisma.config.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sharedbudget_test?schema=public
 
       - name: Run migrations
         run: cd backend && npx prisma migrate deploy --config prisma.config.ts
