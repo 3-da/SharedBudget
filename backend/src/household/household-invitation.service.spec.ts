@@ -13,7 +13,6 @@ describe('HouseholdInvitationService', () => {
     const mockUserId = 'user-456';
     const mockHouseholdId = 'household-789';
     const mockInvitationId = 'invitation-001';
-    const mockInviteCode = 'abcd1234';
 
     const mockPrismaService = {
         householdMember: { findUnique: vi.fn(), create: vi.fn() },

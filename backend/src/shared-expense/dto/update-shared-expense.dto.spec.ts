@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { UpdateSharedExpenseDto } from './update-shared-expense.dto';
-import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy } from '../../generated/prisma/enums';
 
 describe('UpdateSharedExpenseDto', () => {
     it('should accept an empty update (no fields)', async () => {

@@ -1,4 +1,4 @@
-import { applyDecorators, HttpCode, HttpStatus, Get, Put, Delete, Post } from '@nestjs/common';
+import { applyDecorators, HttpCode, HttpStatus, Get, Put, Delete } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';

@@ -116,7 +116,7 @@ export class DashboardService {
 
         // Average incomes — only count months that have at least one salary entry
         const incomeMonths = monthlyResults.filter((r) => r.income.some((i) => i.currentSalary > 0 || i.defaultSalary > 0));
-        const incomeCount = incomeMonths.length || 1;
+        const _incomeCount = incomeMonths.length || 1;
 
         const avgIncome: MemberIncomeDto[] = firstIncome.map((member) => {
             const memberMonths = incomeMonths.filter((r) => r.income.find((i) => i.userId === member.userId && (i.currentSalary > 0 || i.defaultSalary > 0)));
@@ -179,7 +179,7 @@ export class DashboardService {
 
         // Average savings — only count months that have at least one saving record
         const savingsMonths = monthlyResults.filter((r) => r.savings.totalSavings > 0);
-        const savingsCount = savingsMonths.length || 1;
+        const _savingsCount = savingsMonths.length || 1;
 
         const avgSavingsMembers: MemberSavingsDto[] = monthlyResults[0].savings.members.map((sm) => {
             const smMonths = savingsMonths.filter((r) => {
