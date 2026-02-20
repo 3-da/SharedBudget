@@ -1102,7 +1102,7 @@ describe('DashboardService', () => {
             // Setup specific salary for the target month
             mockPrismaService.salary.findMany.mockResolvedValue([]);
 
-            const result = await service.getSavings(mockUserId, 1, 2025);
+            await service.getSavings(mockUserId, 1, 2025);
 
             // Verify the salary query used the specified month/year
             expect(mockPrismaService.salary.findMany).toHaveBeenCalledWith(
