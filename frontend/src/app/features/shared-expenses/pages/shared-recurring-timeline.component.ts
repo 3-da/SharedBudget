@@ -5,19 +5,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { SharedExpenseStore } from '../stores/shared-expense.store';
-import { ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy, ExpenseCategory } from '../../../shared/models/enums';
+import { ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy, ExpenseCategory } from '../../../shared/models';
+import { TimelineMonth, getDefaultInstallmentCount, getStepMonths } from '../../../shared/utils/timeline';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
-
-interface TimelineMonth {
-  month: number;
-  year: number;
-  label: string;
-  amount: number;
-  isPast: boolean;
-  isCurrent: boolean;
-}
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -72,7 +64,7 @@ export class SharedRecurringTimelineComponent {
     if (!e) return 0;
     const amount = Number(e.amount);
     if (e.frequency === ExpenseFrequency.YEARLY && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
-      const count = e.installmentCount ?? this.getDefaultInstallmentCount(e.installmentFrequency);
+      const count = e.installmentCount ?? getDefaultInstallmentCount(e.installmentFrequency);
       return Math.round((amount / count) * 100) / 100;
     }
     return amount;
@@ -145,8 +137,8 @@ export class SharedRecurringTimelineComponent {
     const startYear = expense.year ?? currentY;
     const freq = expense.installmentFrequency;
     const totalAmount = Number(expense.amount);
-    const count = expense.installmentCount ?? this.getDefaultInstallmentCount(freq);
-    const stepMonths = this.getStepMonths(freq);
+    const count = expense.installmentCount ?? getDefaultInstallmentCount(freq);
+    const stepMonths = getStepMonths(freq);
     const perInstallment = Math.round((totalAmount / count) * 100) / 100;
     const months: TimelineMonth[] = [];
 
@@ -163,21 +155,5 @@ export class SharedRecurringTimelineComponent {
       });
     }
     return months;
-  }
-
-  private getDefaultInstallmentCount(freq: InstallmentFrequency | null | undefined): number {
-    switch (freq) {
-      case InstallmentFrequency.QUARTERLY: return 4;
-      case InstallmentFrequency.SEMI_ANNUAL: return 2;
-      case InstallmentFrequency.MONTHLY: default: return 12;
-    }
-  }
-
-  private getStepMonths(freq: InstallmentFrequency | null | undefined): number {
-    switch (freq) {
-      case InstallmentFrequency.QUARTERLY: return 3;
-      case InstallmentFrequency.SEMI_ANNUAL: return 6;
-      case InstallmentFrequency.MONTHLY: default: return 1;
-    }
   }
 }

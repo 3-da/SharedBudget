@@ -6,7 +6,7 @@ import { UpsertOverrideDto } from './dto/upsert-override.dto';
 import { UpdateDefaultAmountDto } from './dto/update-default-amount.dto';
 import { BatchOverrideItemDto } from './dto/batch-upsert-override.dto';
 import { RecurringOverrideResponseDto } from './dto/recurring-override-response.dto';
-import { ExpenseCategory, ExpenseType } from '../generated/prisma/enums';
+import { ExpenseCategory } from '../generated/prisma/enums';
 
 @Injectable()
 export class RecurringOverrideService {
@@ -73,7 +73,7 @@ export class RecurringOverrideService {
             },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Override saved for expense ${expenseId}: ${month}/${year}`);
         return this.mapToResponse(result);
     }
@@ -119,7 +119,7 @@ export class RecurringOverrideService {
             data: { amount: dto.amount },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Default amount updated for expense ${expenseId}: ${dto.amount}`);
         return { message: 'Default amount updated successfully' };
     }
@@ -185,7 +185,7 @@ export class RecurringOverrideService {
             where: { expenseId, month, year },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Override deleted for expense ${expenseId}: ${month}/${year}`);
         return { message: 'Override removed' };
     }
@@ -222,7 +222,7 @@ export class RecurringOverrideService {
             where: { expenseId },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Deleted ${count} overrides for expense ${expenseId}`);
         return { message: `Deleted ${count} override(s)` };
     }
@@ -286,7 +286,7 @@ export class RecurringOverrideService {
             ),
         );
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Batch upserted ${results.length} overrides for expense ${expenseId}`);
         return results.map((r) => this.mapToResponse(r));
     }
@@ -327,18 +327,9 @@ export class RecurringOverrideService {
             },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Deleted ${count} upcoming overrides for expense ${expenseId} from ${fromMonth}/${fromYear}`);
         return { message: `Deleted ${count} upcoming override(s)` };
-    }
-
-    private async invalidateCache(userId: string, expenseType: ExpenseType, householdId: string): Promise<void> {
-        if (expenseType === ExpenseType.PERSONAL) {
-            await this.cacheService.invalidatePersonalExpenses(userId);
-        } else {
-            await this.cacheService.invalidateSharedExpenses(householdId);
-        }
-        await this.cacheService.invalidateDashboard(householdId);
     }
 
     private mapToResponse(record: {

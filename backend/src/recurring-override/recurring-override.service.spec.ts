@@ -75,6 +75,7 @@ describe('RecurringOverrideService', () => {
         invalidatePersonalExpenses: vi.fn(),
         invalidateSharedExpenses: vi.fn(),
         invalidateDashboard: vi.fn(),
+        invalidateExpenseCache: vi.fn(),
     };
 
     beforeEach(async () => {
@@ -162,9 +163,7 @@ describe('RecurringOverrideService', () => {
 
             await service.upsertOverride(mockUserId, mockExpenseId, 2026, 7, dto);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateSharedExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
         it('should invalidate shared expense cache for shared expenses', async () => {
@@ -177,9 +176,7 @@ describe('RecurringOverrideService', () => {
 
             await service.upsertOverride(mockUserId, mockSharedRecurringExpense.id, 2026, 7, dto);
 
-            expect(mockCacheService.invalidateSharedExpenses).toHaveBeenCalledWith(mockHouseholdId);
-            expect(mockCacheService.invalidatePersonalExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -318,9 +315,7 @@ describe('RecurringOverrideService', () => {
 
             await service.updateDefaultAmount(mockUserId, mockExpenseId, dto);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateSharedExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
         it('should invalidate shared expense cache for shared expenses', async () => {
@@ -330,9 +325,7 @@ describe('RecurringOverrideService', () => {
 
             await service.updateDefaultAmount(mockUserId, mockSharedRecurringExpense.id, dto);
 
-            expect(mockCacheService.invalidateSharedExpenses).toHaveBeenCalledWith(mockHouseholdId);
-            expect(mockCacheService.invalidatePersonalExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -513,8 +506,7 @@ describe('RecurringOverrideService', () => {
 
             await service.deleteOverride(mockUserId, mockExpenseId, 2026, 7);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
@@ -581,9 +573,7 @@ describe('RecurringOverrideService', () => {
 
             await service.deleteAllOverrides(mockUserId, mockExpenseId);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateSharedExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
         it('should invalidate shared expense cache for shared expenses', async () => {
@@ -593,9 +583,7 @@ describe('RecurringOverrideService', () => {
 
             await service.deleteAllOverrides(mockUserId, mockSharedRecurringExpense.id);
 
-            expect(mockCacheService.invalidateSharedExpenses).toHaveBeenCalledWith(mockHouseholdId);
-            expect(mockCacheService.invalidatePersonalExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -683,9 +671,7 @@ describe('RecurringOverrideService', () => {
 
             await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateSharedExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
         it('should invalidate shared expense cache for shared expenses', async () => {
@@ -695,9 +681,7 @@ describe('RecurringOverrideService', () => {
 
             await service.batchUpsertOverrides(mockUserId, mockSharedRecurringExpense.id, batchOverrides);
 
-            expect(mockCacheService.invalidateSharedExpenses).toHaveBeenCalledWith(mockHouseholdId);
-            expect(mockCacheService.invalidatePersonalExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
         });
 
         it('should handle empty overrides array', async () => {
@@ -835,9 +819,7 @@ describe('RecurringOverrideService', () => {
 
             await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateSharedExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
         it('should invalidate shared expense cache for shared expenses', async () => {
@@ -847,9 +829,7 @@ describe('RecurringOverrideService', () => {
 
             await service.deleteUpcomingOverrides(mockUserId, mockSharedRecurringExpense.id, 2026, 7);
 
-            expect(mockCacheService.invalidateSharedExpenses).toHaveBeenCalledWith(mockHouseholdId);
-            expect(mockCacheService.invalidatePersonalExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {

@@ -72,6 +72,7 @@ describe('ExpensePaymentService', () => {
         invalidatePersonalExpenses: vi.fn(),
         invalidateSharedExpenses: vi.fn(),
         invalidateDashboard: vi.fn(),
+        invalidateExpenseCache: vi.fn(),
     };
 
     beforeEach(async () => {
@@ -143,9 +144,7 @@ describe('ExpensePaymentService', () => {
 
             await service.markPaid(mockUserId, mockExpenseId, dto);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateSharedExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, mockPersonalExpense.type, mockHouseholdId);
         });
 
         it('should invalidate shared expense cache for shared expenses', async () => {
@@ -158,9 +157,7 @@ describe('ExpensePaymentService', () => {
 
             await service.markPaid(mockUserId, mockSharedExpense.id, dto);
 
-            expect(mockCacheService.invalidateSharedExpenses).toHaveBeenCalledWith(mockHouseholdId);
-            expect(mockCacheService.invalidatePersonalExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, mockSharedExpense.type, mockHouseholdId);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -292,8 +289,7 @@ describe('ExpensePaymentService', () => {
 
             await service.undoPaid(mockUserId, mockExpenseId, dto);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, mockPersonalExpense.type, mockHouseholdId);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -418,8 +414,7 @@ describe('ExpensePaymentService', () => {
 
             await service.cancel(mockUserId, mockExpenseId, dto);
 
-            expect(mockCacheService.invalidatePersonalExpenses).toHaveBeenCalledWith(mockUserId);
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, mockPersonalExpense.type, mockHouseholdId);
         });
 
         it('should invalidate shared expense cache when cancelling a shared expense', async () => {
@@ -433,9 +428,7 @@ describe('ExpensePaymentService', () => {
 
             await service.cancel(mockUserId, mockSharedExpense.id, dto);
 
-            expect(mockCacheService.invalidateSharedExpenses).toHaveBeenCalledWith(mockHouseholdId);
-            expect(mockCacheService.invalidatePersonalExpenses).not.toHaveBeenCalled();
-            expect(mockCacheService.invalidateDashboard).toHaveBeenCalledWith(mockHouseholdId);
+            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, mockSharedExpense.type, mockHouseholdId);
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {

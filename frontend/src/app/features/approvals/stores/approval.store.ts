@@ -1,6 +1,7 @@
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
-import { Approval } from '../../../shared/models/approval.model';
+import { Approval } from '../../../shared/models';
 import { ApprovalService } from '../services/approval.service';
+import { extractHttpError } from '../../../shared/utils/extract-error';
 import { SharedExpenseStore } from '../../shared-expenses/stores/shared-expense.store';
 import { DashboardStore } from '../../dashboard/stores/dashboard.store';
 import { NotificationStore } from '../../../core/stores/notification.store';
@@ -52,7 +53,7 @@ export class ApprovalStore {
         this.invalidateRelatedStores();
       },
       error: err => {
-        this.error.set(err.error?.message);
+        this.error.set(extractHttpError(err));
         this.loadPending(); // Reload to restore if optimistic update was wrong
       },
     });
@@ -66,7 +67,7 @@ export class ApprovalStore {
         this.loadHistory();
         this.invalidateRelatedStores();
       },
-      error: err => { this.error.set(err.error?.message); this.loadPending(); },
+      error: err => { this.error.set(extractHttpError(err)); this.loadPending(); },
     });
   }
 
@@ -79,7 +80,7 @@ export class ApprovalStore {
         this.invalidateRelatedStores();
       },
       error: err => {
-        this.error.set(err.error?.message);
+        this.error.set(extractHttpError(err));
         this.loadPending();
       },
     });

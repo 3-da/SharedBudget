@@ -4,7 +4,7 @@ import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
 import { MarkPaidDto } from './dto/mark-paid.dto';
 import { ExpensePaymentResponseDto } from './dto/expense-payment-response.dto';
-import { PaymentStatus, ExpenseType } from '../generated/prisma/enums';
+import { PaymentStatus } from '../generated/prisma/enums';
 
 @Injectable()
 export class ExpensePaymentService {
@@ -60,7 +60,7 @@ export class ExpensePaymentService {
             },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Expense ${expenseId} marked as paid for ${dto.month}/${dto.year}`);
         return this.mapToResponse(result);
     }
@@ -111,7 +111,7 @@ export class ExpensePaymentService {
             },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Expense ${expenseId} payment undone for ${dto.month}/${dto.year}`);
         return this.mapToResponse(result);
     }
@@ -159,7 +159,7 @@ export class ExpensePaymentService {
             },
         });
 
-        await this.invalidateCache(userId, expense.type, membership.householdId);
+        await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Expense ${expenseId} cancelled for ${dto.month}/${dto.year}`);
         return this.mapToResponse(result);
     }
@@ -228,15 +228,6 @@ export class ExpensePaymentService {
         }
 
         return expense;
-    }
-
-    private async invalidateCache(userId: string, expenseType: ExpenseType, householdId: string): Promise<void> {
-        if (expenseType === ExpenseType.PERSONAL) {
-            await this.cacheService.invalidatePersonalExpenses(userId);
-        } else {
-            await this.cacheService.invalidateSharedExpenses(householdId);
-        }
-        await this.cacheService.invalidateDashboard(householdId);
     }
 
     private mapToResponse(record: any): ExpensePaymentResponseDto {

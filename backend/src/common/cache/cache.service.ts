@@ -53,6 +53,7 @@ export class CacheService {
      * @param key - The cache key
      * @param ttl - Time-to-live in seconds
      * @param fetchFn - Function to fetch data if cache miss
+     * @param useLock - Whether to use a distributed lock to prevent thundering herd
      * @returns The cached or freshly fetched data
      */
     async getOrSet<T>(key: string, ttl: number, fetchFn: () => Promise<T>, useLock = false): Promise<T> {
@@ -270,6 +271,19 @@ export class CacheService {
         await this.invalidatePattern(`cache:*:${householdId}:*`);
         await this.invalidatePattern(`cache:*:${householdId}`);
         this.logger.log(`All caches invalidated for household: ${householdId}`);
+    }
+
+    /**
+     * Invalidates expense-related caches based on expense type (personal or shared),
+     * plus the dashboard cache. Used by expense-payment and recurring-override services.
+     */
+    async invalidateExpenseCache(userId: string, expenseType: 'PERSONAL' | 'SHARED', householdId: string): Promise<void> {
+        if (expenseType === 'PERSONAL') {
+            await this.invalidatePersonalExpenses(userId);
+        } else {
+            await this.invalidateSharedExpenses(householdId);
+        }
+        await this.invalidateDashboard(householdId);
     }
 
     /**

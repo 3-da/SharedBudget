@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
@@ -10,6 +10,7 @@ import { MemberIncomeDto } from './dto/member-income.dto';
 import { MemberExpenseSummaryDto } from './dto/expense-summary.dto';
 import { CacheService } from '../common/cache/cache.service';
 import { DashboardCalculatorService } from './dashboard-calculator.service';
+import { resolveMonthYear } from '../common/utils/resolve-month-year';
 
 @Injectable()
 export class DashboardService {
@@ -33,6 +34,9 @@ export class DashboardService {
      * and how many pending approvals need attention.
      *
      * @param userId - The authenticated user's ID
+     * @param mode - View mode: 'monthly' for single month, 'yearly' for 12-month average
+     * @param reqMonth - Optional month override (1-12)
+     * @param reqYear - Optional year override
      * @returns Complete household financial overview for the current month
      * @throws {NotFoundException} If the user is not a member of any household
      */
@@ -41,9 +45,7 @@ export class DashboardService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const { householdId } = membership;
-        const now = new Date();
-        const month = reqMonth ?? now.getMonth() + 1;
-        const year = reqYear ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(reqMonth, reqYear);
 
         const cacheKey = this.cacheService.dashboardKey(householdId, year, month) + `:${mode}`;
 
@@ -90,6 +92,15 @@ export class DashboardService {
      * @throws {NotFoundException} If the user is not a member of any household
      */
 
+    /**
+     * Computes 12-month rolling averages for income, expenses, and savings.
+     *
+     * @param householdId - The household to query
+     * @param userId - The authenticated user's ID (for settlement calculation)
+     * @param currentMonth - The current month (1-12)
+     * @param currentYear - The current year
+     * @returns Dashboard response with averaged values
+     */
     private async computeYearlyAverage(householdId: string, userId: string, currentMonth: number, currentYear: number): Promise<DashboardResponseDto> {
         const months: { month: number; year: number }[] = [];
         for (let i = 0; i < 12; i++) {
@@ -116,7 +127,6 @@ export class DashboardService {
 
         // Average incomes — only count months that have at least one salary entry
         const incomeMonths = monthlyResults.filter((r) => r.income.some((i) => i.currentSalary > 0 || i.defaultSalary > 0));
-        const _incomeCount = incomeMonths.length || 1;
 
         const avgIncome: MemberIncomeDto[] = firstIncome.map((member) => {
             const memberMonths = incomeMonths.filter((r) => r.income.find((i) => i.userId === member.userId && (i.currentSalary > 0 || i.defaultSalary > 0)));
@@ -179,7 +189,6 @@ export class DashboardService {
 
         // Average savings — only count months that have at least one saving record
         const savingsMonths = monthlyResults.filter((r) => r.savings.totalSavings > 0);
-        const _savingsCount = savingsMonths.length || 1;
 
         const avgSavingsMembers: MemberSavingsDto[] = monthlyResults[0].savings.members.map((sm) => {
             const smMonths = savingsMonths.filter((r) => {
@@ -253,9 +262,7 @@ export class DashboardService {
         this.logger.debug(`Get savings for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const now = new Date();
-        const month = reqMonth ?? now.getMonth() + 1;
-        const year = reqYear ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(reqMonth, reqYear);
 
         const cacheKey = this.cacheService.savingsKey(membership.householdId, year, month);
 
@@ -326,6 +333,8 @@ export class DashboardService {
      * €60 (half of the electricity that Alex paid in full).
      *
      * @param userId - The authenticated user's ID
+     * @param reqMonth - Optional month override (1-12)
+     * @param reqYear - Optional year override
      * @returns Settlement calculation with amount, direction, and message
      * @throws {NotFoundException} If the user is not a member of any household
      */
@@ -333,9 +342,7 @@ export class DashboardService {
         this.logger.debug(`Get settlement for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const now = new Date();
-        const month = reqMonth ?? now.getMonth() + 1;
-        const year = reqYear ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(reqMonth, reqYear);
 
         const cacheKey = this.cacheService.settlementKey(membership.householdId, year, month);
 
@@ -366,9 +373,7 @@ export class DashboardService {
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const { householdId } = membership;
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const { month, year } = resolveMonthYear();
 
         // Check if already settled this month
         const existing = await this.prismaService.settlement.findUnique({

@@ -1,8 +1,8 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { forkJoin } from 'rxjs';
-import { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../../../shared/models/expense.model';
-import { PaymentStatus } from '../../../shared/models/enums';
+import { Expense, CreateExpenseRequest, UpdateExpenseRequest, PaymentStatus } from '../../../shared/models';
+import { extractHttpError } from '../../../shared/utils/extract-error';
 import { PersonalExpenseService } from '../services/personal-expense.service';
 import { ExpensePaymentService } from '../services/expense-payment.service';
 
@@ -64,28 +64,28 @@ export class PersonalExpenseStore {
     this.loading.set(true);
     this.service.get(id).subscribe({
       next: e => { this.selectedExpense.set(e); this.loading.set(false); },
-      error: err => { this.error.set(this.extractError(err) ?? null); this.loading.set(false); },
+      error: err => { this.error.set(extractHttpError(err) ?? null); this.loading.set(false); },
     });
   }
 
   createExpense(dto: CreateExpenseRequest, month?: number, year?: number, onSuccess?: () => void): void {
     this.service.create(dto).subscribe({
       next: () => { this.snackBar.open('Expense created', '', { duration: 3000 }); this.loadExpenses(month, year); onSuccess?.(); },
-      error: err => { this.snackBar.open(this.extractError(err) ?? 'Failed to create', '', { duration: 4000 }); this.error.set(this.extractError(err) ?? null); },
+      error: err => { this.snackBar.open(extractHttpError(err) ?? 'Failed to create', '', { duration: 4000 }); this.error.set(extractHttpError(err) ?? null); },
     });
   }
 
   updateExpense(id: string, dto: UpdateExpenseRequest, month?: number, year?: number, onSuccess?: () => void): void {
     this.service.update(id, dto).subscribe({
       next: () => { this.snackBar.open('Expense updated', '', { duration: 3000 }); this.loadExpenses(month, year); onSuccess?.(); },
-      error: err => { this.snackBar.open(this.extractError(err) ?? 'Failed to update', '', { duration: 4000 }); this.error.set(this.extractError(err) ?? null); },
+      error: err => { this.snackBar.open(extractHttpError(err) ?? 'Failed to update', '', { duration: 4000 }); this.error.set(extractHttpError(err) ?? null); },
     });
   }
 
   deleteExpense(id: string, month?: number, year?: number): void {
     this.service.delete(id).subscribe({
       next: () => { this.snackBar.open('Expense deleted', '', { duration: 3000 }); this.loadExpenses(month, year); },
-      error: err => { this.snackBar.open(this.extractError(err) ?? 'Failed to delete', '', { duration: 4000 }); this.error.set(this.extractError(err)); },
+      error: err => { this.snackBar.open(extractHttpError(err) ?? 'Failed to delete', '', { duration: 4000 }); this.error.set(extractHttpError(err)); },
     });
   }
 
@@ -101,12 +101,6 @@ export class PersonalExpenseStore {
       next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
       error: err => this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }),
     });
-  }
-
-  private extractError(err: any): string | null {
-    const msg = err?.error?.message;
-    if (!msg) return null;
-    return Array.isArray(msg) ? msg.join(', ') : msg;
   }
 
   private updatePaymentMap(expenseId: string, status: PaymentStatus): void {
