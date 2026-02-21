@@ -14,19 +14,19 @@ const REDIS_PASSWORD = process.env.REDIS_PASSWORD ?? 'redis_secret';
 
 export const TEST_USERS = {
   alex: {
-    email: 'alex.e2e@test.com',
+    email: 'alex@test.com',
     password: 'TestPassword123!',
     firstName: 'Alex',
     lastName: 'TestOwner',
   },
   sam: {
-    email: 'sam.e2e@test.com',
+    email: 'sam@test.com',
     password: 'TestPassword456!',
     firstName: 'Sam',
     lastName: 'TestMember',
   },
   jordan: {
-    email: 'jordan.e2e@test.com',
+    email: 'jordan@test.com',
     password: 'TestPassword789!',
     firstName: 'Jordan',
     lastName: 'TestOutsider',
