@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { forkJoin } from 'rxjs';
 import { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../../../shared/models/expense.model';
 import { PaymentStatus } from '../../../shared/models/enums';
 import { SharedExpenseService } from '../services/shared-expense.service';
@@ -31,11 +32,16 @@ export class SharedExpenseStore {
     const now = new Date();
     const m = month ?? now.getMonth() + 1;
     const y = year ?? now.getFullYear();
-    this.service.list(m, y).subscribe({
-      next: e => {
-        this.expenses.set(e);
+    forkJoin({
+      expenses: this.service.list(m, y),
+      statuses: this.paymentService.getBatchStatuses(m, y),
+    }).subscribe({
+      next: ({ expenses, statuses }) => {
+        this.expenses.set(expenses);
+        const map = new Map<string, PaymentStatus>();
+        for (const s of statuses) map.set(s.expenseId, s.status);
+        this.paymentStatuses.set(map);
         this.loading.set(false);
-        this.loadBatchPaymentStatuses(m, y);
       },
       error: err => {
         this.error.set(this.extractError(err) ?? 'Failed to load expenses');
@@ -96,19 +102,6 @@ export class SharedExpenseStore {
     this.paymentService.undoPaid(expenseId, { month, year }).subscribe({
       next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
       error: err => this.snackBar.open(this.extractError(err) ?? 'Failed', '', { duration: 4000 }),
-    });
-  }
-
-  private loadBatchPaymentStatuses(month: number, year: number): void {
-    this.paymentService.getBatchStatuses(month, year).subscribe({
-      next: statuses => {
-        const map = new Map<string, PaymentStatus>();
-        for (const s of statuses) {
-          map.set(s.expenseId, s.status);
-        }
-        this.paymentStatuses.set(map);
-      },
-      error: () => {},
     });
   }
 

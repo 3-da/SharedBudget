@@ -65,7 +65,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       font: var(--mat-sys-body-small);
       margin-bottom: 12px;
     }
-    .settlement-info mat-icon { font-size: 18px; width: 18px; height: 18px; margin-top: 1px; }
+    .settlement-info mat-icon { font-size: 18px; width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; }
     .message { margin: var(--space-sm) 0; }
     .amount { font: var(--mat-sys-headline-small); font-weight: 600; margin: var(--space-sm) 0; }
     .settled-badge {

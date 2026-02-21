@@ -28,7 +28,7 @@ export class DashboardStore {
     this.error.set(null);
     this.service.getOverview().subscribe({
       next: o => { this.overview.set(o); this.loading.set(false); },
-      error: () => { this.overview.set(null); this.loading.set(false); },
+      error: () => { this.overview.set(null); this.loading.set(false); this.error.set('Failed to load dashboard'); },
     });
   }
 

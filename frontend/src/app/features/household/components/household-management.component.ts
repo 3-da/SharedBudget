@@ -73,7 +73,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
       border-radius: 4px;
     }
     .actions { display: flex; gap: var(--space-sm); margin-top: var(--space-md); flex-wrap: wrap; }
-    mat-panel-title mat-icon { margin-right: var(--space-sm); }
+    mat-panel-title mat-icon { margin-right: var(--space-sm); flex-shrink: 0; }
   `],
 })
 export class HouseholdManagementComponent {
