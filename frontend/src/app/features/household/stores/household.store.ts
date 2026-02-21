@@ -1,4 +1,5 @@
 import { Injectable, inject, signal, computed, Injector } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Household, HouseholdInvitation } from '../../../shared/models/household.model';
 import { DashboardOverview } from '../../../shared/models/dashboard.model';
 import { HouseholdRole } from '../../../shared/models/enums';
@@ -12,6 +13,7 @@ export class HouseholdStore {
   private readonly householdService = inject(HouseholdService);
   private readonly invitationService = inject(InvitationService);
   private readonly dashboardService = inject(DashboardService);
+  private readonly snackBar = inject(MatSnackBar);
   // Use Injector for lazy resolution to break: HouseholdStore → AuthService → StoreResetService → HouseholdStore
   private readonly injector = inject(Injector);
 
@@ -107,22 +109,37 @@ export class HouseholdStore {
   }
 
   regenerateCode(): void {
-    this.householdService.regenerateCode().subscribe({ next: h => this.household.set(h) });
+    this.householdService.regenerateCode().subscribe({
+      next: h => this.household.set(h),
+      error: err => this.snackBar.open(err.error?.message ?? 'Failed to regenerate code', '', { duration: 4000 }),
+    });
   }
 
   leave(): void {
-    this.householdService.leave().subscribe({ next: () => { this.household.set(null); this.overview.set(null); } });
+    this.householdService.leave().subscribe({
+      next: () => { this.household.set(null); this.overview.set(null); },
+      error: err => this.snackBar.open(err.error?.message ?? 'Failed to leave household', '', { duration: 4000 }),
+    });
   }
 
   removeMember(userId: string): void {
-    this.householdService.removeMember(userId).subscribe({ next: () => this.loadHousehold() });
+    this.householdService.removeMember(userId).subscribe({
+      next: () => this.loadHousehold(),
+      error: err => this.snackBar.open(err.error?.message ?? 'Failed to remove member', '', { duration: 4000 }),
+    });
   }
 
   transferOwnership(targetUserId: string): void {
-    this.householdService.transferOwnership({ targetUserId }).subscribe({ next: h => this.household.set(h) });
+    this.householdService.transferOwnership({ targetUserId }).subscribe({
+      next: h => this.household.set(h),
+      error: err => this.snackBar.open(err.error?.message ?? 'Failed to transfer ownership', '', { duration: 4000 }),
+    });
   }
 
   loadInvitations(): void {
-    this.invitationService.getPending().subscribe({ next: inv => this.invitations.set(inv) });
+    this.invitationService.getPending().subscribe({
+      next: inv => this.invitations.set(inv),
+      error: () => this.invitations.set([]),
+    });
   }
 }

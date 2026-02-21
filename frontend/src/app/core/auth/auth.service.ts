@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, catchError, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, of, switchMap, tap, timeout } from 'rxjs';
 import { TokenService } from './token.service';
 import { environment } from '../../environments/environment';
 import {
@@ -106,6 +106,7 @@ export class AuthService {
   tryRestoreSession(): void {
     this.isRestoring.set(true);
     this.refresh().pipe(
+      timeout(8000),
       switchMap(() => this.loadCurrentUser()),
       catchError(() => of(null)),
     ).subscribe({

@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { NotificationStore } from './notification.store';
 import { ApprovalStore } from '../../features/approvals/stores/approval.store';
 import { DashboardStore } from '../../features/dashboard/stores/dashboard.store';
@@ -10,23 +10,16 @@ import { SharedExpenseStore } from '../../features/shared-expenses/stores/shared
 
 @Injectable({ providedIn: 'root' })
 export class StoreResetService {
-  private readonly notificationStore = inject(NotificationStore);
-  private readonly approvalStore = inject(ApprovalStore);
-  private readonly dashboardStore = inject(DashboardStore);
-  private readonly householdStore = inject(HouseholdStore);
-  private readonly personalExpenseStore = inject(PersonalExpenseStore);
-  private readonly salaryStore = inject(SalaryStore);
-  private readonly savingStore = inject(SavingStore);
-  private readonly sharedExpenseStore = inject(SharedExpenseStore);
+  private readonly injector = inject(Injector);
 
   resetAll(): void {
-    this.notificationStore.reset();
-    this.approvalStore.reset();
-    this.dashboardStore.reset();
-    this.householdStore.reset();
-    this.personalExpenseStore.reset();
-    this.salaryStore.reset();
-    this.savingStore.reset();
-    this.sharedExpenseStore.reset();
+    this.injector.get(NotificationStore).reset();
+    this.injector.get(ApprovalStore).reset();
+    this.injector.get(DashboardStore).reset();
+    this.injector.get(HouseholdStore).reset();
+    this.injector.get(PersonalExpenseStore).reset();
+    this.injector.get(SalaryStore).reset();
+    this.injector.get(SavingStore).reset();
+    this.injector.get(SharedExpenseStore).reset();
   }
 }

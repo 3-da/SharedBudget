@@ -21,6 +21,9 @@ describe('authGuard', () => {
     });
     authService = TestBed.inject(AuthService);
     router = TestBed.inject(Router);
+    // Simulate session restore already completed so guard doesn't wait forever
+    authService.tryRestoreSession = vi.fn();
+    (authService as any).restoreResolve?.();
   });
 
   it('should allow access when user is authenticated', async () => {

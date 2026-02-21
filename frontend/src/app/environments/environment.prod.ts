@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://sharedbudget-api.onrender.com/api/v1',
+  apiUrl: '/api/v1',
 };
