@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListPersonalExpensesQueryDto } from './dto/list-personal-expenses-query.dto';
 import { PersonalExpenseResponseDto } from './dto/personal-expense-response.dto';
@@ -97,11 +97,7 @@ export class PersonalExpenseService {
 
         this.logger.log(`Personal expense created: ${expense.id} for user: ${userId}`);
 
-        await Promise.all([
-            this.cacheService.invalidatePersonalExpenses(userId),
-            this.cacheService.invalidateDashboard(membership.householdId),
-            this.cacheService.invalidateSavings(membership.householdId),
-        ]);
+        await this.invalidatePersonalCaches(userId, membership.householdId);
 
         return mapToPersonalExpenseResponse(expense);
     }
@@ -166,11 +162,7 @@ export class PersonalExpenseService {
 
         this.logger.log(`Personal expense updated: ${expenseId}`);
 
-        await Promise.all([
-            this.cacheService.invalidatePersonalExpenses(userId),
-            this.cacheService.invalidateDashboard(membership.householdId),
-            this.cacheService.invalidateSavings(membership.householdId),
-        ]);
+        await this.invalidatePersonalCaches(userId, membership.householdId);
 
         return mapToPersonalExpenseResponse(updated);
     }
@@ -206,12 +198,16 @@ export class PersonalExpenseService {
 
         this.logger.log(`Personal expense deleted: ${expenseId}`);
 
-        await Promise.all([
-            this.cacheService.invalidatePersonalExpenses(userId),
-            this.cacheService.invalidateDashboard(membership.householdId),
-            this.cacheService.invalidateSavings(membership.householdId),
-        ]);
+        await this.invalidatePersonalCaches(userId, membership.householdId);
 
         return { message: 'Personal expense deleted successfully.' };
+    }
+
+    private async invalidatePersonalCaches(userId: string, householdId: string): Promise<void> {
+        await Promise.all([
+            this.cacheService.invalidatePersonalExpenses(userId),
+            this.cacheService.invalidateDashboard(householdId),
+            this.cacheService.invalidateSavings(householdId),
+        ]);
     }
 }

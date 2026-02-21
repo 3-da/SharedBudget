@@ -11,7 +11,8 @@ import { PersonalExpenseStore } from '../stores/personal-expense.store';
 import { RecurringOverrideService } from '../services/recurring-override.service';
 import { RecurringOverride } from '../../../shared/models/recurring-override.model';
 import { BatchOverrideItem } from '../../../shared/models/recurring-override.model';
-import { ExpenseCategory, ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy } from '../../../shared/models/enums';
+import { ExpenseCategory, ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy } from '../../../shared/models';
+import { TimelineMonth, getDefaultInstallmentCount, getStepMonths } from '../../../shared/utils/timeline';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
@@ -37,16 +38,6 @@ import {
   `,
 })
 class UndoScopeDialogComponent {}
-
-interface TimelineMonth {
-  month: number;
-  year: number;
-  label: string;
-  amount: number;
-  isOverride: boolean;
-  isPast: boolean;
-  isCurrent: boolean;
-}
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -123,7 +114,7 @@ export class RecurringTimelineComponent {
     const amount = Number(e.amount);
     // For yearly installments, show per-installment amount
     if (e.frequency === ExpenseFrequency.YEARLY && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
-      const count = e.installmentCount ?? this.getDefaultInstallmentCount(e.installmentFrequency);
+      const count = e.installmentCount ?? getDefaultInstallmentCount(e.installmentFrequency);
       return Math.round((amount / count) * 100) / 100;
     }
     return amount;
@@ -198,30 +189,14 @@ export class RecurringTimelineComponent {
     return months;
   }
 
-  private getDefaultInstallmentCount(freq: InstallmentFrequency | null | undefined): number {
-    switch (freq) {
-      case InstallmentFrequency.QUARTERLY: return 4;
-      case InstallmentFrequency.SEMI_ANNUAL: return 2;
-      case InstallmentFrequency.MONTHLY: default: return 12;
-    }
-  }
-
-  private getStepMonths(freq: InstallmentFrequency | null | undefined): number {
-    switch (freq) {
-      case InstallmentFrequency.QUARTERLY: return 3;
-      case InstallmentFrequency.SEMI_ANNUAL: return 6;
-      case InstallmentFrequency.MONTHLY: default: return 1;
-    }
-  }
-
   private buildInstallmentTimeline(expense: any, currentM: number, currentY: number): TimelineMonth[] {
     const startMonth = expense.month ?? currentM;
     const startYear = expense.year ?? currentY;
     const freq = expense.installmentFrequency;
     const totalAmount = Number(expense.amount);
 
-    const count = expense.installmentCount ?? this.getDefaultInstallmentCount(freq);
-    const stepMonths = this.getStepMonths(freq);
+    const count = expense.installmentCount ?? getDefaultInstallmentCount(freq);
+    const stepMonths = getStepMonths(freq);
 
     const perInstallment = Math.round((totalAmount / count) * 100) / 100;
     const months: TimelineMonth[] = [];

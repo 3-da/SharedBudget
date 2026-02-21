@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { SalaryResponse } from '../../../shared/models/salary.model';
+import { SalaryResponse } from '../../../shared/models';
+import { extractHttpError } from '../../../shared/utils/extract-error';
 import { SalaryService } from '../services/salary.service';
 
 @Injectable({ providedIn: 'root' })
@@ -52,7 +53,7 @@ export class SalaryStore {
         this.snackBar.open('Salary saved', '', { duration: 3000 });
         this.loadYearlySalaries(new Date().getFullYear());
       },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed to save salary', '', { duration: 4000 }); this.error.set(err.error?.message); this.loading.set(false); },
+      error: err => { this.snackBar.open(extractHttpError(err, 'Failed to save salary')!, '', { duration: 4000 }); this.error.set(extractHttpError(err)); this.loading.set(false); },
     });
   }
 }

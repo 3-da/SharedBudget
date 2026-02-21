@@ -6,6 +6,7 @@ import { ExpensePaymentService } from './expense-payment.service';
 import { MarkPaidDto } from './dto/mark-paid.dto';
 import { ExpensePaymentResponseDto } from './dto/expense-payment-response.dto';
 import { DashboardQueryDto } from '../dashboard/dto/dashboard-query.dto';
+import { resolveMonthYear } from '../common/utils/resolve-month-year';
 import {
     MarkPaidEndpoint,
     UndoPaidEndpoint,
@@ -23,9 +24,7 @@ export class ExpensePaymentController {
 
     @GetBatchPaymentStatusEndpoint()
     async getBatchPaymentStatus(@CurrentUser('id') userId: string, @Query() query: DashboardQueryDto): Promise<ExpensePaymentResponseDto[]> {
-        const now = new Date();
-        const month = query.month ?? now.getMonth() + 1;
-        const year = query.year ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(query.month, query.year);
         return this.expensePaymentService.getBatchPaymentStatuses(userId, month, year);
     }
 

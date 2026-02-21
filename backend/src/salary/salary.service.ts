@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpsertSalaryDto } from './dto/upsert-salary.dto';
 import { SalaryResponseDto } from './dto/salary-response.dto';
 import { CacheService } from '../common/cache/cache.service';
+import { resolveMonthYear } from '../common/utils/resolve-month-year';
 
 @Injectable()
 export class SalaryService {
@@ -14,9 +15,7 @@ export class SalaryService {
     ) {}
 
     async getMySalary(userId: string): Promise<SalaryResponseDto | null> {
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const { month, year } = resolveMonthYear();
 
         this.logger.debug(`Get salary for user: ${userId}, month: ${month}, year: ${year}`);
 
@@ -51,9 +50,7 @@ export class SalaryService {
      * @throws {NotFoundException} If the user is not a member of any household
      */
     async upsertMySalary(userId: string, dto: UpsertSalaryDto): Promise<SalaryResponseDto> {
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
+        const { month, year } = resolveMonthYear();
 
         this.logger.log(`Upsert salary for user: ${userId}, month: ${month}, year: ${year}`);
 
@@ -117,10 +114,7 @@ export class SalaryService {
     }
 
     async getHouseholdSalaries(userId: string): Promise<SalaryResponseDto[]> {
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
-
+        const { month, year } = resolveMonthYear();
         return this.fetchHouseholdSalaries(userId, year, month);
     }
 

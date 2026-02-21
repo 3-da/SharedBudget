@@ -5,7 +5,9 @@ import { CacheService } from '../common/cache/cache.service';
 import { AddSavingDto } from './dto/add-saving.dto';
 import { WithdrawSavingDto } from './dto/withdraw-saving.dto';
 import { SavingResponseDto } from './dto/saving-response.dto';
+import { Saving } from '../generated/prisma/client';
 import { ApprovalAction, ApprovalStatus } from '../generated/prisma/enums';
+import { resolveMonthYear } from '../common/utils/resolve-month-year';
 
 @Injectable()
 export class SavingService {
@@ -24,6 +26,8 @@ export class SavingService {
      * for the current month.
      *
      * @param userId - The authenticated user's ID
+     * @param reqMonth - Optional month override (1-12)
+     * @param reqYear - Optional year override
      * @returns List of savings (personal and shared) for current month
      * @throws {NotFoundException} If user is not a member of any household
      */
@@ -32,9 +36,7 @@ export class SavingService {
 
         await this.expenseHelper.requireMembership(userId);
 
-        const now = new Date();
-        const month = reqMonth ?? now.getMonth() + 1;
-        const year = reqYear ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(reqMonth, reqYear);
 
         const savings = await this.prismaService.saving.findMany({
             where: { userId, month, year },
@@ -58,40 +60,24 @@ export class SavingService {
      * @throws {NotFoundException} If user is not a member of any household
      */
     async addPersonalSaving(userId: string, dto: AddSavingDto): Promise<SavingResponseDto> {
-        this.logger.debug(`Add personal saving for user: ${userId}`);
+        return this.upsertSaving(userId, dto, false);
+    }
 
-        const membership = await this.expenseHelper.requireMembership(userId);
-
-        const now = new Date();
-        const month = dto.month ?? now.getMonth() + 1;
-        const year = dto.year ?? now.getFullYear();
-
-        const existing = await this.prismaService.saving.findUnique({
-            where: { userId_month_year_isShared: { userId, month, year, isShared: false } },
-        });
-
-        let result;
-        if (existing) {
-            result = await this.prismaService.saving.update({
-                where: { id: existing.id },
-                data: { amount: Number(existing.amount) + dto.amount },
-            });
-        } else {
-            result = await this.prismaService.saving.create({
-                data: {
-                    userId,
-                    householdId: membership.householdId,
-                    amount: dto.amount,
-                    month,
-                    year,
-                    isShared: false,
-                },
-            });
-        }
-
-        await Promise.all([this.cacheService.invalidateSavings(membership.householdId), this.cacheService.invalidateDashboard(membership.householdId)]);
-        this.logger.log(`Personal saving added for user ${userId}: ${month}/${year} +${dto.amount}`);
-        return this.mapToResponse(result);
+    /**
+     * Adds an amount to the user's shared savings for a given month.
+     * If no shared saving exists for the month, creates one with the given amount.
+     * If one exists, increments the current amount.
+     *
+     * Scenario: Sam has 100 EUR shared savings for June. Sam adds 50 EUR,
+     * resulting in 150 EUR total.
+     *
+     * @param userId - The authenticated user's ID
+     * @param dto - Amount to add and optional month/year
+     * @returns The updated saving record
+     * @throws {NotFoundException} If user is not a member of any household
+     */
+    async addSharedSaving(userId: string, dto: AddSavingDto): Promise<SavingResponseDto> {
+        return this.upsertSaving(userId, dto, true);
     }
 
     /**
@@ -112,10 +98,7 @@ export class SavingService {
         this.logger.debug(`Withdraw personal saving for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-
-        const now = new Date();
-        const month = dto.month ?? now.getMonth() + 1;
-        const year = dto.year ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(dto.month, dto.year);
 
         const existing = await this.prismaService.saving.findUnique({
             where: { userId_month_year_isShared: { userId, month, year, isShared: false } },
@@ -137,7 +120,7 @@ export class SavingService {
             data: { amount: newAmount },
         });
 
-        await Promise.all([this.cacheService.invalidateSavings(membership.householdId), this.cacheService.invalidateDashboard(membership.householdId)]);
+        await this.invalidateSavingsAndDashboard(membership.householdId);
         this.logger.log(`Personal saving withdrawn for user ${userId}: ${month}/${year} -${dto.amount}`);
         return this.mapToResponse(result);
     }
@@ -150,6 +133,8 @@ export class SavingService {
      * and shared savings for the current month.
      *
      * @param userId - The authenticated user's ID
+     * @param reqMonth - Optional month override (1-12)
+     * @param reqYear - Optional year override
      * @returns All savings in the household for current month
      * @throws {NotFoundException} If user is not a member of any household
      */
@@ -157,10 +142,7 @@ export class SavingService {
         this.logger.debug(`Get household savings for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-
-        const now = new Date();
-        const month = reqMonth ?? now.getMonth() + 1;
-        const year = reqYear ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(reqMonth, reqYear);
 
         const cacheKey = this.cacheService.savingsKey(membership.householdId, year, month);
 
@@ -171,56 +153,6 @@ export class SavingService {
             });
             return savings.map((s) => this.mapToResponse(s));
         });
-    }
-
-    /**
-     * Adds an amount to the user's shared savings for a given month.
-     * If no shared saving exists for the month, creates one with the given amount.
-     * If one exists, increments the current amount.
-     *
-     * Scenario: Sam has 100 EUR shared savings for June. Sam adds 50 EUR,
-     * resulting in 150 EUR total.
-     *
-     * @param userId - The authenticated user's ID
-     * @param dto - Amount to add and optional month/year
-     * @returns The updated saving record
-     * @throws {NotFoundException} If user is not a member of any household
-     */
-    async addSharedSaving(userId: string, dto: AddSavingDto): Promise<SavingResponseDto> {
-        this.logger.debug(`Add shared saving for user: ${userId}`);
-
-        const membership = await this.expenseHelper.requireMembership(userId);
-
-        const now = new Date();
-        const month = dto.month ?? now.getMonth() + 1;
-        const year = dto.year ?? now.getFullYear();
-
-        const existing = await this.prismaService.saving.findUnique({
-            where: { userId_month_year_isShared: { userId, month, year, isShared: true } },
-        });
-
-        let result;
-        if (existing) {
-            result = await this.prismaService.saving.update({
-                where: { id: existing.id },
-                data: { amount: Number(existing.amount) + dto.amount },
-            });
-        } else {
-            result = await this.prismaService.saving.create({
-                data: {
-                    userId,
-                    householdId: membership.householdId,
-                    amount: dto.amount,
-                    month,
-                    year,
-                    isShared: true,
-                },
-            });
-        }
-
-        await Promise.all([this.cacheService.invalidateSavings(membership.householdId), this.cacheService.invalidateDashboard(membership.householdId)]);
-        this.logger.log(`Shared saving added for user ${userId}: ${month}/${year} +${dto.amount}`);
-        return this.mapToResponse(result);
     }
 
     /**
@@ -241,10 +173,7 @@ export class SavingService {
         this.logger.debug(`Request shared withdrawal for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-
-        const now = new Date();
-        const month = dto.month ?? now.getMonth() + 1;
-        const year = dto.year ?? now.getFullYear();
+        const { month, year } = resolveMonthYear(dto.month, dto.year);
 
         const existing = await this.prismaService.saving.findUnique({
             where: { userId_month_year_isShared: { userId, month, year, isShared: true } },
@@ -321,7 +250,59 @@ export class SavingService {
         this.logger.log(`Shared withdrawal executed: user ${requestedById}, ${month}/${year} -${amount} (was ${currentAmount}, now ${newAmount})`);
     }
 
-    private mapToResponse(record: any): SavingResponseDto {
+    /**
+     * Upserts a saving record (personal or shared). If a record exists for the given
+     * user/month/year/isShared combination, increments the amount; otherwise creates a new one.
+     *
+     * @param userId - The authenticated user's ID
+     * @param dto - Amount to add and optional month/year
+     * @param isShared - Whether this is a shared or personal saving
+     * @returns The created or updated saving record
+     * @throws {NotFoundException} If user is not a member of any household
+     */
+    private async upsertSaving(userId: string, dto: AddSavingDto, isShared: boolean): Promise<SavingResponseDto> {
+        const label = isShared ? 'Shared' : 'Personal';
+        this.logger.debug(`Add ${label.toLowerCase()} saving for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const { month, year } = resolveMonthYear(dto.month, dto.year);
+
+        const existing = await this.prismaService.saving.findUnique({
+            where: { userId_month_year_isShared: { userId, month, year, isShared } },
+        });
+
+        let result;
+        if (existing) {
+            result = await this.prismaService.saving.update({
+                where: { id: existing.id },
+                data: { amount: Number(existing.amount) + dto.amount },
+            });
+        } else {
+            result = await this.prismaService.saving.create({
+                data: {
+                    userId,
+                    householdId: membership.householdId,
+                    amount: dto.amount,
+                    month,
+                    year,
+                    isShared,
+                },
+            });
+        }
+
+        await this.invalidateSavingsAndDashboard(membership.householdId);
+        this.logger.log(`${label} saving added for user ${userId}: ${month}/${year} +${dto.amount}`);
+        return this.mapToResponse(result);
+    }
+
+    /**
+     * Invalidates both savings and dashboard caches for a household.
+     */
+    private async invalidateSavingsAndDashboard(householdId: string): Promise<void> {
+        await Promise.all([this.cacheService.invalidateSavings(householdId), this.cacheService.invalidateDashboard(householdId)]);
+    }
+
+    private mapToResponse(record: Saving): SavingResponseDto {
         return {
             id: record.id,
             userId: record.userId,

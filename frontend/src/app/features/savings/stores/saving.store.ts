@@ -1,7 +1,8 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Saving, AddSavingRequest, WithdrawSavingRequest } from '../../../shared/models/saving.model';
-import { SavingsHistoryItem } from '../../../shared/models/dashboard.model';
+import { SavingsHistoryItem } from '../../../shared/models';
+import { extractHttpError } from '../../../shared/utils/extract-error';
 import { SavingService } from '../services/saving.service';
 import { DashboardService } from '../../dashboard/services/dashboard.service';
 
@@ -57,28 +58,28 @@ export class SavingStore {
   addPersonal(dto: AddSavingRequest, onSuccess?: () => void): void {
     this.service.addPersonal(dto).subscribe({
       next: () => { this.snackBar.open('Savings added', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
+      error: err => { this.snackBar.open(extractHttpError(err, 'Failed')!, '', { duration: 4000 }); this.error.set(extractHttpError(err)); },
     });
   }
 
   withdrawPersonal(dto: WithdrawSavingRequest, onSuccess?: () => void): void {
     this.service.withdrawPersonal(dto).subscribe({
       next: () => { this.snackBar.open('Savings withdrawn', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
+      error: err => { this.snackBar.open(extractHttpError(err, 'Failed')!, '', { duration: 4000 }); this.error.set(extractHttpError(err)); },
     });
   }
 
   addShared(dto: AddSavingRequest, onSuccess?: () => void): void {
     this.service.addShared(dto).subscribe({
       next: () => { this.snackBar.open('Shared savings added', '', { duration: 3000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); this.loadSavingsHistory(); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
+      error: err => { this.snackBar.open(extractHttpError(err, 'Failed')!, '', { duration: 4000 }); this.error.set(extractHttpError(err)); },
     });
   }
 
   withdrawShared(dto: WithdrawSavingRequest, onSuccess?: () => void): void {
     this.service.withdrawShared(dto).subscribe({
       next: () => { this.snackBar.open('Withdrawal request submitted for approval', '', { duration: 4000 }); this.loadMySavings(dto.month, dto.year); this.loadHouseholdSavings(dto.month, dto.year); onSuccess?.(); },
-      error: err => { this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }); this.error.set(err.error?.message); },
+      error: err => { this.snackBar.open(extractHttpError(err, 'Failed')!, '', { duration: 4000 }); this.error.set(extractHttpError(err)); },
     });
   }
 }
