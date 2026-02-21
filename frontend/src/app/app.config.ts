@@ -6,12 +6,17 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { GlobalErrorHandler } from './core/error/error-handler.service';
 import { AuthService } from './core/auth/auth.service';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 
 function initializeAuth(): void {
   const authService = inject(AuthService);
   // Non-blocking: kicks off refresh + loadUser in background.
   // The auth guard awaits authService.restored before checking auth state.
   authService.tryRestoreSession();
+}
+
+function initializeSpeedInsights(): void {
+  injectSpeedInsights();
 }
 
 export const appConfig: ApplicationConfig = {
@@ -22,5 +27,6 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
     provideAppInitializer(initializeAuth),
+    provideAppInitializer(initializeSpeedInsights),
   ],
 };
