@@ -35,34 +35,26 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <div class="savings-layout">
         <mat-card>
           <mat-card-header>
-            <mat-icon matCardAvatar aria-hidden="true">savings</mat-icon>
             <mat-card-title>Personal Savings</mat-card-title>
-            <mat-card-subtitle>Your individual savings this month</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="current-amount">{{ store.totalPersonal() | currencyEur }}</div>
-            <form [formGroup]="personalForm" (ngSubmit)="addPersonal()">
-              <mat-form-field appearance="outline" class="full-width">
+            <form class="inline-form" [formGroup]="personalForm" (ngSubmit)="addPersonal()">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Amount (EUR)</mat-label>
                 <input matInput type="number" formControlName="amount" min="0.01">
               </mat-form-field>
-              <div class="action-buttons">
-                <button mat-flat-button type="submit" [disabled]="personalForm.invalid">Add to Savings</button>
-                @if (store.totalPersonal() > 0) {
-                  <button mat-stroked-button type="button" color="warn" (click)="withdrawPersonal()">
-                    <mat-icon aria-hidden="true">undo</mat-icon> Withdraw
-                  </button>
-                }
-              </div>
+              <button mat-flat-button type="submit" [disabled]="personalForm.invalid">Add</button>
+              @if (store.totalPersonal() > 0) {
+                <button mat-stroked-button type="button" color="warn" (click)="withdrawPersonal()">Withdraw</button>
+              }
             </form>
           </mat-card-content>
         </mat-card>
 
         <mat-card>
           <mat-card-header>
-            <mat-icon matCardAvatar aria-hidden="true">group</mat-icon>
             <mat-card-title>Shared Savings</mat-card-title>
-            <mat-card-subtitle>Joint household savings this month</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="savings-amounts">
@@ -74,32 +66,22 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
                 <div class="amount-label">Household pool</div>
                 <div class="current-amount pool-amount">{{ store.totalHouseholdShared() | currencyEur }}</div>
               </div>
+              <div>
+                <div class="amount-label">Household total</div>
+                <div class="current-amount">{{ store.totalHousehold() | currencyEur }}</div>
+              </div>
             </div>
             <p class="withdrawal-hint">Withdrawals are deducted from the entire household pool and require another member's approval.</p>
-            <form [formGroup]="sharedForm" (ngSubmit)="addShared()">
-              <mat-form-field appearance="outline" class="full-width">
+            <form class="inline-form" [formGroup]="sharedForm" (ngSubmit)="addShared()">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Amount (EUR)</mat-label>
                 <input matInput type="number" formControlName="amount" min="0.01">
               </mat-form-field>
-              <div class="action-buttons">
-                <button mat-flat-button type="submit" [disabled]="sharedForm.invalid">Add to Savings</button>
-                @if (store.totalHouseholdShared() > 0) {
-                  <button mat-stroked-button type="button" color="warn" (click)="withdrawShared()">
-                    <mat-icon aria-hidden="true">undo</mat-icon> Withdraw
-                  </button>
-                }
-              </div>
+              <button mat-flat-button type="submit" [disabled]="sharedForm.invalid">Add</button>
+              @if (store.totalHouseholdShared() > 0) {
+                <button mat-stroked-button type="button" color="warn" (click)="withdrawShared()">Withdraw</button>
+              }
             </form>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card class="summary-card">
-          <mat-card-header>
-            <mat-icon matCardAvatar aria-hidden="true">account_balance</mat-icon>
-            <mat-card-title>Household Total</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="current-amount large">{{ store.totalHousehold() | currencyEur }}</div>
           </mat-card-content>
         </mat-card>
 
@@ -131,11 +113,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   styles: [`
     .savings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); max-width: 900px; margin: 0 auto; }
     .summary-card { grid-column: 1 / -1; }
-    .current-amount { font-size: clamp(1.4rem, 2vw + 0.5rem, 1.8rem); font-weight: 500; margin-bottom: var(--space-sm); }
-    .current-amount.large { font-size: clamp(1.6rem, 3vw + 0.5rem, 2.2rem); text-align: center; }
-    .full-width { width: 100%; }
-    form { display: flex; flex-direction: column; gap: var(--space-sm); }
-    .action-buttons { display: flex; gap: var(--space-sm); align-items: center; }
+    .current-amount { font-size: 1.2rem; font-weight: 500; margin-bottom: var(--space-sm); }
+    .inline-form { display: flex; align-items: flex-start; gap: 8px; }
+    .inline-form mat-form-field { flex: 1; min-width: 120px; }
     mat-icon[matCardAvatar] {
       background: var(--mat-sys-primary-container);
       color: var(--mat-sys-on-primary-container);
@@ -150,13 +130,13 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     .member-name { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .member-amounts { display: flex; gap: 16px; flex-shrink: 0; }
     .amount-label { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; white-space: nowrap; }
-    .savings-amounts { display: flex; gap: var(--space-lg); margin-bottom: var(--space-sm); }
+    .savings-amounts { display: flex; flex-wrap: wrap; gap: var(--space-md) var(--space-lg); margin-bottom: var(--space-sm); }
     .pool-amount { color: var(--mat-sys-primary); }
     .withdrawal-hint { font-size: 0.8rem; color: var(--mat-sys-on-surface-variant); margin: 0 0 var(--space-sm); line-height: 1.4; }
     @media (max-width: 768px) {
       .savings-layout { grid-template-columns: 1fr; }
-      .current-amount { font-size: 1.4rem; }
-      .current-amount.large { font-size: 1.6rem; }
+      .inline-form { flex-wrap: wrap; }
+      .inline-form mat-form-field { flex-basis: 100%; }
       .member-row { flex-direction: column; align-items: flex-start; gap: 4px; }
       .member-amounts { gap: 12px; }
       .amount-label { font-size: 0.8rem; }
