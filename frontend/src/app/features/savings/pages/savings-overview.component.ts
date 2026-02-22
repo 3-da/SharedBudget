@@ -1,20 +1,20 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy, viewChildren } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { ReactiveFormsModule, FormBuilder, FormGroupDirective, Validators } from '@angular/forms';
-import { MatDialog } from '@angular/material/dialog';
-import { filter } from 'rxjs';
-import { SavingStore } from '../stores/saving.store';
-import { HouseholdStore } from '../../household/stores/household.store';
-import { SavingsHistoryChartComponent } from '../components/savings-history-chart.component';
-import { WithdrawDialogComponent, WithdrawDialogData } from '../components/withdraw-dialog.component';
-import { MonthPickerComponent } from '../../../shared/components/month-picker.component';
-import { PageHeaderComponent } from '../../../shared/components/page-header.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
-import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
+import {ChangeDetectionStrategy, Component, inject, OnInit, signal, viewChildren} from '@angular/core';
+import {MatCardModule} from '@angular/material/card';
+import {MatButtonModule} from '@angular/material/button';
+import {MatIconModule} from '@angular/material/icon';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatInputModule} from '@angular/material/input';
+import {FormBuilder, FormGroupDirective, ReactiveFormsModule, Validators} from '@angular/forms';
+import {MatDialog} from '@angular/material/dialog';
+import {filter} from 'rxjs';
+import {SavingStore} from '../stores/saving.store';
+import {HouseholdStore} from '../../household/stores/household.store';
+import {SavingsHistoryChartComponent} from '../components/savings-history-chart.component';
+import {WithdrawDialogComponent, WithdrawDialogData} from '../components/withdraw-dialog.component';
+import {MonthPickerComponent} from '../../../shared/components/month-picker.component';
+import {PageHeaderComponent} from '../../../shared/components/page-header.component';
+import {LoadingSpinnerComponent} from '../../../shared/components/loading-spinner.component';
+import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
   selector: 'app-savings-overview',
@@ -71,7 +71,6 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
                 <div class="current-amount">{{ store.totalHousehold() | currencyEur }}</div>
               </div>
             </div>
-            <p class="withdrawal-hint">Withdrawals are deducted from the entire household pool and require another member's approval.</p>
             <form class="inline-form" [formGroup]="sharedForm" (ngSubmit)="addShared()">
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Amount (EUR)</mat-label>
@@ -86,7 +85,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
         </mat-card>
 
         @if (householdStore.overview(); as ov) {
-          <mat-card class="summary-card">
+          <mat-card class="breakdown-card">
             <mat-card-header>
               <mat-icon matCardAvatar aria-hidden="true">people</mat-icon>
               <mat-card-title>Per-Member Breakdown</mat-card-title>
@@ -111,10 +110,15 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     }
   `,
   styles: [`
+    /* Ensure cards stretch and their content is spaced so forms align at the bottom */
     .savings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); max-width: 900px; margin: 0 auto; }
+    .savings-layout mat-card { display: flex; flex-direction: column; height: 100%; }
+    .savings-layout mat-card > mat-card-content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; }
+
     .summary-card { grid-column: 1 / -1; }
+    .breakdown-card { grid-column: 1; }
     .current-amount { font-size: 1.2rem; font-weight: 500; margin-bottom: var(--space-sm); }
-    .inline-form { display: flex; align-items: flex-start; gap: 8px; }
+    .inline-form { display: flex; align-items: center; gap: 8px; }
     .inline-form mat-form-field { flex: 1; min-width: 120px; }
     mat-icon[matCardAvatar] {
       background: var(--mat-sys-primary-container);
@@ -132,10 +136,10 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     .amount-label { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; white-space: nowrap; }
     .savings-amounts { display: flex; flex-wrap: wrap; gap: var(--space-md) var(--space-lg); margin-bottom: var(--space-sm); }
     .pool-amount { color: var(--mat-sys-primary); }
-    .withdrawal-hint { font-size: 0.8rem; color: var(--mat-sys-on-surface-variant); margin: 0 0 var(--space-sm); line-height: 1.4; }
     @media (max-width: 768px) {
       .savings-layout { grid-template-columns: 1fr; }
-      .inline-form { flex-wrap: wrap; }
+      .breakdown-card { grid-column: 1; }
+      .inline-form { flex-wrap: wrap; align-items: center; }
       .inline-form mat-form-field { flex-basis: 100%; }
       .member-row { flex-direction: column; align-items: flex-start; gap: 4px; }
       .member-amounts { gap: 12px; }
@@ -147,16 +151,13 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 export class SavingsOverviewComponent implements OnInit {
   readonly store = inject(SavingStore);
   readonly householdStore = inject(HouseholdStore);
-  private readonly fb = inject(FormBuilder);
-  private readonly dialog = inject(MatDialog);
-
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
-
+  private readonly fb = inject(FormBuilder);
+  personalForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]] });
+  sharedForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]] });
+  private readonly dialog = inject(MatDialog);
   private readonly formDirs = viewChildren(FormGroupDirective);
-
-  personalForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0.01)]] });
-  sharedForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0.01)]] });
 
   ngOnInit(): void {
     this.load();
@@ -176,7 +177,7 @@ export class SavingsOverviewComponent implements OnInit {
   addPersonal(): void {
     if (this.personalForm.invalid) return;
     this.store.addPersonal(
-      { amount: this.personalForm.getRawValue().amount, month: this.month(), year: this.year() },
+      { amount: this.personalForm.getRawValue().amount!, month: this.month(), year: this.year() },
       () => { this.resetForm(this.personalForm); this.householdStore.loadOverview(); },
     );
   }
@@ -184,7 +185,7 @@ export class SavingsOverviewComponent implements OnInit {
   addShared(): void {
     if (this.sharedForm.invalid) return;
     this.store.addShared(
-      { amount: this.sharedForm.getRawValue().amount, month: this.month(), year: this.year() },
+      { amount: this.sharedForm.getRawValue().amount!, month: this.month(), year: this.year() },
       () => { this.resetForm(this.sharedForm); this.householdStore.loadOverview(); },
     );
   }
@@ -216,9 +217,9 @@ export class SavingsOverviewComponent implements OnInit {
   private resetForm(form: typeof this.personalForm): void {
     const dir = this.formDirs().find(d => d.form === form);
     if (dir) {
-      dir.resetForm({ amount: 0 });
+      dir.resetForm({ amount: null });
     } else {
-      form.reset({ amount: 0 });
+      form.reset({ amount: null });
     }
   }
 

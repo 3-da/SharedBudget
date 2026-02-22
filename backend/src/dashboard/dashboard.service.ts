@@ -1,8 +1,8 @@
-import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
-import { SavingsResponseDto, MemberSavingsDto } from './dto/member-savings.dto';
+import { MemberSavingsDto, SavingsResponseDto } from './dto/member-savings.dto';
 import { SavingsHistoryItemDto } from './dto/savings-history.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
 import { MarkSettlementPaidResponseDto } from './dto/mark-settlement-paid-response.dto';
@@ -38,7 +38,7 @@ export class DashboardService {
      * @param reqMonth - Optional month override (1-12)
      * @param reqYear - Optional year override
      * @returns Complete household financial overview for the current month
-     * @throws {NotFoundException} If the user is not a member of any household
+     * @throws NotFoundException If the user is not a member of any household
      */
     async getOverview(userId: string, mode: 'monthly' | 'yearly' = 'monthly', reqMonth?: number, reqYear?: number): Promise<DashboardResponseDto> {
         this.logger.debug(`Get dashboard overview for user: ${userId}, mode: ${mode}`);
@@ -51,7 +51,7 @@ export class DashboardService {
 
         return this.cacheService.getOrSet(cacheKey, this.cacheService.summaryTTL, async () => {
             if (mode === 'yearly') {
-                return this.computeYearlyAverage(householdId, userId, month, year);
+                return this.computeYearlyAverageInternal(householdId, userId, month, year);
             }
 
             const [income, expenses, savings, settlement, pendingApprovalsCount] = await Promise.all([
@@ -89,8 +89,170 @@ export class DashboardService {
      *
      * @param userId - The authenticated user's ID
      * @returns Savings per member with household totals
-     * @throws {NotFoundException} If the user is not a member of any household
+     * @throws NotFoundException If the user is not a member of any household
      */
+
+    async getSavings(userId: string, reqMonth?: number, reqYear?: number): Promise<SavingsResponseDto> {
+        this.logger.debug(`Get savings for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const { month, year } = resolveMonthYear(reqMonth, reqYear);
+
+        const cacheKey = this.cacheService.savingsKey(membership.householdId, year, month);
+
+        return this.cacheService.getOrSet(cacheKey, this.cacheService.summaryTTL, async () => {
+            return this.calculator.calculateSavings(membership.householdId, month, year);
+        });
+    }
+
+    /**
+     * Returns monthly savings totals (personal and shared) for the past 12 months.
+     * Data is aggregated at the household level, not per member.
+     *
+     * Use case: User views a line chart on the dashboard showing how household
+     * savings have trended over the past year.
+     *
+     * Scenario: Alex opens the savings history chart and sees that personal savings
+     * peaked in March at EUR 800 and shared savings have been steadily growing
+     * since September.
+     *
+     * @param userId - The authenticated user's ID
+     * @returns Array of 12 monthly savings items ordered chronologically (oldest first)
+     * @throws NotFoundException If the user is not a member of any household
+     */
+    async getSavingsHistory(userId: string): Promise<SavingsHistoryItemDto[]> {
+        this.logger.debug(`Get savings history for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const { householdId } = membership;
+
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+
+        // Generate list of 12 months to query (oldest first)
+        const months: { month: number; year: number }[] = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(currentYear, currentMonth - 1 - i);
+            months.push({ month: d.getMonth() + 1, year: d.getFullYear() });
+        }
+
+        const savings = await this.prismaService.saving.findMany({
+            where: {
+                householdId,
+                OR: months.map((m) => ({ month: m.month, year: m.year })),
+            },
+        });
+
+        return months.map((m) => {
+            const monthSavings = savings.filter((s) => s.month === m.month && s.year === m.year);
+            return {
+                month: m.month,
+                year: m.year,
+                personalSavings: monthSavings.filter((s) => !s.isShared).reduce((sum, s) => sum + Number(s.amount), 0),
+                sharedSavings: monthSavings.filter((s) => s.isShared).reduce((sum, s) => sum + Number(s.amount), 0),
+            };
+        });
+    }
+
+    /**
+     * Calculates the current settlement between household members for the current month.
+     * Determines who owes whom based on shared expense contributions.
+     *
+     * Use case: User checks the settlement section to see if they owe their partner
+     * or if their partner owes them.
+     *
+     * Scenario: Alex and Sam share rent (€800 split equally) and electricity
+     * (€120 paid by Alex alone). The settlement calculates that Sam owes Alex
+     * €60 (half of the electricity that Alex paid in full).
+     *
+     * @param userId - The authenticated user's ID
+     * @param reqMonth - Optional month override (1-12)
+     * @param reqYear - Optional year override
+     * @returns Settlement calculation with amount, direction, and message
+     * @throws NotFoundException If the user is not a member of any household
+     */
+    async getSettlement(userId: string, reqMonth?: number, reqYear?: number): Promise<SettlementResponseDto> {
+        this.logger.debug(`Get settlement for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const { month, year } = resolveMonthYear(reqMonth, reqYear);
+
+        const cacheKey = this.cacheService.settlementKey(membership.householdId, year, month);
+
+        return this.cacheService.getOrSet(cacheKey, this.cacheService.settlementTTL, async () => {
+            return this.calculator.calculateSettlement(membership.householdId, userId, month, year);
+        });
+    }
+
+    /**
+     * Marks the current month's settlement as paid, creating an audit trail.
+     * Only valid when there is an outstanding settlement amount and it hasn't
+     * been marked as paid yet.
+     *
+     * Use case: After the person who owes money has paid their partner,
+     * either member can mark the settlement as paid.
+     *
+     * Scenario: Sam owes Alex €125.50 this month. After Sam transfers the money,
+     * Sam marks the settlement as paid. The system records the payment for audit purposes.
+     *
+     * @param userId - The authenticated user's ID
+     * @returns The created settlement record
+     * @throws NotFoundException If the user is not a member of any household
+     * @throws BadRequestException If there is no settlement needed (amount is zero)
+     * @throws ConflictException If the settlement has already been marked as paid this month
+     */
+    async markSettlementPaid(userId: string): Promise<MarkSettlementPaidResponseDto> {
+        this.logger.log(`Mark settlement paid for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        const { householdId } = membership;
+        const { month, year } = resolveMonthYear();
+
+        // Check if already settled this month
+        const existing = await this.prismaService.settlement.findUnique({
+            where: { householdId_month_year: { householdId, month, year } },
+        });
+
+        if (existing) {
+            this.logger.warn(`Settlement already marked as paid for household: ${householdId}, month: ${month}/${year}`);
+            throw new ConflictException('Settlement has already been marked as paid for this month');
+        }
+
+        // Calculate current settlement to determine who owes whom
+        const settlement = await this.calculator.calculateSettlement(householdId, userId, month, year);
+
+        if (settlement.amount === 0) {
+            this.logger.warn(`No settlement needed for household: ${householdId}, month: ${month}/${year}`);
+            throw new BadRequestException('No settlement needed — shared expenses are balanced');
+        }
+
+        const record = await this.prismaService.settlement.create({
+            data: {
+                householdId,
+                month,
+                year,
+                amount: settlement.amount,
+                paidByUserId: settlement.owedByUserId!,
+                paidToUserId: settlement.owedToUserId!,
+            },
+        });
+
+        this.logger.log(`Settlement marked as paid: ${record.id} for household: ${householdId}`);
+
+        await this.cacheService.invalidateDashboard(householdId);
+
+        return {
+            id: record.id,
+            householdId: record.householdId,
+            month: record.month,
+            year: record.year,
+            amount: Number(record.amount),
+            paidByUserId: record.paidByUserId,
+            paidToUserId: record.paidToUserId,
+            paidAt: record.paidAt,
+        };
+    }
 
     /**
      * Computes 12-month rolling averages for income, expenses, and savings.
@@ -101,7 +263,8 @@ export class DashboardService {
      * @param currentYear - The current year
      * @returns Dashboard response with averaged values
      */
-    private async computeYearlyAverage(householdId: string, userId: string, currentMonth: number, currentYear: number): Promise<DashboardResponseDto> {
+    // noinspection JSUnusedPrivateSymbols
+    private async computeYearlyAverageInternal(householdId: string, userId: string, currentMonth: number, currentYear: number): Promise<DashboardResponseDto> {
         const months: { month: number; year: number }[] = [];
         for (let i = 0; i < 12; i++) {
             let m = currentMonth - i;
@@ -255,168 +418,6 @@ export class DashboardService {
             pendingApprovalsCount,
             month: currentMonth,
             year: currentYear,
-        };
-    }
-
-    async getSavings(userId: string, reqMonth?: number, reqYear?: number): Promise<SavingsResponseDto> {
-        this.logger.debug(`Get savings for user: ${userId}`);
-
-        const membership = await this.expenseHelper.requireMembership(userId);
-        const { month, year } = resolveMonthYear(reqMonth, reqYear);
-
-        const cacheKey = this.cacheService.savingsKey(membership.householdId, year, month);
-
-        return this.cacheService.getOrSet(cacheKey, this.cacheService.summaryTTL, async () => {
-            return this.calculator.calculateSavings(membership.householdId, month, year);
-        });
-    }
-
-    /**
-     * Returns monthly savings totals (personal and shared) for the past 12 months.
-     * Data is aggregated at the household level, not per member.
-     *
-     * Use case: User views a line chart on the dashboard showing how household
-     * savings have trended over the past year.
-     *
-     * Scenario: Alex opens the savings history chart and sees that personal savings
-     * peaked in March at EUR 800 and shared savings have been steadily growing
-     * since September.
-     *
-     * @param userId - The authenticated user's ID
-     * @returns Array of 12 monthly savings items ordered chronologically (oldest first)
-     * @throws {NotFoundException} If the user is not a member of any household
-     */
-    async getSavingsHistory(userId: string): Promise<SavingsHistoryItemDto[]> {
-        this.logger.debug(`Get savings history for user: ${userId}`);
-
-        const membership = await this.expenseHelper.requireMembership(userId);
-        const { householdId } = membership;
-
-        const now = new Date();
-        const currentMonth = now.getMonth() + 1;
-        const currentYear = now.getFullYear();
-
-        // Generate list of 12 months to query (oldest first)
-        const months: { month: number; year: number }[] = [];
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(currentYear, currentMonth - 1 - i);
-            months.push({ month: d.getMonth() + 1, year: d.getFullYear() });
-        }
-
-        const savings = await this.prismaService.saving.findMany({
-            where: {
-                householdId,
-                OR: months.map((m) => ({ month: m.month, year: m.year })),
-            },
-        });
-
-        return months.map((m) => {
-            const monthSavings = savings.filter((s) => s.month === m.month && s.year === m.year);
-            return {
-                month: m.month,
-                year: m.year,
-                personalSavings: monthSavings.filter((s) => !s.isShared).reduce((sum, s) => sum + Number(s.amount), 0),
-                sharedSavings: monthSavings.filter((s) => s.isShared).reduce((sum, s) => sum + Number(s.amount), 0),
-            };
-        });
-    }
-
-    /**
-     * Calculates the current settlement between household members for the current month.
-     * Determines who owes whom based on shared expense contributions.
-     *
-     * Use case: User checks the settlement section to see if they owe their partner
-     * or if their partner owes them.
-     *
-     * Scenario: Alex and Sam share rent (€800 split equally) and electricity
-     * (€120 paid by Alex alone). The settlement calculates that Sam owes Alex
-     * €60 (half of the electricity that Alex paid in full).
-     *
-     * @param userId - The authenticated user's ID
-     * @param reqMonth - Optional month override (1-12)
-     * @param reqYear - Optional year override
-     * @returns Settlement calculation with amount, direction, and message
-     * @throws {NotFoundException} If the user is not a member of any household
-     */
-    async getSettlement(userId: string, reqMonth?: number, reqYear?: number): Promise<SettlementResponseDto> {
-        this.logger.debug(`Get settlement for user: ${userId}`);
-
-        const membership = await this.expenseHelper.requireMembership(userId);
-        const { month, year } = resolveMonthYear(reqMonth, reqYear);
-
-        const cacheKey = this.cacheService.settlementKey(membership.householdId, year, month);
-
-        return this.cacheService.getOrSet(cacheKey, this.cacheService.settlementTTL, async () => {
-            return this.calculator.calculateSettlement(membership.householdId, userId, month, year);
-        });
-    }
-
-    /**
-     * Marks the current month's settlement as paid, creating an audit trail.
-     * Only valid when there is an outstanding settlement amount and it hasn't
-     * been marked as paid yet.
-     *
-     * Use case: After the person who owes money has paid their partner,
-     * either member can mark the settlement as paid.
-     *
-     * Scenario: Sam owes Alex €125.50 this month. After Sam transfers the money,
-     * Sam marks the settlement as paid. The system records the payment for audit purposes.
-     *
-     * @param userId - The authenticated user's ID
-     * @returns The created settlement record
-     * @throws {NotFoundException} If the user is not a member of any household
-     * @throws {BadRequestException} If there is no settlement needed (amount is zero)
-     * @throws {ConflictException} If the settlement has already been marked as paid this month
-     */
-    async markSettlementPaid(userId: string): Promise<MarkSettlementPaidResponseDto> {
-        this.logger.log(`Mark settlement paid for user: ${userId}`);
-
-        const membership = await this.expenseHelper.requireMembership(userId);
-        const { householdId } = membership;
-        const { month, year } = resolveMonthYear();
-
-        // Check if already settled this month
-        const existing = await this.prismaService.settlement.findUnique({
-            where: { householdId_month_year: { householdId, month, year } },
-        });
-
-        if (existing) {
-            this.logger.warn(`Settlement already marked as paid for household: ${householdId}, month: ${month}/${year}`);
-            throw new ConflictException('Settlement has already been marked as paid for this month');
-        }
-
-        // Calculate current settlement to determine who owes whom
-        const settlement = await this.calculator.calculateSettlement(householdId, userId, month, year);
-
-        if (settlement.amount === 0) {
-            this.logger.warn(`No settlement needed for household: ${householdId}, month: ${month}/${year}`);
-            throw new BadRequestException('No settlement needed — shared expenses are balanced');
-        }
-
-        const record = await this.prismaService.settlement.create({
-            data: {
-                householdId,
-                month,
-                year,
-                amount: settlement.amount,
-                paidByUserId: settlement.owedByUserId!,
-                paidToUserId: settlement.owedToUserId!,
-            },
-        });
-
-        this.logger.log(`Settlement marked as paid: ${record.id} for household: ${householdId}`);
-
-        await this.cacheService.invalidateDashboard(householdId);
-
-        return {
-            id: record.id,
-            householdId: record.householdId,
-            month: record.month,
-            year: record.year,
-            amount: Number(record.amount),
-            paidByUserId: record.paidByUserId,
-            paidToUserId: record.paidToUserId,
-            paidAt: record.paidAt,
         };
     }
 }

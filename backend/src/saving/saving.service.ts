@@ -206,9 +206,7 @@ export class SavingService {
         }
 
         if (dto.amount > totalShared) {
-            throw new BadRequestException(
-                `Withdrawal amount (${dto.amount}) exceeds total household shared savings (${totalShared})`,
-            );
+            throw new BadRequestException(`Withdrawal amount (${dto.amount}) exceeds total household shared savings (${totalShared})`);
         }
 
         const approval = await this.prismaService.expenseApproval.create({
@@ -261,14 +259,7 @@ export class SavingService {
      * @param year - The year
      * @param tx - The Prisma transaction client
      */
-    async executeSharedWithdrawal(
-        requestedById: string,
-        householdId: string,
-        amount: number,
-        month: number,
-        year: number,
-        tx: any,
-    ): Promise<void> {
+    async executeSharedWithdrawal(requestedById: string, householdId: string, amount: number, month: number, year: number, tx: any): Promise<void> {
         const allSharedSavings = await tx.saving.findMany({
             where: { householdId, month, year, isShared: true, amount: { gt: 0 } },
         });
@@ -281,9 +272,7 @@ export class SavingService {
         const total = allSharedSavings.reduce((sum: number, s: any) => sum + Number(s.amount), 0);
 
         if (amount > total) {
-            throw new BadRequestException(
-                `Withdrawal amount (${amount}) exceeds available shared savings (${total})`,
-            );
+            throw new BadRequestException(`Withdrawal amount (${amount}) exceeds available shared savings (${total})`);
         }
 
         // Proportionally deduct from each contributor
@@ -311,7 +300,9 @@ export class SavingService {
             remaining = Math.max(0, remaining - deduction);
         }
 
-        this.logger.log(`Shared withdrawal executed: household ${householdId}, ${month}/${year} -${amount} distributed across ${allSharedSavings.length} member(s) (requested by ${requestedById})`);
+        this.logger.log(
+            `Shared withdrawal executed: household ${householdId}, ${month}/${year} -${amount} distributed across ${allSharedSavings.length} member(s) (requested by ${requestedById})`,
+        );
     }
 
     /**

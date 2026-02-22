@@ -25,7 +25,7 @@ export interface WithdrawDialogData {
       @if (data.requiresApproval) {
         <div class="approval-info">
           <mat-icon aria-hidden="true">info</mat-icon>
-          <span>This withdrawal needs approval from another household member.</span>
+          <span>Withdrawals are deducted from the entire household pool and require another member's approval.</span>
         </div>
       }
       <mat-form-field appearance="outline" class="full-width">
