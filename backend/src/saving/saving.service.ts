@@ -169,23 +169,46 @@ export class SavingService {
      * @throws {NotFoundException} If no shared saving exists for the specified month
      * @throws {BadRequestException} If withdrawal amount exceeds current shared savings
      */
+    /**
+     * Requests a withdrawal from the household's shared savings pool.
+     * The requesting user does not need to have contributed savings this month —
+     * any member can request a withdrawal from the total pooled amount.
+     * Since shared savings belong to the entire household, this creates an
+     * approval request that another member must accept.
+     *
+     * Scenario: Sam wants to withdraw 50 EUR from shared savings even though
+     * Sam contributed nothing this month. Alex contributed 200 EUR and Jordan
+     * contributed 100 EUR, giving a pool of 300 EUR. Sam's request is valid
+     * and creates a pending approval for Alex or Jordan to accept.
+     *
+     * @param userId - The authenticated user's ID
+     * @param dto - Amount to withdraw and optional month/year
+     * @returns The approval response (pending approval created)
+     * @throws {NotFoundException} If user is not a member of any household
+     * @throws {NotFoundException} If the household has no shared savings for the specified month
+     * @throws {BadRequestException} If withdrawal amount exceeds total household shared savings
+     */
     async requestSharedWithdrawal(userId: string, dto: WithdrawSavingDto): Promise<{ approvalId: string; message: string }> {
         this.logger.debug(`Request shared withdrawal for user: ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const { month, year } = resolveMonthYear(dto.month, dto.year);
 
-        const existing = await this.prismaService.saving.findUnique({
-            where: { userId_month_year_isShared: { userId, month, year, isShared: true } },
+        // Check total household shared savings (not just the requester's contribution)
+        const allSharedSavings = await this.prismaService.saving.findMany({
+            where: { householdId: membership.householdId, month, year, isShared: true },
         });
 
-        if (!existing) {
+        const totalShared = allSharedSavings.reduce((sum, s) => sum + Number(s.amount), 0);
+
+        if (totalShared === 0) {
             throw new NotFoundException('No shared savings found for this month');
         }
 
-        const currentAmount = Number(existing.amount);
-        if (dto.amount > currentAmount) {
-            throw new BadRequestException(`Withdrawal amount (${dto.amount}) exceeds current shared savings (${currentAmount})`);
+        if (dto.amount > totalShared) {
+            throw new BadRequestException(
+                `Withdrawal amount (${dto.amount}) exceeds total household shared savings (${totalShared})`,
+            );
         }
 
         const approval = await this.prismaService.expenseApproval.create({
@@ -222,6 +245,22 @@ export class SavingService {
      * @param year - The year
      * @param tx - The Prisma transaction client
      */
+    /**
+     * Executes an approved shared savings withdrawal by proportionally deducting
+     * the amount from all household members who have shared savings for that month.
+     * Called by the ApprovalService when a WITHDRAW_SAVINGS approval is accepted.
+     *
+     * Scenario: The household pool has 300 EUR (Alex: 200, Sam: 100). Jordan requested
+     * a 150 EUR withdrawal. On approval, Alex loses 100 EUR (2/3 of 150) and Sam loses
+     * 50 EUR (1/3 of 150), leaving Alex with 100 and Sam with 50.
+     *
+     * @param requestedById - The user who originally requested the withdrawal (for logging)
+     * @param householdId - The household ID
+     * @param amount - The withdrawal amount
+     * @param month - The month
+     * @param year - The year
+     * @param tx - The Prisma transaction client
+     */
     async executeSharedWithdrawal(
         requestedById: string,
         householdId: string,
@@ -230,24 +269,49 @@ export class SavingService {
         year: number,
         tx: any,
     ): Promise<void> {
-        const existing = await tx.saving.findUnique({
-            where: { userId_month_year_isShared: { userId: requestedById, month, year, isShared: true } },
+        const allSharedSavings = await tx.saving.findMany({
+            where: { householdId, month, year, isShared: true, amount: { gt: 0 } },
         });
 
-        if (!existing) {
-            this.logger.warn(`Shared saving not found for withdrawal execution: user ${requestedById}, ${month}/${year}`);
-            throw new NotFoundException('Shared saving no longer exists for this month');
+        if (allSharedSavings.length === 0) {
+            this.logger.warn(`No shared savings found for withdrawal execution: household ${householdId}, ${month}/${year}`);
+            throw new NotFoundException('Shared savings no longer exist for this month');
         }
 
-        const currentAmount = Number(existing.amount);
-        const newAmount = Math.max(0, currentAmount - amount);
+        const total = allSharedSavings.reduce((sum: number, s: any) => sum + Number(s.amount), 0);
 
-        await tx.saving.update({
-            where: { id: existing.id },
-            data: { amount: newAmount },
-        });
+        if (amount > total) {
+            throw new BadRequestException(
+                `Withdrawal amount (${amount}) exceeds available shared savings (${total})`,
+            );
+        }
 
-        this.logger.log(`Shared withdrawal executed: user ${requestedById}, ${month}/${year} -${amount} (was ${currentAmount}, now ${newAmount})`);
+        // Proportionally deduct from each contributor
+        let remaining = amount;
+
+        for (let i = 0; i < allSharedSavings.length; i++) {
+            const saving = allSharedSavings[i];
+            const memberAmount = Number(saving.amount);
+
+            let deduction: number;
+            if (i === allSharedSavings.length - 1) {
+                // Last record: deduct whatever remains to avoid rounding drift
+                deduction = remaining;
+            } else {
+                deduction = Math.round((memberAmount / total) * amount * 100) / 100;
+                deduction = Math.min(deduction, memberAmount);
+            }
+
+            const newAmount = Math.max(0, memberAmount - deduction);
+            await tx.saving.update({
+                where: { id: saving.id },
+                data: { amount: newAmount },
+            });
+
+            remaining = Math.max(0, remaining - deduction);
+        }
+
+        this.logger.log(`Shared withdrawal executed: household ${householdId}, ${month}/${year} -${amount} distributed across ${allSharedSavings.length} member(s) (requested by ${requestedById})`);
     }
 
     /**

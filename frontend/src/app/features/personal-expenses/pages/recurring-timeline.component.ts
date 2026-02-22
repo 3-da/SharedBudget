@@ -47,7 +47,7 @@ class UndoScopeDialogComponent {}
   template: `
     <app-page-header [title]="expenseName()" [subtitle]="timelineSubtitle()">
       <button mat-button (click)="router.navigate(['/expenses/personal'])">
-        <mat-icon>arrow_back</mat-icon> Back
+        <mat-icon aria-hidden="true">arrow_back</mat-icon> Back
       </button>
     </app-page-header>
 
@@ -70,11 +70,11 @@ class UndoScopeDialogComponent {}
               <mat-card-actions align="end">
                 @if (m.isOverride) {
                   <button mat-button (click)="undoOverride(m)">
-                    <mat-icon>undo</mat-icon> Undo
+                    <mat-icon aria-hidden="true">undo</mat-icon> Undo
                   </button>
                 }
                 <button mat-button (click)="openOverride(m)">
-                  <mat-icon>edit</mat-icon> Override
+                  <mat-icon aria-hidden="true">edit</mat-icon> Override
                 </button>
               </mat-card-actions>
             }

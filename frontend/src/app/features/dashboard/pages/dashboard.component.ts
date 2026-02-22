@@ -25,7 +25,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
       <div class="header-actions">
         @if (store.pendingApprovalsCount() > 0) {
           <button mat-stroked-button routerLink="/approvals" [matBadge]="store.pendingApprovalsCount()" matBadgeColor="warn">
-            <mat-icon>pending_actions</mat-icon> Approvals
+            <mat-icon aria-hidden="true">pending_actions</mat-icon> Approvals
           </button>
         }
       </div>

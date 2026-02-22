@@ -13,13 +13,13 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   template: `
     <mat-card>
       <mat-card-header>
-        <mat-icon matCardAvatar class="settlement-icon">handshake</mat-icon>
+        <mat-icon matCardAvatar class="settlement-icon" aria-hidden="true">handshake</mat-icon>
         <mat-card-title>Settlement</mat-card-title>
         <mat-card-subtitle>{{ monthLabel() }}</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <div class="settlement-info">
-          <mat-icon>info_outline</mat-icon>
+          <mat-icon aria-hidden="true">info_outline</mat-icon>
           <span>Calculates who owes whom based on shared expenses where one member paid more than their fair share.</span>
         </div>
         @if (settlement(); as s) {
@@ -29,12 +29,12 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
           }
           @if (s.isSettled) {
             <div class="settled-badge">
-              <mat-icon>verified</mat-icon>
+              <mat-icon aria-hidden="true">verified</mat-icon>
               <span>Settled</span>
             </div>
           } @else if (s.amount > 0) {
             <button mat-flat-button (click)="markPaid.emit()">
-              <mat-icon>check_circle</mat-icon> Mark as Paid
+              <mat-icon aria-hidden="true">check_circle</mat-icon> Mark as Paid
             </button>
           }
         } @else {

@@ -426,10 +426,15 @@ describe('SavingService', () => {
     //#region requestSharedWithdrawal
     describe('requestSharedWithdrawal', () => {
         const dto = { amount: 50 };
+        // Household pool: user-123 contributed 100, another member contributed 200 → total 300
+        const mockHouseholdSharedSavings = [
+            { ...mockSharedSaving, amount: 100 },
+            { ...mockSharedSaving, id: 'saving-003', userId: 'user-456', amount: 200 },
+        ];
 
-        it('should create an approval request for shared withdrawal', async () => {
+        it('should create an approval request for shared withdrawal from household pool', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.saving.findUnique.mockResolvedValue(mockSharedSaving); // amount: 100
+            mockPrismaService.saving.findMany.mockResolvedValue(mockHouseholdSharedSavings); // total: 300
             mockPrismaService.expenseApproval.create.mockResolvedValue({ id: 'approval-001' });
 
             const result = await service.requestSharedWithdrawal(mockUserId, dto);
@@ -451,35 +456,48 @@ describe('SavingService', () => {
             expect(result.message).toBe('Withdrawal request submitted for approval');
         });
 
-        it('should throw NotFoundException if no shared saving exists', async () => {
+        it('should allow withdrawal even if requester has no personal contribution', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.saving.findUnique.mockResolvedValue(null);
+            // Requester has no savings, but another member has 200 → total 200
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { ...mockSharedSaving, id: 'saving-003', userId: 'user-456', amount: 200 },
+            ]);
+            mockPrismaService.expenseApproval.create.mockResolvedValue({ id: 'approval-001' });
+
+            const result = await service.requestSharedWithdrawal(mockUserId, { amount: 100 });
+
+            expect(result.approvalId).toBe('approval-001');
+        });
+
+        it('should throw NotFoundException if household has no shared savings', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.saving.findMany.mockResolvedValue([]);
 
             await expect(service.requestSharedWithdrawal(mockUserId, dto)).rejects.toThrow(NotFoundException);
             await expect(service.requestSharedWithdrawal(mockUserId, dto)).rejects.toThrow('No shared savings found for this month');
         });
 
-        it('should throw BadRequestException if withdrawal exceeds current shared savings', async () => {
+        it('should throw BadRequestException if withdrawal exceeds total household shared savings', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.saving.findUnique.mockResolvedValue(mockSharedSaving); // amount: 100
+            mockPrismaService.saving.findMany.mockResolvedValue([{ ...mockSharedSaving, amount: 100 }]); // total: 100
 
             await expect(service.requestSharedWithdrawal(mockUserId, { amount: 101 })).rejects.toThrow(BadRequestException);
-            await expect(service.requestSharedWithdrawal(mockUserId, { amount: 101 })).rejects.toThrow('Withdrawal amount (101) exceeds current shared savings (100)');
+            await expect(service.requestSharedWithdrawal(mockUserId, { amount: 101 })).rejects.toThrow('Withdrawal amount (101) exceeds total household shared savings (100)');
         });
 
-        it('should allow withdrawal of exact current amount', async () => {
+        it('should allow withdrawal of exact total pool amount', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.saving.findUnique.mockResolvedValue(mockSharedSaving); // amount: 100
+            mockPrismaService.saving.findMany.mockResolvedValue(mockHouseholdSharedSavings); // total: 300
             mockPrismaService.expenseApproval.create.mockResolvedValue({ id: 'approval-002' });
 
-            const result = await service.requestSharedWithdrawal(mockUserId, { amount: 100 });
+            const result = await service.requestSharedWithdrawal(mockUserId, { amount: 300 });
 
             expect(result.approvalId).toBe('approval-002');
         });
 
         it('should invalidate approval caches', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.saving.findUnique.mockResolvedValue(mockSharedSaving);
+            mockPrismaService.saving.findMany.mockResolvedValue(mockHouseholdSharedSavings);
             mockPrismaService.expenseApproval.create.mockResolvedValue({ id: 'approval-001' });
 
             await service.requestSharedWithdrawal(mockUserId, dto);
@@ -500,13 +518,18 @@ describe('SavingService', () => {
     describe('executeSharedWithdrawal', () => {
         const mockTx = {
             saving: {
-                findUnique: vi.fn(),
+                findMany: vi.fn(),
                 update: vi.fn(),
             },
         };
 
-        it('should subtract the approved amount from shared savings', async () => {
-            mockTx.saving.findUnique.mockResolvedValue(mockSharedSaving); // amount: 100
+        beforeEach(() => {
+            mockTx.saving.findMany.mockReset();
+            mockTx.saving.update.mockReset();
+        });
+
+        it('should subtract the approved amount from a single member proportionally', async () => {
+            mockTx.saving.findMany.mockResolvedValue([{ ...mockSharedSaving, amount: 100 }]);
             mockTx.saving.update.mockResolvedValue({ ...mockSharedSaving, amount: 50 });
 
             await service.executeSharedWithdrawal(mockUserId, mockHouseholdId, 50, 6, 2026, mockTx);
@@ -517,27 +540,39 @@ describe('SavingService', () => {
             });
         });
 
-        it('should set amount to 0 if withdrawal exceeds current (uses Math.max)', async () => {
-            mockTx.saving.findUnique.mockResolvedValue({ ...mockSharedSaving, amount: 30 });
-            mockTx.saving.update.mockResolvedValue({ ...mockSharedSaving, amount: 0 });
+        it('should proportionally deduct from multiple members', async () => {
+            // Member A: 200, Member B: 100 → total 300, withdraw 150
+            // Member A deduction: 200/300 * 150 = 100 → new 100
+            // Member B deduction (last, takes remainder): 50 → new 50
+            const memberA = { ...mockSharedSaving, id: 'saving-A', userId: 'user-A', amount: 200 };
+            const memberB = { ...mockSharedSaving, id: 'saving-B', userId: 'user-B', amount: 100 };
+            mockTx.saving.findMany.mockResolvedValue([memberA, memberB]);
+            mockTx.saving.update.mockResolvedValue({});
 
-            await service.executeSharedWithdrawal(mockUserId, mockHouseholdId, 50, 6, 2026, mockTx);
+            await service.executeSharedWithdrawal(mockUserId, mockHouseholdId, 150, 6, 2026, mockTx);
 
-            expect(mockTx.saving.update).toHaveBeenCalledWith({
-                where: { id: 'saving-002' },
-                data: { amount: 0 },
-            });
+            expect(mockTx.saving.update).toHaveBeenCalledTimes(2);
+            expect(mockTx.saving.update).toHaveBeenNthCalledWith(1, { where: { id: 'saving-A' }, data: { amount: 100 } });
+            expect(mockTx.saving.update).toHaveBeenNthCalledWith(2, { where: { id: 'saving-B' }, data: { amount: 50 } });
         });
 
-        it('should throw NotFoundException if shared saving no longer exists', async () => {
-            mockTx.saving.findUnique.mockResolvedValue(null);
+        it('should throw NotFoundException if no shared savings exist at execution time', async () => {
+            mockTx.saving.findMany.mockResolvedValue([]);
 
             await expect(
                 service.executeSharedWithdrawal(mockUserId, mockHouseholdId, 50, 6, 2026, mockTx),
             ).rejects.toThrow(NotFoundException);
             await expect(
                 service.executeSharedWithdrawal(mockUserId, mockHouseholdId, 50, 6, 2026, mockTx),
-            ).rejects.toThrow('Shared saving no longer exists for this month');
+            ).rejects.toThrow('Shared savings no longer exist for this month');
+        });
+
+        it('should throw BadRequestException if withdrawal exceeds total at execution time', async () => {
+            mockTx.saving.findMany.mockResolvedValue([{ ...mockSharedSaving, amount: 30 }]);
+
+            await expect(
+                service.executeSharedWithdrawal(mockUserId, mockHouseholdId, 50, 6, 2026, mockTx),
+            ).rejects.toThrow(BadRequestException);
         });
     });
     //#endregion

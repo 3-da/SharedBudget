@@ -1,10 +1,11 @@
-import { Injectable, inject, signal, computed, Injector } from '@angular/core';
+import { Injectable, inject, signal, computed, Injector, effect } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Household, HouseholdInvitation, DashboardOverview, HouseholdRole } from '../../../shared/models';
 import { HouseholdService } from '../services/household.service';
 import { InvitationService } from '../services/invitation.service';
 import { DashboardService } from '../../dashboard/services/dashboard.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { NotificationStore } from '../../../core/stores/notification.store';
 import { extractHttpError } from '../../../shared/utils/extract-error';
 
 @Injectable({ providedIn: 'root' })
@@ -13,8 +14,15 @@ export class HouseholdStore {
   private readonly invitationService = inject(InvitationService);
   private readonly dashboardService = inject(DashboardService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly notificationStore = inject(NotificationStore);
   // Use Injector for lazy resolution to break: HouseholdStore → AuthService → StoreResetService → HouseholdStore
   private readonly injector = inject(Injector);
+
+  constructor() {
+    effect(() => {
+      this.notificationStore.setPendingInvitationsCount(this.invitations().length);
+    });
+  }
 
   readonly household = signal<Household | null>(null);
   readonly overview = signal<DashboardOverview | null>(null);
@@ -102,7 +110,7 @@ export class HouseholdStore {
   joinByCode(inviteCode: string): void {
     this.loading.set(true);
     this.householdService.joinByCode({ inviteCode }).subscribe({
-      next: h => { this.household.set(h); this.loading.set(false); },
+      next: h => { this.household.set(h); this.loading.set(false); this.loadOverview(); },
       error: err => { this.error.set(extractHttpError(err)); this.loading.set(false); },
     });
   }

@@ -29,12 +29,12 @@ import { AuthService } from '../../../core/auth/auth.service';
           <div class="timer-section">
             @if (codeExpiry() > 0) {
               <span class="timer">
-                <mat-icon>timer</mat-icon>
+                <mat-icon aria-hidden="true">timer</mat-icon>
                 Code expires in {{ expiryDisplay() }}
               </span>
             } @else {
               <span class="timer expired">
-                <mat-icon>timer_off</mat-icon>
+                <mat-icon aria-hidden="true">timer_off</mat-icon>
                 Code expired — request a new one
               </span>
             }

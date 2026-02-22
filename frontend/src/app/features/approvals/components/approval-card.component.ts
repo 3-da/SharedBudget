@@ -60,14 +60,14 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
         <mat-card-actions>
           @if (approval().requestedBy.id === currentUserId()) {
             <button mat-button color="warn" (click)="cancel.emit(approval().id)">
-              <mat-icon>cancel</mat-icon> Cancel
+              <mat-icon aria-hidden="true">cancel</mat-icon> Cancel
             </button>
           } @else {
             <button mat-flat-button (click)="accept.emit(approval().id)">
-              <mat-icon>check</mat-icon> Accept
+              <mat-icon aria-hidden="true">check</mat-icon> Accept
             </button>
             <button mat-button color="warn" (click)="reject.emit(approval().id)">
-              <mat-icon>close</mat-icon> Reject
+              <mat-icon aria-hidden="true">close</mat-icon> Reject
             </button>
           }
         </mat-card-actions>

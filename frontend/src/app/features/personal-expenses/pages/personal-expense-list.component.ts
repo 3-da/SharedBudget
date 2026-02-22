@@ -26,7 +26,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
           [selectedYear]="year()"
           (monthChange)="onMonthChange($event)" />
         <button mat-flat-button (click)="router.navigate(['/expenses/personal/new'])">
-          <mat-icon>add</mat-icon> Add Expense
+          <mat-icon aria-hidden="true">add</mat-icon> Add Expense
         </button>
       </div>
     </app-page-header>

@@ -35,7 +35,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <div class="savings-layout">
         <mat-card>
           <mat-card-header>
-            <mat-icon matCardAvatar>savings</mat-icon>
+            <mat-icon matCardAvatar aria-hidden="true">savings</mat-icon>
             <mat-card-title>Personal Savings</mat-card-title>
             <mat-card-subtitle>Your individual savings this month</mat-card-subtitle>
           </mat-card-header>
@@ -50,7 +50,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
                 <button mat-flat-button type="submit" [disabled]="personalForm.invalid">Add to Savings</button>
                 @if (store.totalPersonal() > 0) {
                   <button mat-stroked-button type="button" color="warn" (click)="withdrawPersonal()">
-                    <mat-icon>undo</mat-icon> Withdraw
+                    <mat-icon aria-hidden="true">undo</mat-icon> Withdraw
                   </button>
                 }
               </div>
@@ -60,12 +60,22 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
         <mat-card>
           <mat-card-header>
-            <mat-icon matCardAvatar>group</mat-icon>
+            <mat-icon matCardAvatar aria-hidden="true">group</mat-icon>
             <mat-card-title>Shared Savings</mat-card-title>
             <mat-card-subtitle>Joint household savings this month</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
-            <div class="current-amount">{{ store.totalShared() | currencyEur }}</div>
+            <div class="savings-amounts">
+              <div>
+                <div class="amount-label">Your contribution</div>
+                <div class="current-amount">{{ store.totalShared() | currencyEur }}</div>
+              </div>
+              <div>
+                <div class="amount-label">Household pool</div>
+                <div class="current-amount pool-amount">{{ store.totalHouseholdShared() | currencyEur }}</div>
+              </div>
+            </div>
+            <p class="withdrawal-hint">Withdrawals are deducted from the entire household pool and require another member's approval.</p>
             <form [formGroup]="sharedForm" (ngSubmit)="addShared()">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Amount (EUR)</mat-label>
@@ -73,9 +83,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
               </mat-form-field>
               <div class="action-buttons">
                 <button mat-flat-button type="submit" [disabled]="sharedForm.invalid">Add to Savings</button>
-                @if (store.totalShared() > 0) {
+                @if (store.totalHouseholdShared() > 0) {
                   <button mat-stroked-button type="button" color="warn" (click)="withdrawShared()">
-                    <mat-icon>undo</mat-icon> Withdraw
+                    <mat-icon aria-hidden="true">undo</mat-icon> Withdraw
                   </button>
                 }
               </div>
@@ -85,7 +95,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
         <mat-card class="summary-card">
           <mat-card-header>
-            <mat-icon matCardAvatar>account_balance</mat-icon>
+            <mat-icon matCardAvatar aria-hidden="true">account_balance</mat-icon>
             <mat-card-title>Household Total</mat-card-title>
           </mat-card-header>
           <mat-card-content>
@@ -96,7 +106,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
         @if (householdStore.overview(); as ov) {
           <mat-card class="summary-card">
             <mat-card-header>
-              <mat-icon matCardAvatar>people</mat-icon>
+              <mat-icon matCardAvatar aria-hidden="true">people</mat-icon>
               <mat-card-title>Per-Member Breakdown</mat-card-title>
               <mat-card-subtitle>Shared savings by household member</mat-card-subtitle>
             </mat-card-header>
@@ -140,6 +150,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     .member-name { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .member-amounts { display: flex; gap: 16px; flex-shrink: 0; }
     .amount-label { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; white-space: nowrap; }
+    .savings-amounts { display: flex; gap: var(--space-lg); margin-bottom: var(--space-sm); }
+    .pool-amount { color: var(--mat-sys-primary); }
+    .withdrawal-hint { font-size: 0.8rem; color: var(--mat-sys-on-surface-variant); margin: 0 0 var(--space-sm); line-height: 1.4; }
     @media (max-width: 768px) {
       .savings-layout { grid-template-columns: 1fr; }
       .current-amount { font-size: 1.4rem; }
@@ -209,9 +222,9 @@ export class SavingsOverviewComponent implements OnInit {
   }
 
   withdrawShared(): void {
-    const current = this.store.totalShared();
+    const poolTotal = this.store.totalHouseholdShared();
     this.dialog.open<WithdrawDialogComponent, WithdrawDialogData, number | null>(WithdrawDialogComponent, {
-      data: { title: 'Withdraw Shared Savings', currentAmount: current, requiresApproval: true },
+      data: { title: 'Withdraw from Shared Savings Pool', currentAmount: poolTotal, requiresApproval: true },
     }).afterClosed().pipe(filter(amount => amount != null && amount > 0)).subscribe(amount => {
       this.store.withdrawShared(
         { amount: amount!, month: this.month(), year: this.year() },

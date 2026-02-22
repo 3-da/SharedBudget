@@ -24,7 +24,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     } @else if (isSelf()) {
       <app-empty-state icon="block" title="Cannot view own profile" description="Navigate to the relevant pages to see your own data.">
         <button mat-flat-button (click)="goBack()">
-          <mat-icon>arrow_back</mat-icon> Back to Household
+          <mat-icon aria-hidden="true">arrow_back</mat-icon> Back to Household
         </button>
       </app-empty-state>
     } @else if (memberIncome(); as member) {
@@ -36,7 +36,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
         <!-- Salary -->
         <mat-card>
           <mat-card-header>
-            <mat-icon matCardAvatar class="icon-salary">payments</mat-icon>
+            <mat-icon matCardAvatar class="icon-salary" aria-hidden="true">payments</mat-icon>
             <mat-card-title>Salary</mat-card-title>
             <mat-card-subtitle>{{ store.monthLabel() }}</mat-card-subtitle>
           </mat-card-header>
@@ -55,7 +55,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
         <!-- Expenses -->
         <mat-card>
           <mat-card-header>
-            <mat-icon matCardAvatar class="icon-expenses">receipt_long</mat-icon>
+            <mat-icon matCardAvatar class="icon-expenses" aria-hidden="true">receipt_long</mat-icon>
             <mat-card-title>Personal Expenses</mat-card-title>
             <mat-card-subtitle>Monthly total</mat-card-subtitle>
           </mat-card-header>
@@ -70,7 +70,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
         <!-- Savings -->
         <mat-card>
           <mat-card-header>
-            <mat-icon matCardAvatar class="icon-savings">savings</mat-icon>
+            <mat-icon matCardAvatar class="icon-savings" aria-hidden="true">savings</mat-icon>
             <mat-card-title>Savings & Budget</mat-card-title>
             <mat-card-subtitle>Actual savings from records</mat-card-subtitle>
           </mat-card-header>
@@ -95,7 +95,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     } @else {
       <app-empty-state icon="person_off" title="Member not found" description="This member does not exist or is not in your household.">
         <button mat-flat-button (click)="goBack()">
-          <mat-icon>arrow_back</mat-icon> Back to Household
+          <mat-icon aria-hidden="true">arrow_back</mat-icon> Back to Household
         </button>
       </app-empty-state>
     }

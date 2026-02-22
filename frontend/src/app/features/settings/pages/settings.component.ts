@@ -56,7 +56,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
           <mat-expansion-panel expanded class="warn-panel">
             <mat-expansion-panel-header>
               <mat-panel-title>
-                <mat-icon>warning</mat-icon>
+                <mat-icon aria-hidden="true">warning</mat-icon>
                 Account Deletion Request
               </mat-panel-title>
             </mat-expansion-panel-header>
@@ -85,7 +85,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
         <mat-expansion-panel class="danger-panel">
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-icon>dangerous</mat-icon>
+              <mat-icon aria-hidden="true">dangerous</mat-icon>
               Danger Zone
             </mat-panel-title>
           </mat-expansion-panel-header>
@@ -95,7 +95,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
             @if (isOwnerWithMembers()) {
               @if (pendingOutgoingRequestId()) {
                 <div class="pending-request-info">
-                  <mat-icon color="warn">hourglass_empty</mat-icon>
+                  <mat-icon color="warn" aria-hidden="true">hourglass_empty</mat-icon>
                   <div>
                     <p><strong>Deletion request pending</strong></p>
                     <p class="secondary-text">
@@ -120,7 +120,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
                   </mat-select>
                 </mat-form-field>
                 <button mat-flat-button color="warn" [disabled]="loading() || !selectedTargetId" (click)="sendDeleteRequest()">
-                  <mat-icon>send</mat-icon> Send Deletion Request
+                  <mat-icon aria-hidden="true">send</mat-icon> Send Deletion Request
                 </button>
               }
             } @else {
@@ -134,7 +134,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
                 This action cannot be undone.
               </p>
               <button mat-flat-button color="warn" [disabled]="loading()" (click)="deleteAccount()">
-                <mat-icon>delete_forever</mat-icon> Delete My Account
+                <mat-icon aria-hidden="true">delete_forever</mat-icon> Delete My Account
               </button>
             }
           </div>

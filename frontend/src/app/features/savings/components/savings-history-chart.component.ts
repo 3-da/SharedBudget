@@ -14,7 +14,7 @@ import { cssVar } from '../../../shared/utils/chart-colors';
   template: `
     <mat-card>
       <mat-card-header>
-        <mat-icon matCardAvatar>show_chart</mat-icon>
+        <mat-icon matCardAvatar aria-hidden="true">show_chart</mat-icon>
         <mat-card-title>Savings History</mat-card-title>
         <mat-card-subtitle>Personal and shared savings over the past 12 months</mat-card-subtitle>
       </mat-card-header>

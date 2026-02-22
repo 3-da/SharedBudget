@@ -13,7 +13,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
   template: `
     <mat-card>
       <mat-card-header>
-        <mat-icon matCardAvatar>person</mat-icon>
+        <mat-icon matCardAvatar aria-hidden="true">person</mat-icon>
         <mat-card-title>{{ income().firstName }} {{ income().lastName }}</mat-card-title>
         <mat-card-subtitle>{{ role() === 'OWNER' ? 'Owner' : 'Member' }}</mat-card-subtitle>
       </mat-card-header>

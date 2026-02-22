@@ -45,3 +45,4 @@ generated
 .DS_Store
 *.tsbuildinfo
 nul
+docs/deep-dive
