@@ -21,8 +21,14 @@ export class SavingStore {
   readonly personalSaving = computed(() => this.mySavings().find(s => !s.isShared) ?? null);
   readonly sharedSaving = computed(() => this.mySavings().find(s => s.isShared) ?? null);
   readonly totalPersonal = computed(() => this.personalSaving()?.amount ?? 0);
+  /** The current user's own shared savings contribution this month */
   readonly totalShared = computed(() => this.sharedSaving()?.amount ?? 0);
+  /** Sum of ALL household members' personal + shared savings */
   readonly totalHousehold = computed(() => this.householdSavings().reduce((sum, s) => sum + s.amount, 0));
+  /** Sum of ALL household members' shared savings only — this is the withdrawable pool */
+  readonly totalHouseholdShared = computed(() =>
+    this.householdSavings().filter(s => s.isShared).reduce((sum, s) => sum + s.amount, 0),
+  );
 
   reset(): void {
     this.mySavings.set([]);

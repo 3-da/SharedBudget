@@ -14,7 +14,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card class="summary-card">
         <mat-card-content>
           <div class="card-icon income">
-            <mat-icon>trending_up</mat-icon>
+            <mat-icon aria-hidden="true">trending_up</mat-icon>
           </div>
           <span class="label">{{ prefix() }}Income</span>
           <span class="value">{{ data().totalCurrentIncome | currencyEur }}</span>
@@ -24,7 +24,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card class="summary-card">
         <mat-card-content>
           <div class="card-icon expenses">
-            <mat-icon>trending_down</mat-icon>
+            <mat-icon aria-hidden="true">trending_down</mat-icon>
           </div>
           <span class="label">{{ prefix() }}Expenses</span>
           <span class="value">{{ data().expenses.totalHouseholdExpenses | currencyEur }}</span>
@@ -34,7 +34,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card class="summary-card">
         <mat-card-content>
           <div class="card-icon remaining-expenses">
-            <mat-icon>pending</mat-icon>
+            <mat-icon aria-hidden="true">pending</mat-icon>
           </div>
           <span class="label">Remaining Expenses</span>
           <span class="value">{{ data().expenses.remainingHouseholdExpenses | currencyEur }}</span>
@@ -44,7 +44,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card class="summary-card">
         <mat-card-content>
           <div class="card-icon savings">
-            <mat-icon>savings</mat-icon>
+            <mat-icon aria-hidden="true">savings</mat-icon>
           </div>
           <span class="label">Total Savings</span>
           <span class="value">{{ data().savings.totalSavings | currencyEur }}</span>
@@ -54,7 +54,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card class="summary-card">
         <mat-card-content>
           <div class="card-icon shared-savings">
-            <mat-icon>group</mat-icon>
+            <mat-icon aria-hidden="true">group</mat-icon>
           </div>
           <span class="label">Shared Savings</span>
           <span class="value">{{ data().savings.totalSharedSavings | currencyEur }}</span>
@@ -64,7 +64,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card class="summary-card">
         <mat-card-content>
           <div class="card-icon" [class]="remainingBudget() >= 0 ? 'positive' : 'negative'">
-            <mat-icon>{{ remainingBudget() >= 0 ? 'account_balance' : 'warning' }}</mat-icon>
+            <mat-icon aria-hidden="true">{{ remainingBudget() >= 0 ? 'account_balance' : 'warning' }}</mat-icon>
           </div>
           <span class="label">Remaining Budget</span>
           <span class="value" [class]="remainingBudget() >= 0 ? 'positive' : 'negative'">

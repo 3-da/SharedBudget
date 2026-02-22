@@ -31,10 +31,10 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
               </button>
               <mat-menu #menu="matMenu">
                 <button mat-menu-item (click)="transfer.emit(member.userId)">
-                  <mat-icon>swap_horiz</mat-icon> Transfer Ownership
+                  <mat-icon aria-hidden="true">swap_horiz</mat-icon> Transfer Ownership
                 </button>
                 <button mat-menu-item (click)="remove.emit(member.userId)">
-                  <mat-icon>person_remove</mat-icon> Remove
+                  <mat-icon aria-hidden="true">person_remove</mat-icon> Remove
                 </button>
               </mat-menu>
             </ng-container>

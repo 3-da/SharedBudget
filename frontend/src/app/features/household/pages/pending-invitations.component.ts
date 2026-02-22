@@ -29,8 +29,8 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
               <mat-card-subtitle>From {{ inv.sender.firstName }} {{ inv.sender.lastName }} &middot; {{ inv.createdAt | relativeTime }}</mat-card-subtitle>
             </mat-card-header>
             <mat-card-actions>
-              <button mat-flat-button (click)="respond(inv.id, true)"><mat-icon>check</mat-icon> Accept</button>
-              <button mat-button (click)="respond(inv.id, false)"><mat-icon>close</mat-icon> Decline</button>
+              <button mat-flat-button (click)="respond(inv.id, true)"><mat-icon aria-hidden="true">check</mat-icon> Accept</button>
+              <button mat-button (click)="respond(inv.id, false)"><mat-icon aria-hidden="true">close</mat-icon> Decline</button>
             </mat-card-actions>
           </mat-card>
         }

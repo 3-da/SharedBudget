@@ -21,11 +21,11 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
           }
           @if (!s.isSettled && s.amount > 0) {
             <button mat-flat-button (click)="markPaid.emit()">
-              <mat-icon>check_circle</mat-icon> Mark as Paid
+              <mat-icon aria-hidden="true">check_circle</mat-icon> Mark as Paid
             </button>
           }
           @if (s.isSettled) {
-            <p class="settled"><mat-icon>verified</mat-icon> Settled</p>
+            <p class="settled"><mat-icon aria-hidden="true">verified</mat-icon> Settled</p>
           }
         } @else {
           <p>No settlement data available</p>

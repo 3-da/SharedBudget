@@ -25,7 +25,7 @@ import { ThemeService } from '../theme/theme.service';
         <mat-icon aria-hidden="true">{{ themeIcon() }}</mat-icon>
       </button>
       <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
-        <mat-icon>account_circle</mat-icon>
+        <mat-icon aria-hidden="true">account_circle</mat-icon>
       </button>
       <mat-menu #userMenu="matMenu">
         @if (authService.currentUser(); as user) {
@@ -34,11 +34,11 @@ import { ThemeService } from '../theme/theme.service';
           </div>
         }
         <button mat-menu-item routerLink="/settings">
-          <mat-icon>settings</mat-icon>
+          <mat-icon aria-hidden="true">settings</mat-icon>
           <span>Settings</span>
         </button>
         <button mat-menu-item (click)="onLogout()">
-          <mat-icon>logout</mat-icon>
+          <mat-icon aria-hidden="true">logout</mat-icon>
           <span>Logout</span>
         </button>
       </mat-menu>

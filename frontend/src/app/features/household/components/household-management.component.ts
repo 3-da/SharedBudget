@@ -54,11 +54,11 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
       <div class="actions">
         @if (store.isOwner()) {
           <button mat-flat-button (click)="openInviteDialog()">
-            <mat-icon>person_add</mat-icon> Invite
+            <mat-icon aria-hidden="true">person_add</mat-icon> Invite
           </button>
         }
         <button mat-button color="warn" (click)="confirmLeave()">
-          <mat-icon>exit_to_app</mat-icon> Leave Household
+          <mat-icon aria-hidden="true">exit_to_app</mat-icon> Leave Household
         </button>
       </div>
     </mat-expansion-panel>

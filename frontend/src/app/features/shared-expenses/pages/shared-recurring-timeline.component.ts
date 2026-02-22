@@ -19,7 +19,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   template: `
     <app-page-header [title]="expenseName()" [subtitle]="timelineSubtitle()">
       <button mat-button (click)="router.navigate(['/expenses/shared'])">
-        <mat-icon>arrow_back</mat-icon> Back
+        <mat-icon aria-hidden="true">arrow_back</mat-icon> Back
       </button>
     </app-page-header>
 

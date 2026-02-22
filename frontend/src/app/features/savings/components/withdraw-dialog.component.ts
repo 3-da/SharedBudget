@@ -24,7 +24,7 @@ export interface WithdrawDialogData {
       <p>Current savings: <strong>{{ data.currentAmount | currencyEur }}</strong></p>
       @if (data.requiresApproval) {
         <div class="approval-info">
-          <mat-icon>info</mat-icon>
+          <mat-icon aria-hidden="true">info</mat-icon>
           <span>This withdrawal needs approval from another household member.</span>
         </div>
       }

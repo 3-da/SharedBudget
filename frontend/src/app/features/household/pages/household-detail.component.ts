@@ -66,7 +66,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
               class="has-pending"
               [matBadge]="approvalStore.pendingCount()"
               matBadgeColor="warn">
-              <mat-icon>pending_actions</mat-icon> Approvals
+              <mat-icon aria-hidden="true">pending_actions</mat-icon> Approvals
             </button>
           }
         </div>

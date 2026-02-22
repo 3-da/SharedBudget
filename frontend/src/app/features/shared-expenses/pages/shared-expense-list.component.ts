@@ -26,14 +26,14 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
           [selectedYear]="year()"
           (monthChange)="onMonthChange($event)" />
         <button mat-flat-button (click)="router.navigate(['/expenses/shared/new'])">
-          <mat-icon>add</mat-icon> Propose Expense
+          <mat-icon aria-hidden="true">add</mat-icon> Propose Expense
         </button>
       </div>
     </app-page-header>
 
     @if (store.error()) {
       <div class="error-banner">
-        <mat-icon>error_outline</mat-icon>
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
         <span>{{ store.error() }}</span>
       </div>
     }

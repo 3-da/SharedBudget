@@ -3,11 +3,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { SalaryResponse } from '../../../shared/models';
 import { extractHttpError } from '../../../shared/utils/extract-error';
 import { SalaryService } from '../services/salary.service';
+import { HouseholdStore } from '../../household/stores/household.store';
 
 @Injectable({ providedIn: 'root' })
 export class SalaryStore {
   private readonly salaryService = inject(SalaryService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly householdStore = inject(HouseholdStore);
 
   readonly mySalary = signal<SalaryResponse | null>(null);
   readonly yearlySalaries = signal<SalaryResponse[]>([]);
@@ -52,6 +54,7 @@ export class SalaryStore {
         this.loading.set(false);
         this.snackBar.open('Salary saved', '', { duration: 3000 });
         this.loadYearlySalaries(new Date().getFullYear());
+        this.householdStore.loadOverview();
       },
       error: err => { this.snackBar.open(extractHttpError(err, 'Failed to save salary')!, '', { duration: 4000 }); this.error.set(extractHttpError(err)); this.loading.set(false); },
     });
