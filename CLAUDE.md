@@ -4,10 +4,14 @@ This file contains **process rules** for Claude Code when working on this projec
 
 > **Related documentation (read only when needed for the current task):**
 > - `PROJECT_INDEX.md` — Project overview, API endpoints, structure, commands
-> - `SPEC.md` — Business requirements, user stories, feature specs
-> - `ARCHITECTURE.md` — Tech stack, data model, caching, auth flow, infrastructure
-> - `docs/FRONTEND_ARCHITECTURE.md` — Frontend deep-dive (15 sections, interview-ready)
-> - `docs/backend/01-08` — Backend deep-dive (8 documents: database, auth, architecture, approvals, caching, API, security, testing)
+> - `docs/handbook/00-user-stories.md` — Product requirements, 16 user stories with acceptance criteria
+> - `docs/handbook/01-overview.md` — Product scope, tech decisions, project status
+> - `docs/handbook/02-architecture.md` — System design, module breakdown, data flow
+> - `docs/handbook/03-data-model.md` — Prisma schema reference (11 models, 10 enums)
+> - `docs/handbook/04-api-reference.md` — All endpoints by domain
+> - `docs/handbook/05-security.md` — Auth model, threat countermeasures, GDPR
+> - `docs/handbook/06-testing.md` — Testing strategy, tools, coverage
+> - `docs/handbook/07-deployment.md` — Docker, env vars, Render + Vercel
 
 ---
 

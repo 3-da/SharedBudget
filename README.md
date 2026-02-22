@@ -16,15 +16,15 @@ The fastest way to explore the app is with the pre-seeded demo accounts. Open tw
 
 | Field    | Value              |
 |----------|--------------------|
-| Email    | `alex@test.com`    |
-| Password | `TestPassword123!` |
+| Email    | `alex@demo.com`    |
+| Password | `Demo1234!`        |
 
 ### Step 2: Log in as the household member (incognito window)
 
 | Field    | Value              |
 |----------|--------------------|
-| Email    | `sam@test.com`     |
-| Password | `TestPassword456!` |
+| Email    | `sam@demo.com`     |
+| Password | `Demo1234!`        |
 
 ### What to try
 
@@ -47,12 +47,12 @@ Create your own account at [sharedbudget.vercel.app/auth/register](https://share
 - Household creation with auto-generated invite code
 - Inviting another user by email or sharing the code
 
-There's also a third demo account without a household — use it to test joining via invite code:
+There's also a third demo account without a household — use it to test joining via invite code `DEMO2026`:
 
 | Field    | Value              |
 |----------|--------------------|
-| Email    | `jordan@test.com`  |
-| Password | `TestPassword789!` |
+| Email    | `jordan@demo.com`  |
+| Password | `Demo1234!`        |
 
 ---
 
@@ -91,13 +91,13 @@ I built SharedBudget as a full-stack portfolio project to demonstrate production
 | **Containerization** | Docker Compose with 5 services (PostgreSQL, Redis, Backend, Frontend, Nginx reverse proxy)                                                                  |
 | **CI-ready**         | Separate build and runtime stages, environment-based configuration                                                                                          |
 | **Cloud Deployment** | Vercel (frontend CDN) + Render (backend, PostgreSQL, Redis) — all on free tier                                                                              |
-| **Documentation**    | 13 documentation files covering every layer: specs, architecture, API reference, frontend deep-dive, backend deep-dive (8 docs), and development guidelines |
+| **Documentation**    | Technical handbook (8 chapters), setup guide, project index, and development guidelines — covering every layer from user stories to deployment              |
 
 ### Engineering Process
 
 | Practice                        | How it's applied                                                                                                   |
 |---------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| **Spec-driven development**     | Every feature documented with acceptance criteria in `SPEC.md` before implementation                               |
+| **Spec-driven development**     | Every feature documented with acceptance criteria before implementation                                            |
 | **Backend-first approach**      | All 54 endpoints built and tested (723+ tests) before starting the frontend                                        |
 | **Systematic bug fixing**       | 8 tracked sprints of iterative fixes, 34/35 planned tasks completed                                                |
 | **AI-assisted development**     | Claude Code as pair programmer with strict rules enforced via `CLAUDE.md` (mandatory tests, logging, Swagger docs) |
@@ -342,19 +342,14 @@ These stories illustrate how real users interact with SharedBudget. They map dir
 
 ## Documentation
 
-This project includes 13 documentation files — written alongside the code, not as an afterthought:
-
-| Document                                                           | What it covers                                                                              |
-|--------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| [`SPEC.md`](./SPEC.md)                                             | Business requirements, 15 user stories with acceptance criteria                             |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md)                             | Full data model (11 models), auth chain, caching strategy, deployment                       |
-| [`PROJECT_INDEX.md`](./PROJECT_INDEX.md)                           | Quick reference — all 54 endpoints, module map, test commands                               |
-| [`CLAUDE.md`](./CLAUDE.md)                                         | Development process rules (tests, logging, Swagger, code style)                             |
-| [`docs/FRONTEND_ARCHITECTURE.md`](./docs/FRONTEND_ARCHITECTURE.md) | Frontend deep-dive: signals, stores, routing, auth flow, theming                            |
-| [`docs/backend/01-08`](./docs/backend/)                            | Backend deep-dive: database, auth, architecture, approvals, caching, API, security, testing |
+| Document                                           | What it covers                                                                                       |
+|----------------------------------------------------|------------------------------------------------------------------------------------------------------|
+| [`PROJECT_INDEX.md`](./PROJECT_INDEX.md)           | Quick reference — all 54 endpoints, module map, test commands                                        |
+| [`CLAUDE.md`](./CLAUDE.md)                         | Development process rules (tests, logging, Swagger, code style)                                      |
+| [`docs/handbook/`](./docs/handbook/)               | Full technical handbook — user stories, architecture, data model, API, security, testing, deployment |
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](./LICENSE) for details.
+See [LICENSE](./LICENSE) for details.

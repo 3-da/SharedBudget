@@ -10,12 +10,8 @@ A household budget management app where members track personal/shared expenses, 
 
 | Document                             | Purpose                                                     |
 |--------------------------------------|-------------------------------------------------------------|
-| [SPEC.md](./SPEC.md)                 | Business requirements, user stories, feature specs          |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Tech stack, data model, auth flow, caching, infrastructure  |
 | [CLAUDE.md](./CLAUDE.md)             | Development rules for Claude Code (tests, logging, Swagger) |
-| [PLAN.md](./PLAN.md)                 | Bug fix & feature plan (all sprints complete)               |
-| [docs/FRONTEND_ARCHITECTURE.md](./docs/FRONTEND_ARCHITECTURE.md) | Frontend deep-dive (15 sections, interview-ready) |
-| [docs/backend/](./docs/backend/)     | Backend deep-dive (8 docs: DB, auth, architecture, approvals, caching, API, security, testing) |
+| [docs/handbook/](./docs/handbook/)   | Technical reference (user stories, architecture, data model, API, security, testing, deployment) |
 
 ---
 
