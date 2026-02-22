@@ -1,5 +1,6 @@
-import { applyDecorators, HttpCode, HttpStatus, Get, Put, Delete } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+// noinspection SqlNoDataSource
+import { applyDecorators, Delete, Get, HttpCode, HttpStatus, Put } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 import { RecurringOverrideResponseDto } from '../dto/recurring-override-response.dto';
@@ -95,13 +96,16 @@ export function BatchUpsertOverridesEndpoint() {
     );
 }
 
+// noinspection HtmlUnknownTarget
+const deleteUpcomingDescription =
+    'Removes overrides for a recurring expense starting from the specified month/year onwards. Useful for undoing "apply to all upcoming" changes.';
+
 export function DeleteUpcomingOverridesEndpoint() {
     return applyDecorators(
         Delete(':id/overrides/upcoming/:year/:month'),
         ApiOperation({
-            summary: 'Delete all overrides from a given month forward',
-            description:
-                'Removes overrides for a recurring expense starting from the specified month/year onwards. Useful for undoing "apply to all upcoming" changes.',
+            summary: 'Delete overrides starting at a specific month',
+            description: 'Removes overrides for a recurring expense starting at the specified month and year.',
         }),
         ApiParam({ name: 'id', description: 'Expense ID' }),
         ApiParam({ name: 'year', description: 'Starting year (inclusive)', example: 2026 }),

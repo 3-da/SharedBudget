@@ -492,14 +492,7 @@ describe('ApprovalService', () => {
 
             const result = await service.acceptApproval(mockReviewerId, 'approval-004', {});
 
-            expect(mockSavingService.executeSharedWithdrawal).toHaveBeenCalledWith(
-                mockUserId,
-                mockHouseholdId,
-                50,
-                6,
-                2026,
-                mockTx,
-            );
+            expect(mockSavingService.executeSharedWithdrawal).toHaveBeenCalledWith(mockUserId, mockHouseholdId, 50, 6, 2026, mockTx);
             expect(result.status).toBe(ApprovalStatus.ACCEPTED);
             expect(mockCacheService.invalidateHousehold).toHaveBeenCalledWith(mockHouseholdId);
         });

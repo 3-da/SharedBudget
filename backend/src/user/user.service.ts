@@ -1,4 +1,13 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Inject,
+    Injectable,
+    Logger,
+    NotFoundException,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionService } from '../session/session.service';
@@ -247,7 +256,8 @@ export class UserService {
             requestedAt: new Date().toISOString(),
         });
 
-        await this.redis.pipeline()
+        await this.redis
+            .pipeline()
             .set(`delete_request:${requestId}`, payload, 'EX', DELETE_REQUEST_TTL)
             .set(`delete_request_owner:${ownerId}`, requestId, 'EX', DELETE_REQUEST_TTL)
             .set(`delete_request_target:${dto.targetMemberId}`, requestId, 'EX', DELETE_REQUEST_TTL)
@@ -287,14 +297,16 @@ export class UserService {
             return [];
         }
 
-        return [{
-            requestId,
-            ownerId: data.ownerId,
-            ownerFirstName: owner.firstName,
-            ownerLastName: owner.lastName,
-            householdName: household.name,
-            requestedAt: data.requestedAt,
-        }];
+        return [
+            {
+                requestId,
+                ownerId: data.ownerId,
+                ownerFirstName: owner.firstName,
+                ownerLastName: owner.lastName,
+                householdName: household.name,
+                requestedAt: data.requestedAt,
+            },
+        ];
     }
 
     /**

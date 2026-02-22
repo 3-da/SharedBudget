@@ -89,7 +89,8 @@ export function RequestSharedWithdrawalEndpoint() {
         Post('shared/withdraw'),
         ApiOperation({
             summary: 'Request shared savings withdrawal',
-            description: 'Creates an approval request to withdraw from shared savings. Another household member must approve before the withdrawal is executed.',
+            description:
+                'Creates an approval request to withdraw from shared savings. Another household member must approve before the withdrawal is executed.',
         }),
         ApiResponse({ status: 201, description: 'Withdrawal request submitted for approval.' }),
         ApiResponse({ status: 400, description: 'Withdrawal amount exceeds current shared savings.', type: ErrorResponseDto }),

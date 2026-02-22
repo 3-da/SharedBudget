@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { MailService } from './mail.service';
+import { Resend } from 'resend';
 
 // Mock Resend before importing MailService — must use function() for `new` call
 const mockSend = vi.fn();
@@ -11,9 +13,6 @@ vi.mock('resend', () => {
     });
     return { Resend: ResendMock };
 });
-
-import { MailService } from './mail.service';
-import { Resend } from 'resend';
 
 describe('MailService', () => {
     let service: MailService;
@@ -232,7 +231,7 @@ describe('MailService', () => {
             await service.sendPasswordResetLink('user@example.com', 'reset-token');
 
             const logCalls = vi.mocked(Logger.prototype.log).mock.calls.map((c) => c[0]);
-            const codeLogCalls = logCalls.filter((msg: string) => typeof msg === 'string' && msg.includes('[DEV EMAIL] Verification code'));
+            const codeLogCalls = logCalls.filter((msg: string) => msg.includes('[DEV EMAIL] Verification code'));
             expect(codeLogCalls).toHaveLength(0);
         });
 

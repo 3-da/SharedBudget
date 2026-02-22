@@ -2,12 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { SalaryStore } from './salary.store';
 import { SalaryService } from '../services/salary.service';
+import { HouseholdStore } from '../../household/stores/household.store';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 describe('SalaryStore', () => {
   let store: SalaryStore;
   let service: Record<string, ReturnType<typeof vi.fn>>;
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let householdStore: { loadOverview: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     service = {
@@ -18,11 +20,13 @@ describe('SalaryStore', () => {
       getByMonth: vi.fn(),
     };
     snackBar = { open: vi.fn() };
+    householdStore = { loadOverview: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         SalaryStore,
         { provide: SalaryService, useValue: service },
         { provide: MatSnackBar, useValue: snackBar },
+        { provide: HouseholdStore, useValue: householdStore },
       ],
     });
     store = TestBed.inject(SalaryStore);

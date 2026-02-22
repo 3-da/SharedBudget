@@ -11,7 +11,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RequestAccountDeletionDto } from './dto/request-account-deletion.dto';
 import { RespondDeleteAccountRequestDto } from './dto/respond-delete-account-request.dto';
-import { HouseholdRole, ExpenseType } from '../generated/prisma/enums';
+import { HouseholdRole } from '../generated/prisma/enums';
 
 vi.mock('argon2', () => ({
     hash: vi.fn().mockResolvedValue('hashed-password'),
@@ -407,7 +407,7 @@ describe('UserService', () => {
             });
             mockRedis.get
                 .mockResolvedValueOnce(requestId) // target lookup
-                .mockResolvedValueOnce(payload);  // request payload
+                .mockResolvedValueOnce(payload); // request payload
             mockPrismaService.user.findUnique.mockResolvedValue(mockTargetUser);
             mockPrismaService.household.findUnique.mockResolvedValue(mockHousehold);
 
@@ -422,7 +422,7 @@ describe('UserService', () => {
         it('should clean up stale index key when request not found', async () => {
             mockRedis.get
                 .mockResolvedValueOnce(requestId) // target lookup
-                .mockResolvedValueOnce(null);      // request not found
+                .mockResolvedValueOnce(null); // request not found
             mockRedis.del.mockResolvedValue(1);
 
             const result = await userService.getPendingDeleteAccountRequests(userId);
@@ -497,7 +497,7 @@ describe('UserService', () => {
             const payload = JSON.stringify({ targetMemberId: targetUserId });
             mockRedis.get
                 .mockResolvedValueOnce(requestId) // owner lookup
-                .mockResolvedValueOnce(payload);  // request payload
+                .mockResolvedValueOnce(payload); // request payload
             mockRedis.del.mockResolvedValue(1);
 
             const result = await userService.cancelDeleteAccountRequest(userId);
