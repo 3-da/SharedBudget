@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import {ChangeDetectionStrategy, Component, inject, OnInit, signal} from '@angular/core';
 import {MatCardModule} from '@angular/material/card';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
@@ -54,6 +54,7 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
   `,
   styles: [`
     .salary-layout { display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-md); max-width: 1100px; margin: 0 auto; align-items: start; }
+    .salary-layout mat-card-header { margin-bottom: var(--space-sm); }
     .year-nav { display: flex; align-items: center; gap: var(--space-sm); }
     .stats-row { display: flex; gap: var(--space-lg); margin-bottom: var(--space-sm); }
     .stat { display: flex; flex-direction: column; }

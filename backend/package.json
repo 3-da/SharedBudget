@@ -17,10 +17,7 @@
         "test:watch": "vitest",
         "test:cov": "vitest run --coverage",
         "test:e2e": "vitest run --config ./vitest.e2e.config.ts",
-        "prisma:studio": "npx prisma studio --config ./prisma.config.ts",
-        "generate": "prisma generate && npx prettier --write --ignore-unknown --ignore-path=.prettierignore \"prisma/generated/dto/**/*.ts\"",
-        "generate:swagger": "npx ts-node --esm scripts/generate-swagger.ts",
-        "seed:demo": "npx tsx scripts/seed-demo.ts"
+        "prisma:studio": "npx prisma studio --config ./prisma.config.ts"
     },
     "dependencies": {
         "@nestjs/common": "^11.0.1",
