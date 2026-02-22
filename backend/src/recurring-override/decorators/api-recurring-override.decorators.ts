@@ -96,10 +96,6 @@ export function BatchUpsertOverridesEndpoint() {
     );
 }
 
-// noinspection HtmlUnknownTarget
-const deleteUpcomingDescription =
-    'Removes overrides for a recurring expense starting from the specified month/year onwards. Useful for undoing "apply to all upcoming" changes.';
-
 export function DeleteUpcomingOverridesEndpoint() {
     return applyDecorators(
         Delete(':id/overrides/upcoming/:year/:month'),

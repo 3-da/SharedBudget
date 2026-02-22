@@ -35,8 +35,8 @@ export class DashboardService {
      *
      * @param userId - The authenticated user's ID
      * @param mode - View mode: 'monthly' for single month, 'yearly' for 12-month average
-     * @param reqMonth - Optional month override (1-12)
-     * @param reqYear - Optional year override
+     * @param {number} [reqMonth] - Optional month override (1-12)
+     * @param {number} [reqYear] - Optional year override
      * @returns Complete household financial overview for the current month
      * @throws NotFoundException If the user is not a member of any household
      */
@@ -88,6 +88,8 @@ export class DashboardService {
      * personal and €100 shared, with a combined household savings of €500.
      *
      * @param userId - The authenticated user's ID
+     * @param reqMonth - Optional month override (1-12)
+     * @param reqYear - Optional year override
      * @returns Savings per member with household totals
      * @throws NotFoundException If the user is not a member of any household
      */
