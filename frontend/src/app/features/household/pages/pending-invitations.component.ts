@@ -25,12 +25,19 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
         @for (inv of store.invitations(); track inv.id) {
           <mat-card>
             <mat-card-header>
+              <mat-icon matCardAvatar aria-hidden="true">mail</mat-icon>
               <mat-card-title>{{ inv.householdName }}</mat-card-title>
-              <mat-card-subtitle>From {{ inv.sender.firstName }} {{ inv.sender.lastName }} &middot; {{ inv.createdAt | relativeTime }}</mat-card-subtitle>
+              <mat-card-subtitle>Invited by {{ inv.senderFirstName }} {{ inv.senderLastName }} · {{ inv.createdAt | relativeTime }}</mat-card-subtitle>
             </mat-card-header>
             <mat-card-actions>
-              <button mat-flat-button (click)="respond(inv.id, true)"><mat-icon aria-hidden="true">check</mat-icon> Accept</button>
-              <button mat-button (click)="respond(inv.id, false)"><mat-icon aria-hidden="true">close</mat-icon> Decline</button>
+              <button mat-flat-button (click)="respond(inv.id, true)">
+                <mat-icon aria-hidden="true">check</mat-icon>
+                <span>Accept</span>
+              </button>
+              <button mat-button (click)="respond(inv.id, false)">
+                <mat-icon aria-hidden="true">close</mat-icon>
+                <span>Decline</span>
+              </button>
             </mat-card-actions>
           </mat-card>
         }
@@ -40,6 +47,12 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   styles: [`
     .invitations-list { max-width: 640px; margin: 16px auto; display: flex; flex-direction: column; gap: 12px; }
     mat-card-actions { display: flex; gap: 8px; }
+    mat-icon[matCardAvatar] {
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+      border-radius: 50%; width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
   `],
 })
 export class PendingInvitationsComponent implements OnInit {

@@ -21,8 +21,10 @@ export interface HouseholdInvitation {
   id: string;
   status: InvitationStatus;
   householdId: string;
-  sender: { firstName: string; lastName: string };
   householdName: string;
+  senderId: string;
+  senderFirstName: string;
+  senderLastName: string;
   createdAt: string;
 }
 
