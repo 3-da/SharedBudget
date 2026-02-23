@@ -11,6 +11,7 @@ import { MemberExpenseSummaryDto } from './dto/expense-summary.dto';
 import { CacheService } from '../common/cache/cache.service';
 import { DashboardCalculatorService } from './dashboard-calculator.service';
 import { resolveMonthYear } from '../common/utils/resolve-month-year';
+import { ExpenseType } from '../generated/prisma/enums';
 
 @Injectable()
 export class DashboardService {
@@ -22,6 +23,25 @@ export class DashboardService {
         private readonly cacheService: CacheService,
         private readonly calculator: DashboardCalculatorService,
     ) {}
+
+    /**
+     * Pre-fetches members and expenses for a household in a single parallel query.
+     * Provides the base data required by all calculator methods, eliminating redundant
+     * per-method DB queries.
+     *
+     * @param householdId - The household to pre-fetch data for
+     * @returns Members (with user info), all expenses, and shared-only expenses
+     */
+    private async fetchBaseData(householdId: string) {
+        const [members, expenses] = await Promise.all([
+            this.prismaService.householdMember.findMany({
+                where: { householdId },
+                include: { user: { select: { id: true, firstName: true, lastName: true } } },
+            }),
+            this.prismaService.expense.findMany({ where: { householdId } }),
+        ]);
+        return { members, expenses, sharedExpenses: expenses.filter((e) => e.type === ExpenseType.SHARED) };
+    }
 
     /**
      * Returns a comprehensive financial dashboard for the authenticated user's household.
@@ -54,11 +74,13 @@ export class DashboardService {
                 return this.computeYearlyAverageInternal(householdId, userId, month, year);
             }
 
-            const [income, expenses, savings, settlement, pendingApprovalsCount] = await Promise.all([
-                this.calculator.getIncomeData(householdId, month, year),
-                this.calculator.getExpenseData(householdId, month, year),
-                this.calculator.calculateSavings(householdId, month, year),
-                this.calculator.calculateSettlement(householdId, userId, month, year),
+            const { members, expenses, sharedExpenses } = await this.fetchBaseData(householdId);
+
+            const [income, expenseData, savings, settlement, pendingApprovalsCount] = await Promise.all([
+                this.calculator.getIncomeData(members, month, year),
+                this.calculator.getExpenseData(members, expenses, month, year),
+                this.calculator.calculateSavings(members, expenses, month, year),
+                this.calculator.calculateSettlement(members, sharedExpenses, userId, month, year),
                 this.calculator.getPendingApprovalsCount(householdId, userId),
             ]);
 
@@ -69,7 +91,7 @@ export class DashboardService {
                 income,
                 totalDefaultIncome,
                 totalCurrentIncome,
-                expenses,
+                expenses: expenseData,
                 savings,
                 settlement,
                 pendingApprovalsCount,
@@ -103,7 +125,8 @@ export class DashboardService {
         const cacheKey = this.cacheService.savingsKey(membership.householdId, year, month);
 
         return this.cacheService.getOrSet(cacheKey, this.cacheService.summaryTTL, async () => {
-            return this.calculator.calculateSavings(membership.householdId, month, year);
+            const { members, expenses } = await this.fetchBaseData(membership.householdId);
+            return this.calculator.calculateSavings(members, expenses, month, year);
         });
     }
 
@@ -183,7 +206,8 @@ export class DashboardService {
         const cacheKey = this.cacheService.settlementKey(membership.householdId, year, month);
 
         return this.cacheService.getOrSet(cacheKey, this.cacheService.settlementTTL, async () => {
-            return this.calculator.calculateSettlement(membership.householdId, userId, month, year);
+            const { members, sharedExpenses } = await this.fetchBaseData(membership.householdId);
+            return this.calculator.calculateSettlement(members, sharedExpenses, userId, month, year);
         });
     }
 
@@ -221,8 +245,11 @@ export class DashboardService {
             throw new ConflictException('Settlement has already been marked as paid for this month');
         }
 
+        // Pre-fetch data for settlement calculation
+        const { members, sharedExpenses } = await this.fetchBaseData(householdId);
+
         // Calculate current settlement to determine who owes whom
-        const settlement = await this.calculator.calculateSettlement(householdId, userId, month, year);
+        const settlement = await this.calculator.calculateSettlement(members, sharedExpenses, userId, month, year);
 
         if (settlement.amount === 0) {
             this.logger.warn(`No settlement needed for household: ${householdId}, month: ${month}/${year}`);
@@ -278,13 +305,16 @@ export class DashboardService {
             months.push({ month: m, year: y });
         }
 
+        // Pre-fetch members and expenses once for all 12 months
+        const { members, expenses, sharedExpenses } = await this.fetchBaseData(householdId);
+
         const monthlyResults = await Promise.all(
             months.map(async ({ month, year }) => ({
                 month,
                 year,
-                income: await this.calculator.getIncomeData(householdId, month, year),
-                expenses: await this.calculator.getExpenseData(householdId, month, year),
-                savings: await this.calculator.calculateSavings(householdId, month, year),
+                income: await this.calculator.getIncomeData(members, month, year),
+                expenses: await this.calculator.getExpenseData(members, expenses, month, year),
+                savings: await this.calculator.calculateSavings(members, expenses, month, year),
             })),
         );
 
@@ -392,7 +422,7 @@ export class DashboardService {
         });
 
         const [settlement, pendingApprovalsCount] = await Promise.all([
-            this.calculator.calculateSettlement(householdId, userId, currentMonth, currentYear),
+            this.calculator.calculateSettlement(members, sharedExpenses, userId, currentMonth, currentYear),
             this.calculator.getPendingApprovalsCount(householdId, userId),
         ]);
 

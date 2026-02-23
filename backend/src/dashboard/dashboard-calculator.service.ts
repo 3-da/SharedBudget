@@ -15,6 +15,10 @@ import { ExpenseSummaryDto, MemberExpenseSummaryDto } from './dto/expense-summar
 import { MemberSavingsDto, SavingsResponseDto } from './dto/member-savings.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
 
+type MemberWithUser = Prisma.HouseholdMemberGetPayload<{
+    include: { user: { select: { id: true; firstName: true; lastName: true } } };
+}>;
+
 @Injectable()
 export class DashboardCalculatorService {
     constructor(private readonly prismaService: PrismaService) {}
@@ -22,20 +26,18 @@ export class DashboardCalculatorService {
     /**
      * Fetches income data (salaries) for all household members in a given period.
      *
-     * @param householdId - The household to query
+     * @param members - Pre-fetched household members with user info
      * @param month - Target month (1-12)
      * @param year - Target year
      * @returns Array of member income DTOs with default and current salary
      */
-    async getIncomeData(householdId: string, month: number, year: number): Promise<MemberIncomeDto[]> {
-        const members = await this.prismaService.householdMember.findMany({
-            where: { householdId },
-            include: { user: { select: { id: true, firstName: true, lastName: true } } },
-        });
-
-        const salaries = await this.prismaService.salary.findMany({
-            where: { householdId, month, year },
-        });
+    async getIncomeData(members: MemberWithUser[], month: number, year: number): Promise<MemberIncomeDto[]> {
+        const householdId = members[0]?.householdId;
+        const salaries = householdId
+            ? await this.prismaService.salary.findMany({
+                  where: { householdId, month, year },
+              })
+            : [];
 
         const salaryMap = new Map(salaries.map((s) => [s.userId, s]));
 
@@ -55,30 +57,26 @@ export class DashboardCalculatorService {
      * Aggregates expense data for the household in a given month.
      * Includes remaining (unpaid) expenses calculation.
      *
-     * @param householdId - The household to query
+     * @param members - Pre-fetched household members with user info
+     * @param expenses - Pre-fetched household expenses (all types)
      * @param month - Target month (1-12)
      * @param year - Target year
      * @returns Expense summary with personal breakdowns, shared totals, and remaining amounts
      */
-    async getExpenseData(householdId: string, month: number, year: number): Promise<ExpenseSummaryDto> {
-        const members = await this.prismaService.householdMember.findMany({
-            where: { householdId },
-            include: { user: { select: { id: true, firstName: true, lastName: true } } },
-        });
-
-        const expenses = await this.prismaService.expense.findMany({
-            where: { householdId },
-        });
+    async getExpenseData(members: MemberWithUser[], expenses: Expense[], month: number, year: number): Promise<ExpenseSummaryDto> {
+        const householdId = members[0]?.householdId;
 
         // Load payment statuses for this month to calculate remaining expenses
-        const paymentStatuses = await this.prismaService.expensePaymentStatus.findMany({
-            where: {
-                expense: { householdId, deletedAt: null },
-                month,
-                year,
-                status: PaymentStatus.PAID,
-            },
-        });
+        const paymentStatuses = householdId
+            ? await this.prismaService.expensePaymentStatus.findMany({
+                  where: {
+                      expense: { householdId, deletedAt: null },
+                      month,
+                      year,
+                      status: PaymentStatus.PAID,
+                  },
+              })
+            : [];
         const paidExpenseIds = new Set(paymentStatuses.map((p) => p.expenseId));
 
         // Calculate personal expenses per member
@@ -120,25 +118,30 @@ export class DashboardCalculatorService {
      * Calculates savings from actual Saving records (personal + shared) and remaining budget per member.
      * Remaining budget = salary - personal expenses - shared expense share - personal savings - shared savings.
      *
-     * @param householdId - The household to query
+     * @param members - Pre-fetched household members with user info
+     * @param expenses - Pre-fetched household expenses (all types)
      * @param month - Target month (1-12)
      * @param year - Target year
      * @returns Savings breakdown per member with household totals
      */
-    async calculateSavings(householdId: string, month: number, year: number): Promise<SavingsResponseDto> {
-        const [income, expenses, savingRecords] = await Promise.all([
-            this.getIncomeData(householdId, month, year),
-            this.getExpenseData(householdId, month, year),
-            this.prismaService.saving.findMany({
-                where: { householdId, month, year },
-            }),
+    async calculateSavings(members: MemberWithUser[], expenses: Expense[], month: number, year: number): Promise<SavingsResponseDto> {
+        const householdId = members[0]?.householdId;
+
+        const [income, expenseData, savingRecords] = await Promise.all([
+            this.getIncomeData(members, month, year),
+            this.getExpenseData(members, expenses, month, year),
+            householdId
+                ? this.prismaService.saving.findMany({
+                      where: { householdId, month, year },
+                  })
+                : Promise.resolve([]),
         ]);
 
         const memberCount = income.length || 1;
 
-        const members: MemberSavingsDto[] = income.map((memberIncome) => {
-            const personalTotal = expenses.personalExpenses.find((pe) => pe.userId === memberIncome.userId)?.personalExpensesTotal ?? 0;
-            const sharedShare = expenses.sharedExpensesTotal / memberCount;
+        const memberSavings: MemberSavingsDto[] = income.map((memberIncome) => {
+            const personalTotal = expenseData.personalExpenses.find((pe) => pe.userId === memberIncome.userId)?.personalExpensesTotal ?? 0;
+            const sharedShare = expenseData.sharedExpensesTotal / memberCount;
 
             // Actual savings from Saving records
             const personalSavingRecord = savingRecords.find((s) => s.userId === memberIncome.userId && !s.isShared);
@@ -160,13 +163,13 @@ export class DashboardCalculatorService {
             };
         });
 
-        const totalPersonalSavings = Math.round(members.reduce((sum, m) => sum + m.personalSavings, 0) * 100) / 100;
-        const totalSharedSavings = Math.round(members.reduce((sum, m) => sum + m.sharedSavings, 0) * 100) / 100;
+        const totalPersonalSavings = Math.round(memberSavings.reduce((sum, m) => sum + m.personalSavings, 0) * 100) / 100;
+        const totalSharedSavings = Math.round(memberSavings.reduce((sum, m) => sum + m.sharedSavings, 0) * 100) / 100;
         const totalSavings = Math.round((totalPersonalSavings + totalSharedSavings) * 100) / 100;
-        const totalRemainingBudget = Math.round(members.reduce((sum, m) => sum + m.remainingBudget, 0) * 100) / 100;
+        const totalRemainingBudget = Math.round(memberSavings.reduce((sum, m) => sum + m.remainingBudget, 0) * 100) / 100;
 
         return {
-            members,
+            members: memberSavings,
             totalPersonalSavings,
             totalSharedSavings,
             totalSavings,
@@ -184,26 +187,22 @@ export class DashboardCalculatorService {
      *
      * The payer "credits" are tracked: if a user pays more than their fair share, the other owes them.
      *
-     * @param householdId - The household to query
+     * @param members - Pre-fetched household members with user info
+     * @param sharedExpenses - Pre-fetched shared expenses for the household
      * @param requestingUserId - The authenticated user's ID (used for relative message)
      * @param month - Target month (1-12)
      * @param year - Target year
      * @returns Settlement calculation with amount, direction, and message
      */
-    async calculateSettlement(householdId: string, requestingUserId: string, month: number, year: number): Promise<SettlementResponseDto> {
-        const members = await this.prismaService.householdMember.findMany({
-            where: { householdId },
-            include: { user: { select: { id: true, firstName: true, lastName: true } } },
-        });
-
-        const sharedExpenses = await this.prismaService.expense.findMany({
-            where: { householdId, type: ExpenseType.SHARED },
-        });
+    async calculateSettlement(members: MemberWithUser[], sharedExpenses: Expense[], requestingUserId: string, month: number, year: number): Promise<SettlementResponseDto> {
+        const householdId = members[0]?.householdId;
 
         // Check if already settled
-        const existingSettlement = await this.prismaService.settlement.findUnique({
-            where: { householdId_month_year: { householdId, month, year } },
-        });
+        const existingSettlement = householdId
+            ? await this.prismaService.settlement.findUnique({
+                  where: { householdId_month_year: { householdId, month, year } },
+              })
+            : null;
 
         const memberCount = members.length || 1;
 
