@@ -72,6 +72,22 @@ export function UpdatePersonalExpenseEndpoint() {
     );
 }
 
+export function GetPersonalSkipStatusesEndpoint() {
+    return applyDecorators(
+        Get('skip-statuses'),
+        ApiOperation({
+            summary: 'Get skip statuses for personal expenses',
+            description: 'Returns IDs of personal recurring expenses skipped for the given month/year.',
+        }),
+        ApiResponse({ status: 200, description: 'Skipped expense IDs.', schema: { type: 'array', items: { type: 'string', format: 'uuid' } } }),
+        ApiResponse({ status: 401, description: 'Unauthorized.', type: ErrorResponseDto }),
+        ApiResponse({ status: 404, description: 'User not in a household.', type: ErrorResponseDto }),
+        ApiResponse({ status: 429, description: 'Too many requests.', type: ErrorResponseDto }),
+        Throttle({ default: { limit: 30, ttl: 60000 } }),
+        HttpCode(HttpStatus.OK),
+    );
+}
+
 export function DeletePersonalExpenseEndpoint() {
     return applyDecorators(
         Delete(':id'),

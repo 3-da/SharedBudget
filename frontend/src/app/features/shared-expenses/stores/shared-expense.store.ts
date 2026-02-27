@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { forkJoin } from 'rxjs';
-import { Expense, CreateExpenseRequest, UpdateExpenseRequest, PaymentStatus } from '../../../shared/models';
+import { Expense, CreateExpenseRequest, UpdateExpenseRequest, SkipExpenseRequest, PaymentStatus } from '../../../shared/models';
 import { extractHttpError } from '../../../shared/utils/extract-error';
 import { SharedExpenseService } from '../services/shared-expense.service';
 import { ExpensePaymentService } from '../../personal-expenses/services/expense-payment.service';
@@ -14,6 +14,7 @@ export class SharedExpenseStore {
 
   readonly expenses = signal<Expense[]>([]);
   readonly paymentStatuses = signal<Map<string, PaymentStatus>>(new Map());
+  readonly skippedExpenseIds = signal<Set<string>>(new Set());
   readonly selectedExpense = signal<Expense | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -21,6 +22,7 @@ export class SharedExpenseStore {
   reset(): void {
     this.expenses.set([]);
     this.paymentStatuses.set(new Map());
+    this.skippedExpenseIds.set(new Set());
     this.selectedExpense.set(null);
     this.loading.set(false);
     this.error.set(null);
@@ -35,12 +37,14 @@ export class SharedExpenseStore {
     forkJoin({
       expenses: this.service.list(m, y),
       statuses: this.paymentService.getBatchStatuses(m, y),
+      skipped: this.service.getSkipStatuses(m, y),
     }).subscribe({
-      next: ({ expenses, statuses }) => {
+      next: ({ expenses, statuses, skipped }) => {
         this.expenses.set(expenses);
         const map = new Map<string, PaymentStatus>();
         for (const s of statuses) map.set(s.expenseId, s.status);
         this.paymentStatuses.set(map);
+        this.skippedExpenseIds.set(new Set(skipped));
         this.loading.set(false);
       },
       error: err => {
@@ -78,6 +82,20 @@ export class SharedExpenseStore {
         onSuccess?.();
       },
       error: err => { this.error.set(extractHttpError(err) ?? null); },
+    });
+  }
+
+  proposeSkip(id: string, dto: SkipExpenseRequest): void {
+    this.service.proposeSkip(id, dto).subscribe({
+      next: () => this.snackBar.open('Skip request submitted for approval', '', { duration: 3000 }),
+      error: err => this.snackBar.open(extractHttpError(err) ?? 'Failed to submit skip request', '', { duration: 4000 }),
+    });
+  }
+
+  proposeUnskip(id: string, dto: SkipExpenseRequest): void {
+    this.service.proposeUnskip(id, dto).subscribe({
+      next: () => this.snackBar.open('Unskip request submitted for approval', '', { duration: 3000 }),
+      error: err => this.snackBar.open(extractHttpError(err) ?? 'Failed to submit unskip request', '', { duration: 4000 }),
     });
   }
 

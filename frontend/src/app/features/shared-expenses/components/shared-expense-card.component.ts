@@ -4,8 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Expense } from '../../../shared/models/expense.model';
-import { ExpenseCategory, PaymentStatus, YearlyPaymentStrategy } from '../../../shared/models/enums';
+import { Expense, ExpenseCategory, PaymentStatus, YearlyPaymentStrategy } from '../../../shared/models';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
@@ -22,6 +21,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
             <mat-chip>{{ expense().category }}</mat-chip>
             <mat-chip>{{ expense().frequency }}</mat-chip>
             <mat-chip highlighted>Shared</mat-chip>
+            @if (isSkipped()) {
+              <mat-chip class="skipped-chip">Skipped</mat-chip>
+            }
             @if (hasPendingApproval()) {
               <mat-chip class="pending-chip">Pending</mat-chip>
             }
@@ -44,6 +46,15 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
             <mat-icon aria-hidden="true">check_circle</mat-icon>
           </button>
         }
+        @if (isSkipped()) {
+          <button mat-icon-button (click)="unskip.emit(expense().id)" [disabled]="hasPendingApproval()" matTooltip="Propose unskip for this month" [attr.aria-label]="'Propose unskip for ' + expense().name">
+            <mat-icon aria-hidden="true">play_circle</mat-icon>
+          </button>
+        } @else {
+          <button mat-icon-button (click)="skip.emit(expense().id)" [disabled]="hasPendingApproval()" matTooltip="Propose skip for this month" [attr.aria-label]="'Propose skip for ' + expense().name">
+            <mat-icon aria-hidden="true">pause_circle</mat-icon>
+          </button>
+        }
         @if (hasTimeline()) {
           <button mat-icon-button (click)="viewTimeline.emit(expense().id)" matTooltip="Timeline" [attr.aria-label]="'View timeline for ' + expense().name">
             <mat-icon aria-hidden="true">timeline</mat-icon>
@@ -60,23 +71,26 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     .paid { opacity: 0.7; }
     .paid-chip { --mdc-chip-elevated-container-color: #4caf50; }
     .pending-chip { --mdc-chip-elevated-container-color: #ff9800; }
+    .skipped-chip { --mdc-chip-elevated-container-color: #ff9800; }
   `],
 })
 export class SharedExpenseCardComponent {
   readonly expense = input.required<Expense>();
   readonly hasPendingApproval = input(false);
+  readonly isSkipped = input(false);
   readonly paymentStatus = input<PaymentStatus | null>(null);
   readonly edit = output<string>();
   readonly remove = output<string>();
   readonly markPaid = output<string>();
   readonly undoPaid = output<string>();
   readonly viewTimeline = output<string>();
+  readonly skip = output<string>();
+  readonly unskip = output<string>();
 
   readonly isPaid = computed(() => this.paymentStatus() === PaymentStatus.PAID);
   readonly hasTimeline = computed(() => {
     const e = this.expense();
-    if (e.category === ExpenseCategory.RECURRING) return true;
-    if (e.category === ExpenseCategory.ONE_TIME && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) return true;
-    return false;
+    return e.category === ExpenseCategory.RECURRING ||
+      (e.category === ExpenseCategory.ONE_TIME && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS);
   });
 }

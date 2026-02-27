@@ -4,6 +4,7 @@ import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
+import {MatCheckboxModule} from '@angular/material/checkbox';
 import {FormBuilder, FormGroupDirective, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatDialog} from '@angular/material/dialog';
 import {filter} from 'rxjs';
@@ -20,7 +21,7 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
   selector: 'app-savings-overview',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule, MonthPickerComponent, SavingsHistoryChartComponent, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
+  imports: [MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, ReactiveFormsModule, MonthPickerComponent, SavingsHistoryChartComponent, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
   template: `
     <app-page-header title="Savings" subtitle="Manage your personal and shared savings">
       <app-month-picker
@@ -39,15 +40,18 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
           </mat-card-header>
           <mat-card-content>
             <div class="current-amount">{{ store.totalPersonal() | currencyEur }}</div>
-            <form class="inline-form" [formGroup]="personalForm" (ngSubmit)="addPersonal()">
-              <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                <mat-label>Amount (EUR)</mat-label>
-                <input matInput type="number" formControlName="amount" min="0.01">
-              </mat-form-field>
-              <button mat-flat-button type="submit" [disabled]="personalForm.invalid">Add</button>
-              @if (store.totalPersonal() > 0) {
-                <button mat-stroked-button type="button" color="warn" (click)="withdrawPersonal()">Withdraw</button>
-              }
+            <form class="saving-form" [formGroup]="personalForm" (ngSubmit)="addPersonal()">
+              <div class="inline-form">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>Amount (EUR)</mat-label>
+                  <input matInput type="number" formControlName="amount" min="0.01">
+                </mat-form-field>
+                <button mat-flat-button type="submit" [disabled]="personalForm.invalid">Add</button>
+                @if (store.totalPersonal() > 0) {
+                  <button mat-stroked-button type="button" color="warn" (click)="withdrawPersonal()">Withdraw</button>
+                }
+              </div>
+              <mat-checkbox formControlName="reducesFromSalary" class="salary-checkbox">Reduce from salary</mat-checkbox>
             </form>
           </mat-card-content>
         </mat-card>
@@ -71,15 +75,18 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
                 <div class="current-amount">{{ store.totalHousehold() | currencyEur }}</div>
               </div>
             </div>
-            <form class="inline-form" [formGroup]="sharedForm" (ngSubmit)="addShared()">
-              <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                <mat-label>Amount (EUR)</mat-label>
-                <input matInput type="number" formControlName="amount" min="0.01">
-              </mat-form-field>
-              <button mat-flat-button type="submit" [disabled]="sharedForm.invalid">Add</button>
-              @if (store.totalHouseholdShared() > 0) {
-                <button mat-stroked-button type="button" color="warn" (click)="withdrawShared()">Withdraw</button>
-              }
+            <form class="saving-form" [formGroup]="sharedForm" (ngSubmit)="addShared()">
+              <div class="inline-form">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>Amount (EUR)</mat-label>
+                  <input matInput type="number" formControlName="amount" min="0.01">
+                </mat-form-field>
+                <button mat-flat-button type="submit" [disabled]="sharedForm.invalid">Add</button>
+                @if (store.totalHouseholdShared() > 0) {
+                  <button mat-stroked-button type="button" color="warn" (click)="withdrawShared()">Withdraw</button>
+                }
+              </div>
+              <mat-checkbox formControlName="reducesFromSalary" class="salary-checkbox">Reduce from salary</mat-checkbox>
             </form>
           </mat-card-content>
         </mat-card>
@@ -118,8 +125,10 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
     .summary-card { grid-column: 1 / -1; }
     .breakdown-card { grid-column: 1; }
     .current-amount { font-size: 1.2rem; font-weight: 500; margin-bottom: var(--space-sm); }
+    .saving-form { display: flex; flex-direction: column; gap: 8px; }
     .inline-form { display: flex; align-items: center; gap: 8px; }
     .inline-form mat-form-field { flex: 1; min-width: 120px; }
+    .salary-checkbox { font-size: 0.875rem; color: var(--mat-sys-on-surface-variant); }
     mat-icon[matCardAvatar] {
       background: var(--mat-sys-primary-container);
       color: var(--mat-sys-on-primary-container);
@@ -154,8 +163,8 @@ export class SavingsOverviewComponent implements OnInit {
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
   private readonly fb = inject(FormBuilder);
-  personalForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]] });
-  sharedForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]] });
+  personalForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]], reducesFromSalary: [true] });
+  sharedForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]], reducesFromSalary: [true] });
   private readonly dialog = inject(MatDialog);
   private readonly formDirs = viewChildren(FormGroupDirective);
 
@@ -176,16 +185,18 @@ export class SavingsOverviewComponent implements OnInit {
 
   addPersonal(): void {
     if (this.personalForm.invalid) return;
+    const v = this.personalForm.getRawValue();
     this.store.addPersonal(
-      { amount: this.personalForm.getRawValue().amount!, month: this.month(), year: this.year() },
+      { amount: v.amount!, month: this.month(), year: this.year(), reducesFromSalary: v.reducesFromSalary ?? true },
       () => { this.resetForm(this.personalForm); this.householdStore.loadOverview(); },
     );
   }
 
   addShared(): void {
     if (this.sharedForm.invalid) return;
+    const v = this.sharedForm.getRawValue();
     this.store.addShared(
-      { amount: this.sharedForm.getRawValue().amount!, month: this.month(), year: this.year() },
+      { amount: v.amount!, month: this.month(), year: this.year(), reducesFromSalary: v.reducesFromSalary ?? true },
       () => { this.resetForm(this.sharedForm); this.householdStore.loadOverview(); },
     );
   }
@@ -217,9 +228,9 @@ export class SavingsOverviewComponent implements OnInit {
   private resetForm(form: typeof this.personalForm): void {
     const dir = this.formDirs().find(d => d.form === form);
     if (dir) {
-      dir.resetForm({ amount: null });
+      dir.resetForm({ amount: null, reducesFromSalary: true });
     } else {
-      form.reset({ amount: null });
+      form.reset({ amount: null, reducesFromSalary: true });
     }
   }
 

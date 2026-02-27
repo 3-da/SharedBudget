@@ -38,6 +38,11 @@ export interface CreateExpenseRequest {
   year?: number;
 }
 
+export interface SkipExpenseRequest {
+  month?: number;
+  year?: number;
+}
+
 export interface UpdateExpenseRequest {
   name?: string;
   amount?: number;

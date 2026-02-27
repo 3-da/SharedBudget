@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SharedExpenseResponseDto } from './dto/shared-expense-response.dto';
 import { ListSharedExpensesQueryDto } from './dto/list-shared-expenses-query.dto';
@@ -6,11 +6,13 @@ import { ApprovalAction, ApprovalStatus, ExpenseType } from '../generated/prisma
 import { ApprovalResponseDto } from '../approval/dto/approval-response.dto';
 import { CreateSharedExpenseDto } from './dto/create-shared-expense.dto';
 import { UpdateSharedExpenseDto } from './dto/update-shared-expense.dto';
+import { SkipExpenseDto } from './dto/skip-expense.dto';
 import { Prisma } from '../generated/prisma/client';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { buildExpenseNullableFields, EXPENSE_FIELDS, mapToApprovalResponse, mapToSharedExpenseResponse } from '../common/expense/expense.mappers';
 import { pickDefined } from '../common/utils/pick-defined';
 import { CacheService } from '../common/cache/cache.service';
+import { resolveMonthYear } from '../common/utils/resolve-month-year';
 
 @Injectable()
 export class SharedExpenseService {
@@ -219,6 +221,144 @@ export class SharedExpenseService {
         });
 
         this.logger.log(`Approval created: ${approval.id} for deleting expense: ${expenseId}`);
+
+        await this.cacheService.invalidateApprovals(membership.householdId);
+
+        return mapToApprovalResponse(approval);
+    }
+
+    /**
+     * Returns IDs of shared recurring expenses that are skipped for the given month.
+     *
+     * Use case: The shared expenses list page needs to know which expenses are skipped so it can
+     * show the "Skipped" chip and enable the unskip approval flow.
+     *
+     * Scenario: Alex approved Sam's request to skip the shared Netflix for July. When the shared
+     * expenses list loads for July, the Netflix card shows as skipped.
+     *
+     * @param userId - The authenticated user's ID
+     * @param month - Month (1-12)
+     * @param year - Year
+     * @returns Array of expense IDs that are currently skipped for that month
+     * @throws {NotFoundException} If the user is not a member of any household
+     */
+    async getSharedSkipStatuses(userId: string, month: number, year: number): Promise<string[]> {
+        this.logger.debug(`Get shared skip statuses for user: ${userId}, month: ${month}, year: ${year}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+
+        const records = await this.prismaService.recurringOverride.findMany({
+            where: {
+                month,
+                year,
+                skipped: true,
+                expense: { householdId: membership.householdId, type: ExpenseType.SHARED, deletedAt: null },
+            },
+            select: { expenseId: true },
+        });
+
+        return records.map((r) => r.expenseId);
+    }
+
+    /**
+     * Proposes skipping a shared expense for a specific month.
+     * Any shared expense can be skipped regardless of category. The skip is NOT applied
+     * until approved by another household member.
+     *
+     * Use case: The household wants to pause a shared expense for one month — e.g., a
+     * streaming service during a holiday, or a deferred installment payment.
+     *
+     * Scenario: Sam proposes skipping the shared Netflix subscription for July.
+     * Alex must approve before the expense is excluded from July's calculations.
+     *
+     * @param userId - The authenticated user's ID (the proposer)
+     * @param expenseId - The shared expense to skip
+     * @param dto - Month and year to skip (defaults to current month/year)
+     * @returns The created approval record
+     * @throws {NotFoundException} If the user is not a member of any household
+     * @throws {NotFoundException} If the expense does not exist or belongs to a different household
+     * @throws {ConflictException} If there is already a pending approval for this expense
+     */
+    async proposeSkipExpense(userId: string, expenseId: string, dto: SkipExpenseDto): Promise<ApprovalResponseDto> {
+        this.logger.log(`Propose skip shared expense: ${expenseId} for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        await this.expenseHelper.findExpenseOrFail(expenseId, membership.householdId, ExpenseType.SHARED);
+
+        await this.expenseHelper.checkNoPendingApproval(expenseId);
+
+        const { month, year } = resolveMonthYear(dto.month, dto.year);
+
+        const approval = await this.prismaService.expenseApproval.create({
+            data: {
+                householdId: membership.householdId,
+                action: ApprovalAction.SKIP_MONTH,
+                status: ApprovalStatus.PENDING,
+                requestedById: userId,
+                expenseId,
+                proposedData: { month, year },
+            },
+        });
+
+        this.logger.log(`Approval created: ${approval.id} for skipping expense: ${expenseId} in ${month}/${year}`);
+
+        await this.cacheService.invalidateApprovals(membership.householdId);
+
+        return mapToApprovalResponse(approval);
+    }
+
+    /**
+     * Proposes un-skipping a recurring shared expense for a specific month.
+     * There must be an active skip (RecurringOverride with skipped=true) for the given month.
+     * The un-skip is NOT applied until approved by another household member.
+     *
+     * Use case: The household previously skipped a shared expense but now wants to
+     * reinstate it for that month.
+     *
+     * Scenario: Alex had previously approved skipping Netflix for July. But the household
+     * decides to reinstate it. Sam proposes the un-skip. Alex must approve before the
+     * expense returns to July's calculations.
+     *
+     * @param userId - The authenticated user's ID (the proposer)
+     * @param expenseId - The shared expense to un-skip
+     * @param dto - Month and year to un-skip (defaults to current month/year)
+     * @returns The created approval record
+     * @throws {NotFoundException} If the user is not a member of any household
+     * @throws {NotFoundException} If the expense does not exist or belongs to a different household
+     * @throws {BadRequestException} If there is no active skip for the given month
+     * @throws {ConflictException} If there is already a pending approval for this expense
+     */
+    async proposeUnskipExpense(userId: string, expenseId: string, dto: SkipExpenseDto): Promise<ApprovalResponseDto> {
+        this.logger.log(`Propose unskip shared expense: ${expenseId} for user: ${userId}`);
+
+        const membership = await this.expenseHelper.requireMembership(userId);
+        await this.expenseHelper.findExpenseOrFail(expenseId, membership.householdId, ExpenseType.SHARED);
+
+        await this.expenseHelper.checkNoPendingApproval(expenseId);
+
+        const { month, year } = resolveMonthYear(dto.month, dto.year);
+
+        const existingSkip = await this.prismaService.recurringOverride.findUnique({
+            where: { expenseId_month_year: { expenseId, month, year } },
+        });
+
+        if (!existingSkip || !existingSkip.skipped) {
+            this.logger.warn(`No active skip found for expense ${expenseId} in ${month}/${year}`);
+            throw new BadRequestException('This expense is not currently skipped for the specified month');
+        }
+
+        const approval = await this.prismaService.expenseApproval.create({
+            data: {
+                householdId: membership.householdId,
+                action: ApprovalAction.UNSKIP_MONTH,
+                status: ApprovalStatus.PENDING,
+                requestedById: userId,
+                expenseId,
+                proposedData: { month, year },
+            },
+        });
+
+        this.logger.log(`Approval created: ${approval.id} for unskipping expense: ${expenseId} in ${month}/${year}`);
 
         await this.cacheService.invalidateApprovals(membership.householdId);
 

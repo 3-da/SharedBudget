@@ -135,6 +135,7 @@ describe('DashboardService', () => {
         expensePaymentStatus: { findMany: vi.fn() },
         settlement: { findUnique: vi.fn(), create: vi.fn() },
         saving: { findMany: vi.fn() },
+        recurringOverride: { findMany: vi.fn() },
     };
 
     const mockExpenseHelper = {
@@ -178,6 +179,7 @@ describe('DashboardService', () => {
         mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([]);
         mockPrismaService.settlement.findUnique.mockResolvedValue(null);
         mockPrismaService.saving.findMany.mockResolvedValue([]);
+        mockPrismaService.recurringOverride.findMany.mockResolvedValue([]);
     });
 
     describe('getOverview', () => {

@@ -56,6 +56,7 @@ export class DashboardCalculatorService {
     /**
      * Aggregates expense data for the household in a given month.
      * Includes remaining (unpaid) expenses calculation.
+     * Skipped recurring expenses (via RecurringOverride) are excluded from all totals.
      *
      * @param members - Pre-fetched household members with user info
      * @param expenses - Pre-fetched household expenses (all types)
@@ -66,22 +67,24 @@ export class DashboardCalculatorService {
     async getExpenseData(members: MemberWithUser[], expenses: Expense[], month: number, year: number): Promise<ExpenseSummaryDto> {
         const householdId = members[0]?.householdId;
 
-        // Load payment statuses for this month to calculate remaining expenses
-        const paymentStatuses = householdId
-            ? await this.prismaService.expensePaymentStatus.findMany({
-                  where: {
-                      expense: { householdId, deletedAt: null },
-                      month,
-                      year,
-                      status: PaymentStatus.PAID,
-                  },
-              })
-            : [];
+        const [paymentStatuses, skippedExpenseIds] = await Promise.all([
+            householdId
+                ? this.prismaService.expensePaymentStatus.findMany({
+                      where: {
+                          expense: { householdId, deletedAt: null },
+                          month,
+                          year,
+                          status: PaymentStatus.PAID,
+                      },
+                  })
+                : Promise.resolve([]),
+            householdId ? this.loadSkippedExpenseIds(householdId, month, year) : Promise.resolve(new Set<string>()),
+        ]);
         const paidExpenseIds = new Set(paymentStatuses.map((p) => p.expenseId));
 
-        // Calculate personal expenses per member
+        // Calculate personal expenses per member (skip skipped expenses)
         const personalExpenses: MemberExpenseSummaryDto[] = members.map((member) => {
-            const memberExpenses = expenses.filter((e) => e.type === ExpenseType.PERSONAL && e.createdById === member.userId);
+            const memberExpenses = expenses.filter((e) => e.type === ExpenseType.PERSONAL && e.createdById === member.userId && !skippedExpenseIds.has(e.id));
             const total = memberExpenses.reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
             const remaining = memberExpenses.filter((e) => !paidExpenseIds.has(e.id)).reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
 
@@ -94,8 +97,8 @@ export class DashboardCalculatorService {
             };
         });
 
-        // Calculate shared expenses total
-        const sharedExpenses = expenses.filter((e) => e.type === ExpenseType.SHARED);
+        // Calculate shared expenses total (skip skipped expenses)
+        const sharedExpenses = expenses.filter((e) => e.type === ExpenseType.SHARED && !skippedExpenseIds.has(e.id));
         const sharedExpensesTotal = Math.round(sharedExpenses.reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0) * 100) / 100;
 
         const totalPersonal = personalExpenses.reduce((sum, pe) => sum + pe.personalExpensesTotal, 0);
@@ -150,8 +153,12 @@ export class DashboardCalculatorService {
             const personalSavings = personalSavingRecord ? Number(personalSavingRecord.amount) : 0;
             const sharedSavings = sharedSavingRecord ? Number(sharedSavingRecord.amount) : 0;
 
-            // Remaining budget = salary - expenses - savings
-            const remainingBudget = Math.round((memberIncome.currentSalary - personalTotal - sharedShare - personalSavings - sharedSavings) * 100) / 100;
+            // Only deduct savings from remaining budget if they reduce from salary
+            const personalSavingsDeduction = personalSavingRecord?.reducesFromSalary !== false ? personalSavings : 0;
+            const sharedSavingsDeduction = sharedSavingRecord?.reducesFromSalary !== false ? sharedSavings : 0;
+
+            // Remaining budget = salary - expenses - savings (only those that reduce from salary)
+            const remainingBudget = Math.round((memberIncome.currentSalary - personalTotal - sharedShare - personalSavingsDeduction - sharedSavingsDeduction) * 100) / 100;
 
             return {
                 userId: memberIncome.userId,
@@ -197,12 +204,14 @@ export class DashboardCalculatorService {
     async calculateSettlement(members: MemberWithUser[], sharedExpenses: Expense[], requestingUserId: string, month: number, year: number): Promise<SettlementResponseDto> {
         const householdId = members[0]?.householdId;
 
-        // Check if already settled
-        const existingSettlement = householdId
-            ? await this.prismaService.settlement.findUnique({
-                  where: { householdId_month_year: { householdId, month, year } },
-              })
-            : null;
+        const [existingSettlement, skippedExpenseIds] = await Promise.all([
+            householdId
+                ? this.prismaService.settlement.findUnique({
+                      where: { householdId_month_year: { householdId, month, year } },
+                  })
+                : Promise.resolve(null),
+            householdId ? this.loadSkippedExpenseIds(householdId, month, year) : Promise.resolve(new Set<string>()),
+        ]);
 
         const memberCount = members.length || 1;
 
@@ -216,6 +225,9 @@ export class DashboardCalculatorService {
         }
 
         for (const expense of sharedExpenses) {
+            // Skip expenses marked as skipped for this month
+            if (skippedExpenseIds.has(expense.id)) continue;
+
             const monthlyAmount = this.getMonthlyAmount(expense, month, year);
 
             if (expense.paidByUserId) {
@@ -287,6 +299,23 @@ export class DashboardCalculatorService {
             month,
             year,
         };
+    }
+
+    /**
+     * Returns the set of expense IDs that are marked as skipped for a given household/month/year.
+     * Used to exclude skipped recurring expenses from totals and settlement calculations.
+     *
+     * @param householdId - The household to query
+     * @param month - Target month (1-12)
+     * @param year - Target year
+     * @returns Set of skipped expense IDs
+     */
+    private async loadSkippedExpenseIds(householdId: string, month: number, year: number): Promise<Set<string>> {
+        const records = await this.prismaService.recurringOverride.findMany({
+            where: { expense: { householdId }, month, year, skipped: true },
+            select: { expenseId: true },
+        });
+        return new Set(records.map((r) => r.expenseId));
     }
 
     /**

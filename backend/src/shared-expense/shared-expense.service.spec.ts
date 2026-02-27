@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { SharedExpenseService } from './shared-expense.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
@@ -86,6 +86,7 @@ describe('SharedExpenseService', () => {
     const mockPrismaService = {
         expense: { findMany: vi.fn() },
         expenseApproval: { create: vi.fn() },
+        recurringOverride: { findUnique: vi.fn() },
     };
 
     const mockExpenseHelper = {
@@ -674,6 +675,167 @@ describe('SharedExpenseService', () => {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Shared expense not found');
             }
+        });
+    });
+    //#endregion
+
+    //#region proposeSkipExpense
+    describe('proposeSkipExpense', () => {
+        const dto = { month: 7, year: 2026 };
+
+        it('should create a SKIP_MONTH approval for a recurring shared expense', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord); // RECURRING
+            mockExpenseHelper.checkNoPendingApproval.mockResolvedValue(undefined);
+            mockPrismaService.expenseApproval.create.mockResolvedValue({
+                ...mockApprovalRecord,
+                action: ApprovalAction.SKIP_MONTH,
+                expenseId: mockExpenseId,
+                proposedData: { month: 7, year: 2026 },
+            });
+
+            await service.proposeSkipExpense(mockUserId, mockExpenseId, dto);
+
+            expect(mockPrismaService.expenseApproval.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    householdId: mockHouseholdId,
+                    action: ApprovalAction.SKIP_MONTH,
+                    status: ApprovalStatus.PENDING,
+                    requestedById: mockUserId,
+                    expenseId: mockExpenseId,
+                    proposedData: { month: 7, year: 2026 },
+                }),
+            });
+            expect(mockCacheService.invalidateApprovals).toHaveBeenCalledWith(mockHouseholdId);
+        });
+
+        it('should create a SKIP_MONTH approval for a ONE_TIME shared expense', async () => {
+            const oneTimeExpense = { ...mockExpenseRecord, category: ExpenseCategory.ONE_TIME };
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findExpenseOrFail.mockResolvedValue(oneTimeExpense);
+            mockExpenseHelper.checkNoPendingApproval.mockResolvedValue(undefined);
+            mockPrismaService.expenseApproval.create.mockResolvedValue({
+                ...mockApprovalRecord,
+                action: ApprovalAction.SKIP_MONTH,
+                expenseId: mockExpenseId,
+                proposedData: { month: 7, year: 2026 },
+            });
+
+            const result = await service.proposeSkipExpense(mockUserId, mockExpenseId, dto);
+
+            expect(mockPrismaService.expenseApproval.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    action: ApprovalAction.SKIP_MONTH,
+                    expenseId: mockExpenseId,
+                    proposedData: { month: 7, year: 2026 },
+                }),
+            });
+            expect(result).toBeDefined();
+        });
+
+        it('should throw ConflictException if there is already a pending approval', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord);
+            mockExpenseHelper.checkNoPendingApproval.mockRejectedValue(new ConflictException('A pending approval already exists for this expense'));
+
+            await expect(service.proposeSkipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow(ConflictException);
+            await expect(service.proposeSkipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow('A pending approval already exists for this expense');
+        });
+
+        it('should throw NotFoundException if user is not in a household', async () => {
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
+
+            await expect(service.proposeSkipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow(NotFoundException);
+            await expect(service.proposeSkipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow('You must be in a household to manage expenses');
+        });
+    });
+    //#endregion
+
+    //#region proposeUnskipExpense
+    describe('proposeUnskipExpense', () => {
+        const dto = { month: 7, year: 2026 };
+        const mockSkippedOverride = { expenseId: mockExpenseId, month: 7, year: 2026, skipped: true };
+
+        it('should create an UNSKIP_MONTH approval when expense is currently skipped', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord);
+            mockExpenseHelper.checkNoPendingApproval.mockResolvedValue(undefined);
+            mockPrismaService.recurringOverride.findUnique.mockResolvedValue(mockSkippedOverride);
+            mockPrismaService.expenseApproval.create.mockResolvedValue({
+                ...mockApprovalRecord,
+                action: ApprovalAction.UNSKIP_MONTH,
+                expenseId: mockExpenseId,
+                proposedData: { month: 7, year: 2026 },
+            });
+
+            await service.proposeUnskipExpense(mockUserId, mockExpenseId, dto);
+
+            expect(mockPrismaService.expenseApproval.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    householdId: mockHouseholdId,
+                    action: ApprovalAction.UNSKIP_MONTH,
+                    status: ApprovalStatus.PENDING,
+                    requestedById: mockUserId,
+                    expenseId: mockExpenseId,
+                    proposedData: { month: 7, year: 2026 },
+                }),
+            });
+            expect(mockCacheService.invalidateApprovals).toHaveBeenCalledWith(mockHouseholdId);
+        });
+
+        it('should create an UNSKIP_MONTH approval for a ONE_TIME expense that is currently skipped', async () => {
+            const oneTimeExpense = { ...mockExpenseRecord, category: ExpenseCategory.ONE_TIME };
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findExpenseOrFail.mockResolvedValue(oneTimeExpense);
+            mockExpenseHelper.checkNoPendingApproval.mockResolvedValue(undefined);
+            mockPrismaService.recurringOverride.findUnique.mockResolvedValue(mockSkippedOverride);
+            mockPrismaService.expenseApproval.create.mockResolvedValue({
+                ...mockApprovalRecord,
+                action: ApprovalAction.UNSKIP_MONTH,
+                expenseId: mockExpenseId,
+                proposedData: { month: 7, year: 2026 },
+            });
+
+            const result = await service.proposeUnskipExpense(mockUserId, mockExpenseId, dto);
+
+            expect(mockPrismaService.expenseApproval.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    action: ApprovalAction.UNSKIP_MONTH,
+                    expenseId: mockExpenseId,
+                }),
+            });
+            expect(result).toBeDefined();
+        });
+
+        it('should throw BadRequestException if expense is not currently skipped for that month', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord);
+            mockExpenseHelper.checkNoPendingApproval.mockResolvedValue(undefined);
+            mockPrismaService.recurringOverride.findUnique.mockResolvedValue(null); // no override
+
+            await expect(service.proposeUnskipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow(BadRequestException);
+            await expect(service.proposeUnskipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow(
+                'This expense is not currently skipped for the specified month',
+            );
+        });
+
+        it('should throw BadRequestException if override exists but skipped=false', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findExpenseOrFail.mockResolvedValue(mockExpenseRecord);
+            mockExpenseHelper.checkNoPendingApproval.mockResolvedValue(undefined);
+            mockPrismaService.recurringOverride.findUnique.mockResolvedValue({ ...mockSkippedOverride, skipped: false });
+
+            await expect(service.proposeUnskipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow(BadRequestException);
+            await expect(service.proposeUnskipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow(
+                'This expense is not currently skipped for the specified month',
+            );
+        });
+
+        it('should throw NotFoundException if user is not in a household', async () => {
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
+
+            await expect(service.proposeUnskipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow(NotFoundException);
+            await expect(service.proposeUnskipExpense(mockUserId, mockExpenseId, dto)).rejects.toThrow('You must be in a household to manage expenses');
         });
     });
     //#endregion
