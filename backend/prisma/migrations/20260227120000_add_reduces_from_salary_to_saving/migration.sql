@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "Saving" ADD COLUMN "reducesFromSalary" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "savings" ADD COLUMN "reducesFromSalary" BOOLEAN NOT NULL DEFAULT true;
