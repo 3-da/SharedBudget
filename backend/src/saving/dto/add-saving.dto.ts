@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, Min, IsOptional, IsInt, Max } from 'class-validator';
+import { IsNumber, Min, IsOptional, IsInt, Max, IsBoolean } from 'class-validator';
 
 export class AddSavingDto {
     @ApiProperty({ example: 50.0, description: 'Amount to add to savings', minimum: 0.01 })
@@ -20,4 +20,9 @@ export class AddSavingDto {
     @Min(2020)
     @Max(2099)
     year?: number;
+
+    @ApiPropertyOptional({ example: true, description: 'Whether this saving reduces the remaining salary budget. Set to false for windfalls (lottery wins, gifts).', default: true })
+    @IsOptional()
+    @IsBoolean()
+    reducesFromSalary?: boolean;
 }

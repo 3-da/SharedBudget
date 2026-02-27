@@ -204,6 +204,18 @@ export class ApprovalService {
                     proposed.year,
                     tx,
                 );
+            } else if (approval.action === ApprovalAction.SKIP_MONTH) {
+                const proposed = approval.proposedData as { month: number; year: number };
+                await tx.recurringOverride.upsert({
+                    where: { expenseId_month_year: { expenseId: approval.expenseId!, month: proposed.month, year: proposed.year } },
+                    create: { expenseId: approval.expenseId!, month: proposed.month, year: proposed.year, amount: 0, skipped: true },
+                    update: { skipped: true },
+                });
+            } else if (approval.action === ApprovalAction.UNSKIP_MONTH) {
+                const proposed = approval.proposedData as { month: number; year: number };
+                await tx.recurringOverride.deleteMany({
+                    where: { expenseId: approval.expenseId!, month: proposed.month, year: proposed.year },
+                });
             }
 
             return updatedApproval;

@@ -203,6 +203,36 @@ export class PersonalExpenseService {
         return { message: 'Personal expense deleted successfully.' };
     }
 
+    /**
+     * Returns IDs of the user's personal recurring expenses that are skipped for the given month.
+     *
+     * Use case: The expense list page needs to know which expenses are skipped so it can
+     * show the "Skipped" chip and the skip/unskip toggle buttons.
+     *
+     * Scenario: Sam skipped their gym membership for March. When the personal expenses list
+     * loads for March, the gym expense card shows as skipped.
+     *
+     * @param userId - The authenticated user's ID
+     * @param month - Month (1-12)
+     * @param year - Year
+     * @returns Array of expense IDs that are currently skipped for that month
+     */
+    async getPersonalSkipStatuses(userId: string, month: number, year: number): Promise<string[]> {
+        this.logger.debug(`Get personal skip statuses for user: ${userId}, month: ${month}, year: ${year}`);
+
+        const records = await this.prismaService.recurringOverride.findMany({
+            where: {
+                month,
+                year,
+                skipped: true,
+                expense: { createdById: userId, type: ExpenseType.PERSONAL, deletedAt: null },
+            },
+            select: { expenseId: true },
+        });
+
+        return records.map((r) => r.expenseId);
+    }
+
     private async invalidatePersonalCaches(userId: string, householdId: string): Promise<void> {
         await Promise.all([
             this.cacheService.invalidatePersonalExpenses(userId),

@@ -26,6 +26,7 @@ describe('SavingService', () => {
         month: 6,
         year: 2026,
         isShared: false,
+        reducesFromSalary: true,
         createdAt: new Date('2026-06-01T10:00:00.000Z'),
         updatedAt: new Date('2026-06-01T10:00:00.000Z'),
     };
@@ -140,6 +141,7 @@ describe('SavingService', () => {
                 month: 6,
                 year: 2026,
                 isShared: false,
+                reducesFromSalary: true,
                 createdAt: mockPersonalSaving.createdAt,
                 updatedAt: mockPersonalSaving.updatedAt,
             });
@@ -181,7 +183,7 @@ describe('SavingService', () => {
 
             expect(mockPrismaService.saving.update).toHaveBeenCalledWith({
                 where: { id: 'saving-001' },
-                data: { amount: 250 },
+                data: expect.objectContaining({ amount: 250 }),
             });
             expect(result.amount).toBe(250);
         });
@@ -235,6 +237,57 @@ describe('SavingService', () => {
             const result = await service.addPersonalSaving(mockUserId, { amount: 50, month: 12, year: 2026 });
 
             expect(result.month).toBe(12);
+        });
+
+        it('should pass reducesFromSalary=false to create when explicitly set', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.saving.findUnique.mockResolvedValue(null);
+            mockPrismaService.saving.create.mockResolvedValue({ ...mockPersonalSaving, amount: 50, reducesFromSalary: false });
+
+            await service.addPersonalSaving(mockUserId, { amount: 50, reducesFromSalary: false });
+
+            expect(mockPrismaService.saving.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({ reducesFromSalary: false }),
+            });
+        });
+
+        it('should default reducesFromSalary=true when not provided on create', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.saving.findUnique.mockResolvedValue(null);
+            mockPrismaService.saving.create.mockResolvedValue({ ...mockPersonalSaving, amount: 50 });
+
+            await service.addPersonalSaving(mockUserId, { amount: 50 });
+
+            expect(mockPrismaService.saving.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({ reducesFromSalary: true }),
+            });
+        });
+
+        it('should preserve existing reducesFromSalary on update when not provided', async () => {
+            const existingWithFalse = { ...mockPersonalSaving, reducesFromSalary: false };
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.saving.findUnique.mockResolvedValue(existingWithFalse);
+            mockPrismaService.saving.update.mockResolvedValue({ ...existingWithFalse, amount: 250 });
+
+            await service.addPersonalSaving(mockUserId, { amount: 50 });
+
+            expect(mockPrismaService.saving.update).toHaveBeenCalledWith({
+                where: { id: 'saving-001' },
+                data: expect.objectContaining({ reducesFromSalary: false }),
+            });
+        });
+
+        it('should override reducesFromSalary on update when explicitly provided', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.saving.findUnique.mockResolvedValue(mockPersonalSaving); // reducesFromSalary: true
+            mockPrismaService.saving.update.mockResolvedValue({ ...mockPersonalSaving, amount: 250, reducesFromSalary: false });
+
+            await service.addPersonalSaving(mockUserId, { amount: 50, reducesFromSalary: false });
+
+            expect(mockPrismaService.saving.update).toHaveBeenCalledWith({
+                where: { id: 'saving-001' },
+                data: expect.objectContaining({ reducesFromSalary: false }),
+            });
         });
     });
     //#endregion
@@ -398,7 +451,7 @@ describe('SavingService', () => {
 
             expect(mockPrismaService.saving.update).toHaveBeenCalledWith({
                 where: { id: 'saving-002' },
-                data: { amount: 150 },
+                data: expect.objectContaining({ amount: 150 }),
             });
             expect(result.amount).toBe(150);
         });

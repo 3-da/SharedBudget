@@ -330,7 +330,10 @@ export class SavingService {
         if (existing) {
             result = await this.prismaService.saving.update({
                 where: { id: existing.id },
-                data: { amount: Number(existing.amount) + dto.amount },
+                data: {
+                    amount: Number(existing.amount) + dto.amount,
+                    reducesFromSalary: dto.reducesFromSalary ?? existing.reducesFromSalary,
+                },
             });
         } else {
             result = await this.prismaService.saving.create({
@@ -341,6 +344,7 @@ export class SavingService {
                     month,
                     year,
                     isShared,
+                    reducesFromSalary: dto.reducesFromSalary ?? true,
                 },
             });
         }
@@ -366,6 +370,7 @@ export class SavingService {
             month: record.month,
             year: record.year,
             isShared: record.isShared,
+            reducesFromSalary: record.reducesFromSalary,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
         };

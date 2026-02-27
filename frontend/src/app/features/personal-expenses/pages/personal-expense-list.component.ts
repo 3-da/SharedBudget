@@ -48,11 +48,14 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
           <app-expense-card
             [expense]="e"
             [paymentStatus]="store.paymentStatuses().get(e.id) ?? null"
+            [isSkipped]="store.skippedExpenseIds().has(e.id)"
             (edit)="onEdit($event)"
             (remove)="onDelete($event)"
             (markPaid)="onMarkPaid($event)"
             (undoPaid)="onUndoPaid($event)"
-            (viewTimeline)="onTimeline($event)" />
+            (viewTimeline)="onTimeline($event)"
+            (skip)="onSkip($event)"
+            (unskip)="onUnskip($event)" />
         }
       </div>
     }
@@ -107,6 +110,14 @@ export class PersonalExpenseListComponent implements OnInit {
 
   onTimeline(id: string): void {
     this.router.navigate(['/expenses/personal', id, 'timeline']);
+  }
+
+  onSkip(id: string): void {
+    this.store.skipExpense(id, this.month(), this.year());
+  }
+
+  onUnskip(id: string): void {
+    this.store.unskipExpense(id, this.month(), this.year());
   }
 
   private load(): void { this.store.loadExpenses(this.month(), this.year()); }

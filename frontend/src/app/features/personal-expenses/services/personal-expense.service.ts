@@ -2,8 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../../core/api/api.service';
-import { Expense, CreateExpenseRequest, UpdateExpenseRequest } from '../../../shared/models/expense.model';
-import { MessageResponse } from '../../../shared/models/auth.model';
+import { Expense, CreateExpenseRequest, UpdateExpenseRequest, MessageResponse } from '../../../shared/models';
 
 @Injectable({ providedIn: 'root' })
 export class PersonalExpenseService {
@@ -30,5 +29,10 @@ export class PersonalExpenseService {
 
   delete(id: string): Observable<MessageResponse> {
     return this.api.delete<MessageResponse>(`/expenses/personal/${id}`);
+  }
+
+  getSkipStatuses(month: number, year: number): Observable<string[]> {
+    const params = new HttpParams().set('month', month).set('year', year);
+    return this.api.get<string[]>('/expenses/personal/skip-statuses', params);
   }
 }

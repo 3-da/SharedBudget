@@ -48,12 +48,15 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
           <app-shared-expense-card
             [expense]="e"
             [hasPendingApproval]="approvalStore.pendingExpenseIds().has(e.id)"
+            [isSkipped]="store.skippedExpenseIds().has(e.id)"
             [paymentStatus]="store.paymentStatuses().get(e.id) ?? null"
             (edit)="onEdit($event)"
             (remove)="onDelete($event)"
             (markPaid)="onMarkPaid($event)"
             (undoPaid)="onUndoPaid($event)"
-            (viewTimeline)="onTimeline($event)" />
+            (viewTimeline)="onTimeline($event)"
+            (skip)="onSkip($event)"
+            (unskip)="onUnskip($event)" />
         }
       </div>
     }
@@ -109,6 +112,14 @@ export class SharedExpenseListComponent implements OnInit {
 
   onTimeline(id: string): void {
     this.router.navigate(['/expenses/shared', id, 'timeline']);
+  }
+
+  onSkip(id: string): void {
+    this.store.proposeSkip(id, { month: this.month(), year: this.year() });
+  }
+
+  onUnskip(id: string): void {
+    this.store.proposeUnskip(id, { month: this.month(), year: this.year() });
   }
 
   private load(): void { this.store.loadExpenses(this.month(), this.year()); }

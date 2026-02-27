@@ -50,7 +50,7 @@ SharedBudget/
 │   │   ├── approval/           # Accept/reject shared expense changes
 │   │   ├── dashboard/          # Financial overview, settlement calc, mark-paid
 │   │   ├── expense-payment/    # Mark expense months as paid/pending
-│   │   ├── recurring-override/ # Override recurring expense amounts per month
+│   │   ├── recurring-override/ # Override expense amounts or skip for any month
 │   │   ├── saving/             # Personal & shared savings add/withdraw
 │   │   ├── session/            # Redis session management
 │   │   ├── common/             # Filters, DTOs, helpers, logger, cache, utils
@@ -332,11 +332,11 @@ All errors return consistent JSON with `timestamp` and `requestId`. Prisma error
 Shared expense changes (create/update/delete) and shared savings withdrawals create `ExpenseApproval` records with `requestedBy` user relation. Another household member must accept/reject. Accept/reject responses include full `requestedBy`/`reviewedBy` user objects.
 
 ### Expense Types
-- **RECURRING MONTHLY**: Appears every month at full amount (supports per-month overrides)
-- **RECURRING YEARLY FULL**: Appears once in the `paymentMonth` at full amount
-- **RECURRING YEARLY INSTALLMENTS**: Spread across months at `amount / divisor` (MONTHLY=12, QUARTERLY=4, SEMI_ANNUAL=2)
-- **ONE_TIME FULL**: Single expense at specific month/year
-- **ONE_TIME INSTALLMENTS**: Spread over `installmentCount` payments at calculated per-installment amount
+- **RECURRING MONTHLY**: Appears every month at full amount (supports per-month skip/overrides)
+- **RECURRING YEARLY FULL**: Appears once in the `paymentMonth` at full amount (supports per-month skip)
+- **RECURRING YEARLY INSTALLMENTS**: Spread across months at `amount / divisor` (MONTHLY=12, QUARTERLY=4, SEMI_ANNUAL=2) (supports per-month skip)
+- **ONE_TIME FULL**: Single expense at specific month/year (supports per-month skip)
+- **ONE_TIME INSTALLMENTS**: Spread over `installmentCount` payments at calculated per-installment amount (supports per-month skip)
 
 ### Signal Stores (Frontend)
 Each feature uses Angular signals for state management. Pattern: load/create/update/delete actions with loading/error signals.

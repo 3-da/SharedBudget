@@ -22,6 +22,9 @@ export class SavingResponseDto {
     @ApiProperty({ example: false })
     isShared!: boolean;
 
+    @ApiProperty({ example: true, description: 'Whether this saving reduces the remaining salary budget.' })
+    reducesFromSalary!: boolean;
+
     @ApiProperty()
     createdAt!: Date;
 

@@ -130,9 +130,15 @@ describe('ApprovalService', () => {
         update: vi.fn(),
     };
 
+    const mockTxRecurringOverride = {
+        upsert: vi.fn(),
+        deleteMany: vi.fn(),
+    };
+
     const mockTx = {
         expenseApproval: mockTxExpenseApproval,
         expense: mockTxExpense,
+        recurringOverride: mockTxRecurringOverride,
     };
 
     const mockPrismaService = {
@@ -493,6 +499,86 @@ describe('ApprovalService', () => {
             const result = await service.acceptApproval(mockReviewerId, 'approval-004', {});
 
             expect(mockSavingService.executeSharedWithdrawal).toHaveBeenCalledWith(mockUserId, mockHouseholdId, 50, 6, 2026, mockTx);
+            expect(result.status).toBe(ApprovalStatus.ACCEPTED);
+            expect(mockCacheService.invalidateHousehold).toHaveBeenCalledWith(mockHouseholdId);
+        });
+
+        it('should accept a SKIP_MONTH approval and upsert RecurringOverride with skipped=true', async () => {
+            const skipApproval = {
+                id: 'approval-005',
+                expenseId: mockExpenseId,
+                householdId: mockHouseholdId,
+                action: ApprovalAction.SKIP_MONTH,
+                status: ApprovalStatus.PENDING,
+                requestedById: mockUserId,
+                requestedBy: mockRequestedByUser,
+                reviewedById: null,
+                reviewedBy: null,
+                message: null,
+                proposedData: { month: 7, year: 2026 },
+                createdAt: new Date('2026-01-19'),
+                reviewedAt: null,
+            };
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(skipApproval);
+            const updatedApproval = {
+                ...skipApproval,
+                status: ApprovalStatus.ACCEPTED,
+                reviewedById: mockReviewerId,
+                reviewedBy: mockReviewerUser,
+                reviewedAt: expect.any(Date),
+            };
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockTxExpenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
+            mockTxRecurringOverride.upsert.mockResolvedValue({});
+            mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
+
+            const result = await service.acceptApproval(mockReviewerId, 'approval-005', {});
+
+            expect(mockTxRecurringOverride.upsert).toHaveBeenCalledWith({
+                where: { expenseId_month_year: { expenseId: mockExpenseId, month: 7, year: 2026 } },
+                create: { expenseId: mockExpenseId, month: 7, year: 2026, amount: 0, skipped: true },
+                update: { skipped: true },
+            });
+            expect(result.status).toBe(ApprovalStatus.ACCEPTED);
+            expect(mockCacheService.invalidateHousehold).toHaveBeenCalledWith(mockHouseholdId);
+        });
+
+        it('should accept an UNSKIP_MONTH approval and delete RecurringOverride', async () => {
+            const unskipApproval = {
+                id: 'approval-006',
+                expenseId: mockExpenseId,
+                householdId: mockHouseholdId,
+                action: ApprovalAction.UNSKIP_MONTH,
+                status: ApprovalStatus.PENDING,
+                requestedById: mockUserId,
+                requestedBy: mockRequestedByUser,
+                reviewedById: null,
+                reviewedBy: null,
+                message: null,
+                proposedData: { month: 7, year: 2026 },
+                createdAt: new Date('2026-01-20'),
+                reviewedAt: null,
+            };
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockReviewerMembership);
+            mockPrismaService.expenseApproval.findFirst.mockResolvedValue(unskipApproval);
+            const updatedApproval = {
+                ...unskipApproval,
+                status: ApprovalStatus.ACCEPTED,
+                reviewedById: mockReviewerId,
+                reviewedBy: mockReviewerUser,
+                reviewedAt: expect.any(Date),
+            };
+            mockTxExpenseApproval.updateMany.mockResolvedValue({ count: 1 });
+            mockTxExpenseApproval.findUniqueOrThrow.mockResolvedValue(updatedApproval);
+            mockTxRecurringOverride.deleteMany.mockResolvedValue({ count: 1 });
+            mockPrismaService.$transaction.mockImplementation(async (cb) => cb(mockTx));
+
+            const result = await service.acceptApproval(mockReviewerId, 'approval-006', {});
+
+            expect(mockTxRecurringOverride.deleteMany).toHaveBeenCalledWith({
+                where: { expenseId: mockExpenseId, month: 7, year: 2026 },
+            });
             expect(result.status).toBe(ApprovalStatus.ACCEPTED);
             expect(mockCacheService.invalidateHousehold).toHaveBeenCalledWith(mockHouseholdId);
         });

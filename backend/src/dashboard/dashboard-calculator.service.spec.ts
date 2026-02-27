@@ -135,6 +135,7 @@ describe('DashboardCalculatorService', () => {
         expensePaymentStatus: { findMany: vi.fn() },
         settlement: { findUnique: vi.fn(), create: vi.fn() },
         saving: { findMany: vi.fn() },
+        recurringOverride: { findMany: vi.fn() },
     };
 
     const mockExpenseHelper = {
@@ -160,6 +161,7 @@ describe('DashboardCalculatorService', () => {
         mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([]);
         mockPrismaService.settlement.findUnique.mockResolvedValue(null);
         mockPrismaService.saving.findMany.mockResolvedValue([]);
+        mockPrismaService.recurringOverride.findMany.mockResolvedValue([]);
     });
 
     describe('getIncomeData', () => {
@@ -228,6 +230,27 @@ describe('DashboardCalculatorService', () => {
             expect(result.totalHouseholdExpenses).toBe(0);
             expect(result.remainingHouseholdExpenses).toBe(0);
         });
+
+        it('should exclude skipped personal expenses from totals', async () => {
+            // Skip Alex's gym expense (exp-1, 50 EUR)
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-1' }]);
+
+            const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(0); // gym skipped
+            expect(result.totalHouseholdExpenses).toBe(950); // 0 + 30 + 920
+        });
+
+        it('should exclude skipped shared expenses from totals', async () => {
+            // Skip shared rent (exp-3, 800 EUR)
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-3' }]);
+
+            const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            expect(result.sharedExpensesTotal).toBe(120); // only electricity remains
+            expect(result.totalHouseholdExpenses).toBe(200); // 50 + 30 + 120
+        });
     });
 
     describe('calculateSavings', () => {
@@ -268,6 +291,30 @@ describe('DashboardCalculatorService', () => {
 
             const alexSavings = result.members.find((m) => m.userId === mockUserId);
             // 3200 - 50 - 460 - 1000 - 0 = 1690
+            expect(alexSavings!.remainingBudget).toBe(1690);
+        });
+
+        it('should NOT reduce remaining budget for savings with reducesFromSalary=false', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, amount: { valueOf: () => 1000 }, isShared: false, reducesFromSalary: false },
+            ]);
+
+            const result = await service.calculateSavings(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            const alexSavings = result.members.find((m) => m.userId === mockUserId);
+            // 3200 - 50 - 460 - 0 (windfall not deducted) = 2690
+            expect(alexSavings!.remainingBudget).toBe(2690);
+        });
+
+        it('should reduce remaining budget for savings with reducesFromSalary=true', async () => {
+            mockPrismaService.saving.findMany.mockResolvedValue([
+                { userId: mockUserId, amount: { valueOf: () => 1000 }, isShared: false, reducesFromSalary: true },
+            ]);
+
+            const result = await service.calculateSavings(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            const alexSavings = result.members.find((m) => m.userId === mockUserId);
+            // 3200 - 50 - 460 - 1000 = 1690
             expect(alexSavings!.remainingBudget).toBe(1690);
         });
 
@@ -328,6 +375,17 @@ describe('DashboardCalculatorService', () => {
             const result = await service.calculateSettlement(mockMembers as any, mockSharedExpenses as any, 'user-jordan', currentMonth, currentYear);
 
             expect(result.message).toBe('Sam owes Alex €60.00');
+        });
+
+        it('should exclude skipped shared expenses from settlement calculation', async () => {
+            // Skip electricity (exp-4, 120 EUR, paid by Alex) — removing Alex's overpayment advantage
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-4' }]);
+
+            // Only rent remains (exp-3, 800 split equally) → no settlement needed
+            const result = await service.calculateSettlement(mockMembers as any, mockSharedExpenses as any, mockUserId, currentMonth, currentYear);
+
+            expect(result.amount).toBe(0);
+            expect(result.message).toBe('All shared expenses are balanced — no settlement needed.');
         });
     });
 

@@ -12,6 +12,7 @@ import {
     CreatePersonalExpenseEndpoint,
     DeletePersonalExpenseEndpoint,
     GetPersonalExpenseEndpoint,
+    GetPersonalSkipStatusesEndpoint,
     ListPersonalExpensesEndpoint,
     UpdatePersonalExpenseEndpoint,
 } from './decorators/api-personal-expense.decorators';
@@ -26,6 +27,12 @@ export class PersonalExpenseController {
     @ListPersonalExpensesEndpoint()
     async listPersonalExpenses(@CurrentUser('id') userId: string, @Query() query: ListPersonalExpensesQueryDto): Promise<PersonalExpenseResponseDto[]> {
         return this.personalExpenseService.listPersonalExpenses(userId, query);
+    }
+
+    @GetPersonalSkipStatusesEndpoint()
+    async getPersonalSkipStatuses(@CurrentUser('id') userId: string, @Query() query: ListPersonalExpensesQueryDto): Promise<string[]> {
+        const now = new Date();
+        return this.personalExpenseService.getPersonalSkipStatuses(userId, query.month ?? now.getMonth() + 1, query.year ?? now.getFullYear());
     }
 
     @CreatePersonalExpenseEndpoint()

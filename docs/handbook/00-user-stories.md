@@ -237,9 +237,9 @@ The system calculates who owes whom based on shared expenses. Each member's shar
 
 ---
 
-### Story 13: Recurring Expense Overrides ✅
+### Story 13: Expense Overrides ✅
 **As a** household member
-**I want to** override the amount of a recurring expense for a specific month, or skip it entirely
+**I want to** override the amount of any expense for a specific month, or skip it entirely
 **So that** I can handle temporary changes without modifying the base expense
 
 **Acceptance Criteria:**
