@@ -1,0 +1,26 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { ApiService } from '../../../core/api/api.service';
+import { DashboardOverview, MarkSettlementPaidResponse, SavingsHistoryItem } from '../../../shared/models/dashboard.model';
+
+@Injectable({ providedIn: 'root' })
+export class DashboardService {
+  private readonly api = inject(ApiService);
+
+  getOverview(mode?: 'monthly' | 'yearly', month?: number, year?: number): Observable<DashboardOverview> {
+    let params = new HttpParams();
+    if (mode && mode !== 'monthly') params = params.set('mode', mode);
+    if (month) params = params.set('month', String(month));
+    if (year) params = params.set('year', String(year));
+    return this.api.get<DashboardOverview>('/dashboard', params);
+  }
+
+  getSavingsHistory(): Observable<SavingsHistoryItem[]> {
+    return this.api.get<SavingsHistoryItem[]>('/dashboard/savings-history');
+  }
+
+  markSettlementPaid(): Observable<MarkSettlementPaidResponse> {
+    return this.api.post<MarkSettlementPaidResponse>('/dashboard/settlement/mark-paid');
+  }
+}

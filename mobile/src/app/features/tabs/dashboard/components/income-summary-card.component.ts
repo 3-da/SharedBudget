@@ -1,0 +1,38 @@
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { IonCard, IonCardHeader, IonCardTitle, IonCardContent } from '@ionic/angular/standalone';
+import { MemberIncome } from '../../../../shared/models/dashboard.model';
+import { CurrencyEurPipe } from '../../../../shared/pipes/currency-eur.pipe';
+
+@Component({
+  selector: 'app-income-summary-card',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [IonCard, IonCardHeader, IonCardTitle, IonCardContent, CurrencyEurPipe],
+  template: `
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Income</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        @for (m of members(); track m.userId) {
+          <div class="row">
+            <span>{{ m.firstName }} {{ m.lastName }}</span>
+            <span>{{ m.currentSalary | currencyEur }}</span>
+          </div>
+        }
+        <div class="row total">
+          <strong>Total</strong>
+          <strong>{{ totalCurrent() | currencyEur }}</strong>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  `,
+  styles: [`
+    .row { display: flex; justify-content: space-between; padding: 6px 0; }
+    .total { border-top: 1px solid var(--ion-color-step-200); margin-top: 8px; padding-top: 8px; }
+  `],
+})
+export class IncomeSummaryCardComponent {
+  readonly members = input.required<MemberIncome[]>();
+  readonly totalCurrent = input.required<number>();
+}
