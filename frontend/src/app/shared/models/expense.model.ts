@@ -20,6 +20,7 @@ export interface Expense {
   paidByUserId: string | null;
   month: number | null;
   year: number | null;
+  isFixed: boolean;
   createdById: string;
   createdAt: string;
 }
@@ -36,6 +37,7 @@ export interface CreateExpenseRequest {
   paidByUserId?: string;
   month?: number;
   year?: number;
+  isFixed?: boolean;
 }
 
 export interface SkipExpenseRequest {
@@ -55,4 +57,5 @@ export interface UpdateExpenseRequest {
   paidByUserId?: string | null;
   month?: number | null;
   year?: number | null;
+  isFixed?: boolean;
 }
