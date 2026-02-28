@@ -43,6 +43,9 @@ export class SharedExpenseResponseDto {
     @ApiPropertyOptional({ example: 2026 })
     year?: number | null;
 
+    @ApiProperty({ example: true, description: 'Whether the expense has a fixed amount (true) or flexible/budget (false)' })
+    isFixed!: boolean;
+
     @ApiProperty({ type: 'string', format: 'date-time' })
     createdAt!: Date;
 

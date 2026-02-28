@@ -23,6 +23,9 @@ export class ExpensePaymentResponseDto {
     @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'User who last changed the status' })
     paidById!: string;
 
+    @ApiPropertyOptional({ example: 45.50, nullable: true, description: 'Actual amount paid (for flexible expenses). Null for fixed expenses.' })
+    paidAmount!: number | null;
+
     @ApiProperty({ description: 'Record creation timestamp' })
     createdAt!: Date;
 
