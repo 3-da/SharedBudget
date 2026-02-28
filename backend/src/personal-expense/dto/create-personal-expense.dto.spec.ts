@@ -416,4 +416,35 @@ describe('CreatePersonalExpenseDto', () => {
         });
     });
     //#endregion
+
+    //#region isFixed validation
+    describe('isFixed', () => {
+        it('should accept isFixed: true', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, { ...validMonthly, isFixed: true });
+            const errors = await validate(dto);
+            expect(errors.length).toBe(0);
+        });
+
+        it('should accept isFixed: false', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, { ...validMonthly, isFixed: false });
+            const errors = await validate(dto);
+            expect(errors.length).toBe(0);
+        });
+
+        it('should accept when isFixed is absent (optional)', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, validMonthly);
+            const errors = await validate(dto);
+            expect(errors.length).toBe(0);
+            expect(dto.isFixed).toBeUndefined();
+        });
+
+        it('should reject non-boolean isFixed', async () => {
+            const dto = plainToInstance(CreatePersonalExpenseDto, { ...validMonthly, isFixed: 'yes' });
+            const errors = await validate(dto);
+            const isFixedError = errors.find((e) => e.property === 'isFixed');
+            expect(isFixedError).toBeDefined();
+            expect(isFixedError!.constraints).toHaveProperty('isBoolean');
+        });
+    });
+    //#endregion
 });

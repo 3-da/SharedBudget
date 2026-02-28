@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 import { ExpenseCategory, ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy } from '../../generated/prisma/enums';
 
 export class CreateSharedExpenseDto {
@@ -67,4 +67,12 @@ export class CreateSharedExpenseDto {
     @Min(2000)
     year?: number;
     //#endregion
+
+    @ApiPropertyOptional({
+        example: true,
+        description: 'Whether the expense has a fixed amount (true) or is a flexible budget (false). Defaults to true.',
+    })
+    @IsOptional()
+    @IsBoolean()
+    isFixed?: boolean;
 }
