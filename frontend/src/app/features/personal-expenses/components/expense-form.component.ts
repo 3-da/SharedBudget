@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { DecimalPipe } from '@angular/common';
 import { Expense, CreateExpenseRequest } from '../../../shared/models/expense.model';
 import { HouseholdMember } from '../../../shared/models/household.model';
@@ -15,7 +16,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-expense-form',
   standalone: true,
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, DecimalPipe],
+  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, MatSlideToggleModule, DecimalPipe],
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       <mat-form-field appearance="outline" class="full-width">
@@ -156,6 +157,17 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
         </mat-form-field>
       }
 
+      <div class="toggle-row">
+        <mat-slide-toggle formControlName="isFixed">Fixed amount</mat-slide-toggle>
+        <span class="toggle-hint">
+          @if (form.controls.isFixed.value) {
+            You pay exactly the planned amount.
+          } @else {
+            You enter the actual amount paid when marking as paid.
+          }
+        </span>
+      </div>
+
       <button mat-flat-button type="submit" class="full-width" [disabled]="loading()">
         {{ expense() ? 'Update' : 'Create' }} Expense
       </button>
@@ -166,6 +178,8 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
     form { display: flex; flex-direction: column; gap: 8px; }
     .row { display: flex; gap: 12px; }
     .row mat-form-field { flex: 1; }
+    .toggle-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; }
+    .toggle-hint { font-size: 12px; color: var(--mat-sys-on-surface-variant); }
     @media (max-width: 400px) {
       .row { flex-direction: column; gap: 8px; }
     }
@@ -191,6 +205,7 @@ export class ExpenseFormComponent {
     year: [null as number | null],
     paidByUserId: [null as string | null],
     installmentYears: [null as number | null],
+    isFixed: [true as boolean],
   });
 
   // Bridge form control values to signals for reactive template conditionals (S2.8)
@@ -242,6 +257,7 @@ export class ExpenseFormComponent {
           name: e.name, amount: e.amount, category: e.category, frequency: e.frequency,
           yearlyPaymentStrategy: e.yearlyPaymentStrategy, installmentFrequency: e.installmentFrequency,
           paymentMonth: e.paymentMonth, month: e.month, year: e.year, paidByUserId: e.paidByUserId,
+          isFixed: e.isFixed,
         });
       }
     });
@@ -287,6 +303,7 @@ export class ExpenseFormComponent {
       if (val.yearlyPaymentStrategy === 'FULL' && val.paymentMonth) dto.paymentMonth = val.paymentMonth;
     }
     if (val.paidByUserId) dto.paidByUserId = val.paidByUserId;
+    dto.isFixed = val.isFixed;
     this.save.emit(dto);
   }
 }
