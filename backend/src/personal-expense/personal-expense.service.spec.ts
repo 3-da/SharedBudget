@@ -213,6 +213,7 @@ describe('PersonalExpenseService', () => {
                     type: ExpenseType.PERSONAL,
                     category: ExpenseCategory.RECURRING,
                     frequency: ExpenseFrequency.MONTHLY,
+                    isFixed: true,
                     yearlyPaymentStrategy: null,
                     installmentFrequency: null,
                     installmentCount: null,

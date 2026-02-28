@@ -91,6 +91,7 @@ export class PersonalExpenseService {
                 type: ExpenseType.PERSONAL,
                 category: dto.category,
                 frequency: dto.frequency,
+                isFixed: dto.isFixed ?? true,
                 ...buildExpenseNullableFields(dto),
             },
         });

@@ -320,6 +320,7 @@ describe('SharedExpenseService', () => {
                         category: ExpenseCategory.RECURRING,
                         frequency: ExpenseFrequency.MONTHLY,
                         paidByUserId: null,
+                        isFixed: true,
                         yearlyPaymentStrategy: null,
                         installmentFrequency: null,
                         installmentCount: null,
