@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { HealthIndicator, HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthCheckError, HealthIndicator, HealthIndicatorResult } from '@nestjs/terminus';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module';
 
@@ -12,14 +12,15 @@ export class RedisHealthIndicator extends HealthIndicator {
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         try {
             const result = await this.redis.ping();
-            const isHealthy = result === 'PONG';
-            if (!isHealthy) {
-                // Return a failed status instead of throwing an exception that's caught locally
-                return this.getStatus(key, false, { message: `Unexpected ping response: ${result}` });
+            if (result !== 'PONG') {
+                const status = this.getStatus(key, false, { message: `Unexpected ping response: ${result}` });
+                throw new HealthCheckError('Redis health check failed', status);
             }
             return this.getStatus(key, true);
         } catch (error) {
-            return this.getStatus(key, false, { message: (error as Error).message });
+            if (error instanceof HealthCheckError) throw error;
+            const status = this.getStatus(key, false, { message: (error as Error).message });
+            throw new HealthCheckError('Redis health check failed', status);
         }
     }
 }
