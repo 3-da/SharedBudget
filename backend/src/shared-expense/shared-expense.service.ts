@@ -117,6 +117,7 @@ export class SharedExpenseService {
             category: dto.category,
             frequency: dto.frequency,
             paidByUserId: dto.paidByUserId ?? null,
+            isFixed: dto.isFixed ?? true,
             ...buildExpenseNullableFields(dto),
         };
 

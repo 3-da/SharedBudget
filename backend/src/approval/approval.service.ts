@@ -173,6 +173,7 @@ export class ApprovalService {
                         category: proposed.category,
                         frequency: proposed.frequency,
                         paidByUserId: proposed.paidByUserId ?? null,
+                        isFixed: proposed.isFixed ?? true,
                         ...buildExpenseNullableFields(proposed),
                     },
                 });
@@ -186,6 +187,7 @@ export class ApprovalService {
                         category: proposed.category,
                         frequency: proposed.frequency,
                         paidByUserId: proposed.paidByUserId ?? null,
+                        isFixed: proposed.isFixed ?? true,
                         ...buildExpenseNullableFields(proposed),
                     },
                 });
