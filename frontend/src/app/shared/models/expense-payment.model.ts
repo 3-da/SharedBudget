@@ -8,6 +8,7 @@ export interface ExpensePayment {
   status: PaymentStatus;
   paidAt: string | null;
   paidById: string;
+  paidAmount: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -15,4 +16,5 @@ export interface ExpensePayment {
 export interface MarkPaidRequest {
   month: number;
   year: number;
+  paidAmount?: number;
 }
