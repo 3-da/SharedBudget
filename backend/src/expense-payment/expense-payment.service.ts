@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
@@ -26,16 +26,24 @@ export class ExpensePaymentService {
      *
      * @param userId - The authenticated user's ID
      * @param expenseId - The expense to mark as paid
-     * @param dto - Month and year to mark as paid
+     * @param dto - Month, year and optional paidAmount to mark as paid
      * @returns The created or updated payment status record
      * @throws {NotFoundException} If the user is not a member of any household
      * @throws {NotFoundException} If the expense is not found in the user's household
+     * @throws {BadRequestException} If the expense is flexible and no paidAmount is provided
      */
     async markPaid(userId: string, expenseId: string, dto: MarkPaidDto): Promise<ExpensePaymentResponseDto> {
         this.logger.debug(`Mark expense paid: ${expenseId} for ${dto.month}/${dto.year} by user ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
         const expense = await this.findExpenseInHousehold(expenseId, membership.householdId);
+
+        if (!expense.isFixed && dto.paidAmount == null) {
+            this.logger.warn(`Flexible expense ${expenseId} requires paidAmount but none was provided`);
+            throw new BadRequestException('paidAmount is required for flexible expenses');
+        }
+
+        const paidAmount = expense.isFixed ? null : dto.paidAmount;
 
         const result = await this.prismaService.expensePaymentStatus.upsert({
             where: {
@@ -52,11 +60,13 @@ export class ExpensePaymentService {
                 status: PaymentStatus.PAID,
                 paidAt: new Date(),
                 paidById: userId,
+                paidAmount,
             },
             update: {
                 status: PaymentStatus.PAID,
                 paidAt: new Date(),
                 paidById: userId,
+                paidAmount,
             },
         });
 
@@ -108,6 +118,7 @@ export class ExpensePaymentService {
                 status: PaymentStatus.PENDING,
                 paidAt: null,
                 paidById: userId,
+                paidAmount: null,
             },
         });
 
@@ -239,6 +250,7 @@ export class ExpensePaymentService {
             status: record.status,
             paidAt: record.paidAt,
             paidById: record.paidById,
+            paidAmount: record.paidAmount != null ? Number(record.paidAmount) : null,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
         };
