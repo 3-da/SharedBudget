@@ -14,6 +14,7 @@ export interface ProposedExpenseData {
     installmentCount?: number | null;
     paymentMonth?: number | null;
     paidByUserId?: string | null;
+    isFixed?: boolean | null;
 }
 
 /**
