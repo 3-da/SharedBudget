@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { forkJoin } from 'rxjs';
 import { Expense, CreateExpenseRequest, UpdateExpenseRequest, PaymentStatus } from '../../../shared/models';
+import { ExpensePayment } from '../../../shared/models/expense-payment.model';
 import { extractHttpError } from '../../../shared/utils/extract-error';
 import { PersonalExpenseService } from '../services/personal-expense.service';
 import { ExpensePaymentService } from '../services/expense-payment.service';
@@ -15,7 +16,7 @@ export class PersonalExpenseStore {
   private readonly snackBar = inject(MatSnackBar);
 
   readonly expenses = signal<Expense[]>([]);
-  readonly paymentStatuses = signal<Map<string, PaymentStatus>>(new Map());
+  readonly paymentStatuses = signal<Map<string, ExpensePayment>>(new Map());
   readonly skippedExpenseIds = signal<Set<string>>(new Set());
   readonly selectedExpense = signal<Expense | null>(null);
   readonly loading = signal(false);
@@ -28,8 +29,13 @@ export class PersonalExpenseStore {
   readonly paidTotal = computed(() => {
     const statuses = this.paymentStatuses();
     return this.expenses()
-      .filter(e => statuses.get(e.id) === PaymentStatus.PAID)
-      .reduce((sum, e) => sum + e.amount, 0);
+      .filter(e => statuses.get(e.id)?.status === PaymentStatus.PAID)
+      .reduce((sum, e) => {
+        const payment = statuses.get(e.id);
+        // For flexible expenses, use the actual paid amount; for fixed, use the planned amount
+        const amount = (!e.isFixed && payment?.paidAmount != null) ? payment.paidAmount : e.amount;
+        return sum + amount;
+      }, 0);
   });
 
   readonly remainingBudget = computed(() => this.totalMonthly() - this.paidTotal());
@@ -56,8 +62,8 @@ export class PersonalExpenseStore {
     }).subscribe({
       next: ({ expenses, statuses, skipped }) => {
         this.expenses.set(expenses);
-        const map = new Map<string, PaymentStatus>();
-        for (const s of statuses) map.set(s.expenseId, s.status);
+        const map = new Map<string, ExpensePayment>();
+        for (const s of statuses) map.set(s.expenseId, s);
         this.paymentStatuses.set(map);
         this.skippedExpenseIds.set(new Set(skipped));
         this.loading.set(false);
@@ -95,16 +101,16 @@ export class PersonalExpenseStore {
     });
   }
 
-  markPaid(expenseId: string, month: number, year: number): void {
-    this.paymentService.markPaid(expenseId, { month, year }).subscribe({
-      next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Marked as paid', '', { duration: 2000 }); },
+  markPaid(expenseId: string, month: number, year: number, paidAmount?: number): void {
+    this.paymentService.markPaid(expenseId, { month, year, paidAmount }).subscribe({
+      next: p => { this.updatePaymentMap(expenseId, p); this.snackBar.open('Marked as paid', '', { duration: 2000 }); },
       error: err => this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }),
     });
   }
 
   undoPaid(expenseId: string, month: number, year: number): void {
     this.paymentService.undoPaid(expenseId, { month, year }).subscribe({
-      next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
+      next: p => { this.updatePaymentMap(expenseId, p); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
       error: err => this.snackBar.open(err.error?.message ?? 'Failed', '', { duration: 4000 }),
     });
   }
@@ -124,10 +130,10 @@ export class PersonalExpenseStore {
     });
   }
 
-  private updatePaymentMap(expenseId: string, status: PaymentStatus): void {
+  private updatePaymentMap(expenseId: string, payment: ExpensePayment): void {
     this.paymentStatuses.update(m => {
       const next = new Map(m);
-      next.set(expenseId, status);
+      next.set(expenseId, payment);
       return next;
     });
   }
