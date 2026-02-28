@@ -130,4 +130,58 @@ describe('MarkPaidDto', () => {
         expect(errors.length).toBe(2);
         expect(errors.map((e) => e.property).sort()).toEqual(['month', 'year']);
     });
+
+    describe('paidAmount', () => {
+        it('should accept valid paidAmount', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: 45.5 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBe(0);
+        });
+
+        it('should accept when paidAmount is absent (optional)', async () => {
+            const dto = plainToInstance(MarkPaidDto, validData);
+            const errors = await validate(dto);
+
+            expect(errors.length).toBe(0);
+            expect(dto.paidAmount).toBeUndefined();
+        });
+
+        it('should accept paidAmount at minimum boundary (0.01)', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: 0.01 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBe(0);
+        });
+
+        it('should reject paidAmount at zero (boundary: 0)', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: 0 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBeGreaterThan(0);
+            const paidAmountError = errors.find((e) => e.property === 'paidAmount');
+            expect(paidAmountError).toBeDefined();
+            expect(paidAmountError!.constraints).toHaveProperty('min');
+        });
+
+        it('should reject negative paidAmount', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: -1 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBeGreaterThan(0);
+            const paidAmountError = errors.find((e) => e.property === 'paidAmount');
+            expect(paidAmountError).toBeDefined();
+            expect(paidAmountError!.constraints).toHaveProperty('min');
+        });
+
+        it('should reject non-numeric paidAmount', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: 'abc' });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBeGreaterThan(0);
+            const paidAmountError = errors.find((e) => e.property === 'paidAmount');
+            expect(paidAmountError).toBeDefined();
+            expect(paidAmountError!.constraints).toHaveProperty('isNumber');
+        });
+    });
 });
