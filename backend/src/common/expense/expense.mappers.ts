@@ -18,6 +18,7 @@ function mapBaseExpenseFields(expense: any) {
         paymentMonth: expense.paymentMonth ?? null,
         month: expense.month ?? null,
         year: expense.year ?? null,
+        isFixed: expense.isFixed,
         createdAt: expense.createdAt,
         updatedAt: expense.updatedAt,
     };
@@ -67,6 +68,7 @@ export const EXPENSE_FIELDS = [
     'paymentMonth',
     'month',
     'year',
+    'isFixed',
 ] as const;
 
 // Builds the nullable expense fields from a create DTO, defaulting undefined values to null
