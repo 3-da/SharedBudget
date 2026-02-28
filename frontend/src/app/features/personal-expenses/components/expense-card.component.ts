@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Expense, ExpenseCategory, YearlyPaymentStrategy, PaymentStatus } from '../../../shared/models';
+import { ExpensePayment } from '../../../shared/models/expense-payment.model';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
@@ -20,6 +21,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
           <mat-chip-set>
             <mat-chip>{{ expense().category }}</mat-chip>
             <mat-chip>{{ expense().frequency }}</mat-chip>
+            @if (!expense().isFixed) {
+              <mat-chip>Flexible</mat-chip>
+            }
             @if (isSkipped()) {
               <mat-chip class="skipped-chip">Skipped</mat-chip>
             }
@@ -31,6 +35,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       </mat-card-header>
       <mat-card-content>
         <span class="amount">{{ expense().amount | currencyEur }}</span>
+        @if (isPaid() && !expense().isFixed && paymentStatus()?.paidAmount != null) {
+          <span class="paid-amount"> (paid: {{ paymentStatus()!.paidAmount! | currencyEur }})</span>
+        }
       </mat-card-content>
       <mat-card-actions>
         @if (isPaid()) {
@@ -63,6 +70,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   `,
   styles: [`
     .amount { font-size: 20px; font-weight: 500; }
+    .paid-amount { font-size: 14px; color: var(--mat-sys-on-surface-variant); margin-left: 4px; }
     mat-card-actions { display: flex; }
     .paid { opacity: 0.7; }
     .paid-chip { --mdc-chip-elevated-container-color: var(--chip-paid-bg); --mdc-chip-label-text-color: var(--chip-paid-text); }
@@ -71,7 +79,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 })
 export class ExpenseCardComponent {
   readonly expense = input.required<Expense>();
-  readonly paymentStatus = input<PaymentStatus | null>(null);
+  readonly paymentStatus = input<ExpensePayment | null>(null);
   readonly isSkipped = input(false);
   readonly edit = output<string>();
   readonly remove = output<string>();
@@ -81,7 +89,7 @@ export class ExpenseCardComponent {
   readonly skip = output<string>();
   readonly unskip = output<string>();
 
-  readonly isPaid = computed(() => this.paymentStatus() === PaymentStatus.PAID);
+  readonly isPaid = computed(() => this.paymentStatus()?.status === PaymentStatus.PAID);
   readonly hasTimeline = computed(() => {
     const e = this.expense();
     return e.category === ExpenseCategory.RECURRING ||
