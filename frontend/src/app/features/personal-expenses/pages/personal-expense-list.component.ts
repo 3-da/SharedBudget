@@ -12,6 +12,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 import { EmptyStateComponent } from '../../../shared/components/empty-state.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog.component';
+import { PartialPaymentDialogComponent, PartialPaymentDialogData } from '../../../shared/components/partial-payment-dialog.component';
 
 @Component({
   selector: 'app-personal-expense-list',
@@ -101,7 +102,23 @@ export class PersonalExpenseListComponent implements OnInit {
   }
 
   onMarkPaid(id: string): void {
-    this.store.markPaid(id, this.month(), this.year());
+    const expense = this.store.expenses().find(e => e.id === id);
+    if (!expense) return;
+
+    if (!expense.isFixed) {
+      this.dialog.open(PartialPaymentDialogComponent, {
+        data: { expenseName: expense.name, plannedAmount: expense.amount } as PartialPaymentDialogData,
+        width: '360px',
+      }).afterClosed().pipe(
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe((paidAmount: number | null) => {
+        if (paidAmount != null) {
+          this.store.markPaid(id, this.month(), this.year(), paidAmount);
+        }
+      });
+    } else {
+      this.store.markPaid(id, this.month(), this.year());
+    }
   }
 
   onUndoPaid(id: string): void {

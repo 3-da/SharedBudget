@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ExpensePaymentService } from './expense-payment.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
@@ -27,6 +27,18 @@ describe('ExpensePaymentService', () => {
         name: 'Gym membership',
         amount: 49.99,
         type: ExpenseType.PERSONAL,
+        isFixed: true,
+        deletedAt: null,
+    };
+
+    const mockFlexibleExpense = {
+        id: 'expense-flex-001',
+        householdId: mockHouseholdId,
+        createdById: mockUserId,
+        name: 'Groceries',
+        amount: 300,
+        type: ExpenseType.PERSONAL,
+        isFixed: false,
         deletedAt: null,
     };
 
@@ -37,6 +49,7 @@ describe('ExpensePaymentService', () => {
         name: 'Internet bill',
         amount: 59.99,
         type: ExpenseType.SHARED,
+        isFixed: true,
         deletedAt: null,
     };
 
@@ -48,6 +61,7 @@ describe('ExpensePaymentService', () => {
         status: PaymentStatus.PAID,
         paidAt: new Date('2026-06-15T10:30:00.000Z'),
         paidById: mockUserId,
+        paidAmount: null,
         createdAt: new Date('2026-06-15T10:30:00.000Z'),
         updatedAt: new Date('2026-06-15T10:30:00.000Z'),
     };
@@ -123,11 +137,13 @@ describe('ExpensePaymentService', () => {
                     status: PaymentStatus.PAID,
                     paidAt: expect.any(Date),
                     paidById: mockUserId,
+                    paidAmount: null,
                 },
                 update: {
                     status: PaymentStatus.PAID,
                     paidAt: expect.any(Date),
                     paidById: mockUserId,
+                    paidAmount: null,
                 },
             });
             expect(result.id).toBe('ps-001');
@@ -135,6 +151,7 @@ describe('ExpensePaymentService', () => {
             expect(result.expenseId).toBe(mockExpenseId);
             expect(result.month).toBe(6);
             expect(result.year).toBe(2026);
+            expect(result.paidAmount).toBeNull();
         });
 
         it('should invalidate personal expense cache for personal expenses', async () => {
@@ -234,6 +251,67 @@ describe('ExpensePaymentService', () => {
 
             expect(result.month).toBe(12);
         });
+
+        it('should throw BadRequestException if expense is flexible and no paidAmount is provided', async () => {
+            // Arrange
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expense.findFirst.mockResolvedValue(mockFlexibleExpense);
+
+            // Act & Assert
+            await expect(service.markPaid(mockUserId, mockFlexibleExpense.id, { month: 6, year: 2026 })).rejects.toThrow(
+                BadRequestException,
+            );
+            await expect(service.markPaid(mockUserId, mockFlexibleExpense.id, { month: 6, year: 2026 })).rejects.toThrow(
+                'paidAmount is required for flexible expenses',
+            );
+            expect(mockPrismaService.expensePaymentStatus.upsert).not.toHaveBeenCalled();
+        });
+
+        it('should store paidAmount for flexible expenses and return it in response', async () => {
+            // Arrange
+            const flexiblePaymentRecord = {
+                ...mockPaymentStatusRecord,
+                expenseId: mockFlexibleExpense.id,
+                paidAmount: 275.5,
+            };
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expense.findFirst.mockResolvedValue(mockFlexibleExpense);
+            mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(flexiblePaymentRecord);
+
+            // Act
+            const result = await service.markPaid(mockUserId, mockFlexibleExpense.id, {
+                month: 6,
+                year: 2026,
+                paidAmount: 275.5,
+            });
+
+            // Assert
+            expect(mockPrismaService.expensePaymentStatus.upsert).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    create: expect.objectContaining({ paidAmount: 275.5 }),
+                    update: expect.objectContaining({ paidAmount: 275.5 }),
+                }),
+            );
+            expect(result.paidAmount).toBe(275.5);
+        });
+
+        it('should store null paidAmount for fixed expenses even if paidAmount is provided', async () => {
+            // Arrange
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense); // isFixed: true
+            mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(mockPaymentStatusRecord);
+
+            // Act
+            await service.markPaid(mockUserId, mockExpenseId, { month: 6, year: 2026, paidAmount: 100 });
+
+            // Assert — paidAmount must be null for fixed expenses regardless of what was passed
+            expect(mockPrismaService.expensePaymentStatus.upsert).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    create: expect.objectContaining({ paidAmount: null }),
+                    update: expect.objectContaining({ paidAmount: null }),
+                }),
+            );
+        });
     });
     //#endregion
 
@@ -241,15 +319,20 @@ describe('ExpensePaymentService', () => {
     describe('undoPaid', () => {
         const dto = { month: 6, year: 2026 };
 
-        it('should reset payment status to PENDING', async () => {
+        it('should reset payment status to PENDING and clear paidAmount', async () => {
             // Arrange
+            const paidFlexibleRecord = {
+                ...mockPaymentStatusRecord,
+                paidAmount: 275.5,
+            };
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
-            mockPrismaService.expensePaymentStatus.findUnique.mockResolvedValue(mockPaymentStatusRecord);
+            mockPrismaService.expensePaymentStatus.findUnique.mockResolvedValue(paidFlexibleRecord);
             mockPrismaService.expensePaymentStatus.update.mockResolvedValue({
                 ...mockPaymentStatusRecord,
                 status: PaymentStatus.PENDING,
                 paidAt: null,
+                paidAmount: null,
             });
 
             // Act
@@ -271,10 +354,12 @@ describe('ExpensePaymentService', () => {
                     status: PaymentStatus.PENDING,
                     paidAt: null,
                     paidById: mockUserId,
+                    paidAmount: null,
                 },
             });
             expect(result.status).toBe(PaymentStatus.PENDING);
             expect(result.paidAt).toBeNull();
+            expect(result.paidAmount).toBeNull();
         });
 
         it('should invalidate cache after undoing paid status', async () => {
@@ -551,6 +636,7 @@ describe('ExpensePaymentService', () => {
                 status: PaymentStatus.PAID,
                 paidAt: mockPaymentStatusRecord.paidAt,
                 paidById: mockUserId,
+                paidAmount: null,
                 createdAt: mockPaymentStatusRecord.createdAt,
                 updatedAt: mockPaymentStatusRecord.updatedAt,
             });

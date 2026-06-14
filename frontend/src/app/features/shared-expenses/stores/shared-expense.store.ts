@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { forkJoin } from 'rxjs';
 import { Expense, CreateExpenseRequest, UpdateExpenseRequest, SkipExpenseRequest, PaymentStatus } from '../../../shared/models';
+import { ExpensePayment } from '../../../shared/models/expense-payment.model';
 import { extractHttpError } from '../../../shared/utils/extract-error';
 import { SharedExpenseService } from '../services/shared-expense.service';
 import { ExpensePaymentService } from '../../personal-expenses/services/expense-payment.service';
@@ -13,7 +14,7 @@ export class SharedExpenseStore {
   private readonly snackBar = inject(MatSnackBar);
 
   readonly expenses = signal<Expense[]>([]);
-  readonly paymentStatuses = signal<Map<string, PaymentStatus>>(new Map());
+  readonly paymentStatuses = signal<Map<string, ExpensePayment>>(new Map());
   readonly skippedExpenseIds = signal<Set<string>>(new Set());
   readonly selectedExpense = signal<Expense | null>(null);
   readonly loading = signal(false);
@@ -41,8 +42,8 @@ export class SharedExpenseStore {
     }).subscribe({
       next: ({ expenses, statuses, skipped }) => {
         this.expenses.set(expenses);
-        const map = new Map<string, PaymentStatus>();
-        for (const s of statuses) map.set(s.expenseId, s.status);
+        const map = new Map<string, ExpensePayment>();
+        for (const s of statuses) map.set(s.expenseId, s);
         this.paymentStatuses.set(map);
         this.skippedExpenseIds.set(new Set(skipped));
         this.loading.set(false);
@@ -109,24 +110,24 @@ export class SharedExpenseStore {
     });
   }
 
-  markPaid(expenseId: string, month: number, year: number): void {
-    this.paymentService.markPaid(expenseId, { month, year }).subscribe({
-      next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Marked as paid', '', { duration: 2000 }); },
+  markPaid(expenseId: string, month: number, year: number, paidAmount?: number): void {
+    this.paymentService.markPaid(expenseId, { month, year, paidAmount }).subscribe({
+      next: p => { this.updatePaymentMap(expenseId, p); this.snackBar.open('Marked as paid', '', { duration: 2000 }); },
       error: err => this.snackBar.open(extractHttpError(err) ?? 'Failed', '', { duration: 4000 }),
     });
   }
 
   undoPaid(expenseId: string, month: number, year: number): void {
     this.paymentService.undoPaid(expenseId, { month, year }).subscribe({
-      next: p => { this.updatePaymentMap(expenseId, p.status); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
+      next: p => { this.updatePaymentMap(expenseId, p); this.snackBar.open('Set back to pending', '', { duration: 2000 }); },
       error: err => this.snackBar.open(extractHttpError(err) ?? 'Failed', '', { duration: 4000 }),
     });
   }
 
-  private updatePaymentMap(expenseId: string, status: PaymentStatus): void {
+  private updatePaymentMap(expenseId: string, payment: ExpensePayment): void {
     this.paymentStatuses.update(m => {
       const next = new Map(m);
-      next.set(expenseId, status);
+      next.set(expenseId, payment);
       return next;
     });
   }
