@@ -176,6 +176,8 @@ jobs:
           REDIS_PASSWORD: ''
           JWT_ACCESS_SECRET: e2e-test-jwt-secret-at-least-32-characters-long
           JWT_ACCESS_EXPIRATION: 15m
+          JWT_REFRESH_SECRET: e2e-test-jwt-refresh-secret-at-least-32-characters-long
+          FRONTEND_URL: http://localhost:4200
           NODE_ENV: test
           PORT: 3000
 
