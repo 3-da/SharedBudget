@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { DashboardResponseDto } from './dto/dashboard-response.dto';
@@ -346,7 +346,10 @@ export class DashboardService {
         return months;
     }
 
-    private async loadMonthlyResults(baseData: Awaited<ReturnType<DashboardService['fetchBaseData']>>, months: { month: number; year: number }[]): Promise<MonthlyResult[]> {
+    private async loadMonthlyResults(
+        baseData: Awaited<ReturnType<DashboardService['fetchBaseData']>>,
+        months: { month: number; year: number }[],
+    ): Promise<MonthlyResult[]> {
         const { members, expenses } = baseData;
         return Promise.all(
             months.map(async ({ month, year }) => ({
@@ -416,7 +419,12 @@ export class DashboardService {
      * so the "only count active months" rule is stated once instead of once
      * per field.
      */
-    private averageMemberField<M extends { userId: string }>(recordsByMonth: M[][], userId: string, hasData: (record: M) => boolean, selector: (record: M) => number): number {
+    private averageMemberField<M extends { userId: string }>(
+        recordsByMonth: M[][],
+        userId: string,
+        hasData: (record: M) => boolean,
+        selector: (record: M) => number,
+    ): number {
         const activeValues = recordsByMonth
             .map((records) => records.find((r) => r.userId === userId))
             .filter((record): record is M => record != null && hasData(record))

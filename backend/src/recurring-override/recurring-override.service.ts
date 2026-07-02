@@ -127,7 +127,7 @@ export class RecurringOverrideService {
         this.logger.debug(`List overrides for expense: ${expenseId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
+        await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         const overrides = await this.prismaService.recurringOverride.findMany({
             where: { expenseId },

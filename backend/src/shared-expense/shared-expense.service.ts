@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SharedExpenseResponseDto } from './dto/shared-expense-response.dto';
 import { ListSharedExpensesQueryDto } from './dto/list-shared-expenses-query.dto';

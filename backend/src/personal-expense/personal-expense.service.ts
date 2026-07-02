@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListPersonalExpensesQueryDto } from './dto/list-personal-expenses-query.dto';
 import { PersonalExpenseResponseDto } from './dto/personal-expense-response.dto';
