@@ -18,7 +18,6 @@ const acceptedApproval: Approval = {
 };
 
 @Component({
-  standalone: true,
   imports: [ApprovalCardComponent],
   template: `<app-approval-card [approval]="approval()" (accept)="onAccept($event)" (reject)="onReject($event)" />`,
 })

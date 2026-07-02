@@ -6,7 +6,6 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [RouterOutlet, MatProgressSpinnerModule, MatProgressBarModule],
   template: `
     @if (authService.isRestoring()) {

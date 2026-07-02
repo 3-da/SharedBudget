@@ -5,8 +5,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { SharedExpenseStore } from '../stores/shared-expense.store';
-import { ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy, ExpenseCategory } from '../../../shared/models';
-import { TimelineMonth, getDefaultInstallmentCount, getStepMonths } from '../../../shared/utils/timeline';
+import { ExpenseFrequency, YearlyPaymentStrategy, ExpenseCategory } from '../../../shared/models';
+import { TimelineMonth, getDefaultInstallmentCount, buildRecurringTimeline, buildInstallmentTimeline } from '../../../shared/utils/timeline';
+import { roundCurrency } from '../../../shared/utils/round-currency';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
@@ -14,7 +15,6 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-shared-recurring-timeline',
-  standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
   template: `
     <app-page-header [title]="expenseName()" [subtitle]="timelineSubtitle()">
@@ -65,7 +65,7 @@ export class SharedRecurringTimelineComponent {
     const amount = Number(e.amount);
     if (e.frequency === ExpenseFrequency.YEARLY && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
       const count = e.installmentCount ?? getDefaultInstallmentCount(e.installmentFrequency);
-      return Math.round((amount / count) * 100) / 100;
+      return roundCurrency(amount / count);
     }
     return amount;
   });
@@ -85,9 +85,9 @@ export class SharedRecurringTimelineComponent {
     const currentY = now.getFullYear();
 
     if (this.isOneTimeInstallment()) {
-      return this.buildInstallmentTimeline(expense, currentM, currentY);
+      return buildInstallmentTimeline(expense, currentM, currentY);
     }
-    return this.buildRecurringTimeline(expense, currentM, currentY);
+    return buildRecurringTimeline(expense, this.defaultAmount(), currentM, currentY);
   });
 
   constructor() {
@@ -95,65 +95,5 @@ export class SharedRecurringTimelineComponent {
       this.store.loadExpense(this.id());
       this.loading.set(false);
     });
-  }
-
-  private buildRecurringTimeline(expense: any, currentM: number, currentY: number): TimelineMonth[] {
-    const months: TimelineMonth[] = [];
-    const isYearly = expense.frequency === ExpenseFrequency.YEARLY;
-    const strategy = expense.yearlyPaymentStrategy;
-    const installFreq = expense.installmentFrequency;
-    const expenseMonth = expense.month ?? 1;
-
-    for (let offset = -12; offset <= 12; offset++) {
-      const d = new Date(currentY, currentM - 1 + offset);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-
-      if (isYearly) {
-        if (strategy === YearlyPaymentStrategy.FULL) {
-          if (m !== expenseMonth) continue;
-        } else if (strategy === YearlyPaymentStrategy.INSTALLMENTS) {
-          if (installFreq === InstallmentFrequency.QUARTERLY) {
-            if ((m - expenseMonth + 12) % 3 !== 0) continue;
-          } else if (installFreq === InstallmentFrequency.SEMI_ANNUAL) {
-            if ((m - expenseMonth + 12) % 6 !== 0) continue;
-          }
-        }
-      }
-
-      months.push({
-        month: m, year: y,
-        label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        amount: this.defaultAmount(),
-        isPast: y < currentY || (y === currentY && m < currentM),
-        isCurrent: y === currentY && m === currentM,
-      });
-    }
-    return months;
-  }
-
-  private buildInstallmentTimeline(expense: any, currentM: number, currentY: number): TimelineMonth[] {
-    const startMonth = expense.month ?? currentM;
-    const startYear = expense.year ?? currentY;
-    const freq = expense.installmentFrequency;
-    const totalAmount = Number(expense.amount);
-    const count = expense.installmentCount ?? getDefaultInstallmentCount(freq);
-    const stepMonths = getStepMonths(freq);
-    const perInstallment = Math.round((totalAmount / count) * 100) / 100;
-    const months: TimelineMonth[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const d = new Date(startYear, startMonth - 1 + (i * stepMonths));
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-      months.push({
-        month: m, year: y,
-        label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        amount: perInstallment,
-        isPast: y < currentY || (y === currentY && m < currentM),
-        isCurrent: y === currentY && m === currentM,
-      });
-    }
-    return months;
   }
 }

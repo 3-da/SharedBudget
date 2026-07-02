@@ -5,6 +5,7 @@ import { ExpensePaymentService } from './expense-payment.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
+import { DashboardCalculatorService } from '../dashboard/dashboard-calculator.service';
 import { ExpenseType, PaymentStatus } from '../generated/prisma/enums';
 
 describe('ExpensePaymentService', () => {
@@ -67,19 +68,21 @@ describe('ExpensePaymentService', () => {
     };
 
     const mockPrismaService = {
-        expense: {
-            findFirst: vi.fn(),
-        },
         expensePaymentStatus: {
             upsert: vi.fn(),
             findUnique: vi.fn(),
             findMany: vi.fn(),
             update: vi.fn(),
         },
+        recurringOverride: {
+            findMany: vi.fn(),
+        },
     };
 
     const mockExpenseHelper = {
         requireMembership: vi.fn(),
+        findVisibleExpense: vi.fn(),
+        visibleExpenseFilter: vi.fn(),
     };
 
     const mockCacheService = {
@@ -89,6 +92,11 @@ describe('ExpensePaymentService', () => {
         invalidateExpenseCache: vi.fn(),
     };
 
+    const mockCalculator = {
+        getMonthlyAmount: vi.fn(),
+        getMonthlyAmounts: vi.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -96,12 +104,18 @@ describe('ExpensePaymentService', () => {
                 { provide: PrismaService, useValue: mockPrismaService },
                 { provide: ExpenseHelperService, useValue: mockExpenseHelper },
                 { provide: CacheService, useValue: mockCacheService },
+                { provide: DashboardCalculatorService, useValue: mockCalculator },
             ],
         }).compile();
 
         service = module.get<ExpensePaymentService>(ExpensePaymentService);
 
         vi.clearAllMocks();
+
+        // Safe defaults so tests that don't care about remainingAmount don't need to mock the calculator themselves
+        mockPrismaService.recurringOverride.findMany.mockResolvedValue([]);
+        mockCalculator.getMonthlyAmounts.mockResolvedValue(new Map());
+        mockCalculator.getMonthlyAmount.mockReturnValue(0);
     });
 
     //#region markPaid
@@ -111,7 +125,7 @@ describe('ExpensePaymentService', () => {
         it('should mark an expense as paid and return the payment status', async () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(mockPaymentStatusRecord);
 
             // Act
@@ -119,9 +133,7 @@ describe('ExpensePaymentService', () => {
 
             // Assert
             expect(mockExpenseHelper.requireMembership).toHaveBeenCalledWith(mockUserId);
-            expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
-                where: { id: mockExpenseId, householdId: mockHouseholdId },
-            });
+            expect(mockExpenseHelper.findVisibleExpense).toHaveBeenCalledWith(mockExpenseId, mockHouseholdId, mockUserId);
             expect(mockPrismaService.expensePaymentStatus.upsert).toHaveBeenCalledWith({
                 where: {
                     expenseId_month_year: {
@@ -156,7 +168,7 @@ describe('ExpensePaymentService', () => {
 
         it('should invalidate personal expense cache for personal expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(mockPaymentStatusRecord);
 
             await service.markPaid(mockUserId, mockExpenseId, dto);
@@ -166,7 +178,7 @@ describe('ExpensePaymentService', () => {
 
         it('should invalidate shared expense cache for shared expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
                 ...mockPaymentStatusRecord,
                 expenseId: mockSharedExpense.id,
@@ -188,12 +200,12 @@ describe('ExpensePaymentService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found in household', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.markPaid(mockUserId, mockExpenseId, dto);
@@ -208,7 +220,7 @@ describe('ExpensePaymentService', () => {
 
         it('should not reveal expenses from other households (enumeration prevention)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.markPaid(mockUserId, 'expense-in-other-household', dto);
@@ -221,7 +233,7 @@ describe('ExpensePaymentService', () => {
 
         it('should handle boundary month value 1 (January)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
                 ...mockPaymentStatusRecord,
                 month: 1,
@@ -241,7 +253,7 @@ describe('ExpensePaymentService', () => {
 
         it('should handle boundary month value 12 (December)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
                 ...mockPaymentStatusRecord,
                 month: 12,
@@ -255,7 +267,7 @@ describe('ExpensePaymentService', () => {
         it('should throw BadRequestException if expense is flexible and no paidAmount is provided', async () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockFlexibleExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockFlexibleExpense);
 
             // Act & Assert
             await expect(service.markPaid(mockUserId, mockFlexibleExpense.id, { month: 6, year: 2026 })).rejects.toThrow(
@@ -275,7 +287,7 @@ describe('ExpensePaymentService', () => {
                 paidAmount: 275.5,
             };
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockFlexibleExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockFlexibleExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(flexiblePaymentRecord);
 
             // Act
@@ -298,7 +310,7 @@ describe('ExpensePaymentService', () => {
         it('should store null paidAmount for fixed expenses even if paidAmount is provided', async () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense); // isFixed: true
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense); // isFixed: true
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(mockPaymentStatusRecord);
 
             // Act
@@ -311,6 +323,39 @@ describe('ExpensePaymentService', () => {
                     update: expect.objectContaining({ paidAmount: null }),
                 }),
             );
+        });
+
+        it('should compute remainingAmount from the override-adjusted monthly amount, not the base amount', async () => {
+            // Arrange — a recurring override raised June's effective amount from 300 to 400
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockFlexibleExpense);
+            mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
+                ...mockPaymentStatusRecord,
+                expenseId: mockFlexibleExpense.id,
+                paidAmount: 300,
+            });
+            mockCalculator.getMonthlyAmounts.mockResolvedValue(new Map([[mockFlexibleExpense.id, 400]]));
+
+            // Act
+            const result = await service.markPaid(mockUserId, mockFlexibleExpense.id, {
+                month: 6,
+                year: 2026,
+                paidAmount: 300,
+            });
+
+            // Assert
+            expect(mockCalculator.getMonthlyAmounts).toHaveBeenCalledWith([mockFlexibleExpense], 6, 2026);
+            expect(result.remainingAmount).toBe(100); // 400 (override) - 300 (paid), not 300 - 300
+        });
+
+        it('should report zero remainingAmount for a fixed expense marked paid', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense); // isFixed: true
+            mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(mockPaymentStatusRecord);
+
+            const result = await service.markPaid(mockUserId, mockExpenseId, dto);
+
+            expect(result.remainingAmount).toBe(0);
         });
     });
     //#endregion
@@ -326,7 +371,7 @@ describe('ExpensePaymentService', () => {
                 paidAmount: 275.5,
             };
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.findUnique.mockResolvedValue(paidFlexibleRecord);
             mockPrismaService.expensePaymentStatus.update.mockResolvedValue({
                 ...mockPaymentStatusRecord,
@@ -364,7 +409,7 @@ describe('ExpensePaymentService', () => {
 
         it('should invalidate cache after undoing paid status', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.findUnique.mockResolvedValue(mockPaymentStatusRecord);
             mockPrismaService.expensePaymentStatus.update.mockResolvedValue({
                 ...mockPaymentStatusRecord,
@@ -388,12 +433,12 @@ describe('ExpensePaymentService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.undoPaid(mockUserId, mockExpenseId, dto);
@@ -408,7 +453,7 @@ describe('ExpensePaymentService', () => {
 
         it('should throw NotFoundException if no payment status record exists for the period', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.findUnique.mockResolvedValue(null);
 
             try {
@@ -429,7 +474,7 @@ describe('ExpensePaymentService', () => {
                 paidAt: null,
             };
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.findUnique.mockResolvedValue(cancelledRecord);
             mockPrismaService.expensePaymentStatus.update.mockResolvedValue({
                 ...cancelledRecord,
@@ -450,7 +495,7 @@ describe('ExpensePaymentService', () => {
         it('should cancel an expense for the specified month', async () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
                 ...mockPaymentStatusRecord,
                 month: 8,
@@ -490,7 +535,7 @@ describe('ExpensePaymentService', () => {
 
         it('should invalidate cache after cancelling', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
                 ...mockPaymentStatusRecord,
                 status: PaymentStatus.CANCELLED,
@@ -504,7 +549,7 @@ describe('ExpensePaymentService', () => {
 
         it('should invalidate shared expense cache when cancelling a shared expense', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedExpense);
             mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
                 ...mockPaymentStatusRecord,
                 expenseId: mockSharedExpense.id,
@@ -530,7 +575,7 @@ describe('ExpensePaymentService', () => {
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.cancel(mockUserId, mockExpenseId, dto);
@@ -554,7 +599,7 @@ describe('ExpensePaymentService', () => {
                 { ...mockPaymentStatusRecord, id: 'ps-002', month: 5, year: 2026, status: PaymentStatus.CANCELLED },
             ];
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue(statuses);
 
             const result = await service.getPaymentStatuses(mockUserId, mockExpenseId);
@@ -571,7 +616,7 @@ describe('ExpensePaymentService', () => {
 
         it('should return empty array when no payment statuses exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
             mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([]);
 
             const result = await service.getPaymentStatuses(mockUserId, mockExpenseId);
@@ -590,12 +635,12 @@ describe('ExpensePaymentService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.getPaymentStatuses(mockUserId, mockExpenseId);
@@ -610,7 +655,7 @@ describe('ExpensePaymentService', () => {
 
         it('should not reveal expenses from other households', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.getPaymentStatuses(mockUserId, 'expense-in-other-household');
@@ -623,7 +668,7 @@ describe('ExpensePaymentService', () => {
 
         it('should map all fields correctly in response', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense); // isFixed: true
             mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([mockPaymentStatusRecord]);
 
             const result = await service.getPaymentStatuses(mockUserId, mockExpenseId);
@@ -637,9 +682,168 @@ describe('ExpensePaymentService', () => {
                 paidAt: mockPaymentStatusRecord.paidAt,
                 paidById: mockUserId,
                 paidAmount: null,
+                remainingAmount: 0, // PAID + isFixed: nothing outstanding
                 createdAt: mockPaymentStatusRecord.createdAt,
                 updatedAt: mockPaymentStatusRecord.updatedAt,
             });
+        });
+
+        it('should apply the matching month\'s override amount when computing remainingAmount', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockFlexibleExpense);
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { ...mockPaymentStatusRecord, expenseId: mockFlexibleExpense.id, month: 6, year: 2026, paidAmount: 300 },
+            ]);
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ month: 6, year: 2026, amount: 400 }]);
+            mockCalculator.getMonthlyAmount.mockReturnValue(400);
+
+            const result = await service.getPaymentStatuses(mockUserId, mockFlexibleExpense.id);
+
+            expect(mockCalculator.getMonthlyAmount).toHaveBeenCalledWith(mockFlexibleExpense, 6, 2026, 400);
+            expect(result[0].remainingAmount).toBe(100); // 400 (override) - 300 (paid)
+        });
+    });
+    //#endregion
+
+    //#region getBatchPaymentStatuses
+    describe('getBatchPaymentStatuses', () => {
+        it('should scope the query to shared expenses and the caller\'s own personal expenses', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.visibleExpenseFilter.mockReturnValue({
+                OR: [{ type: ExpenseType.SHARED }, { type: ExpenseType.PERSONAL, createdById: mockUserId }],
+            });
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([]);
+
+            await service.getBatchPaymentStatuses(mockUserId, 6, 2026);
+
+            expect(mockExpenseHelper.visibleExpenseFilter).toHaveBeenCalledWith(mockUserId);
+            expect(mockPrismaService.expensePaymentStatus.findMany).toHaveBeenCalledWith({
+                where: {
+                    month: 6,
+                    year: 2026,
+                    expense: {
+                        householdId: mockHouseholdId,
+                        deletedAt: null,
+                        OR: [
+                            { type: ExpenseType.SHARED },
+                            { type: ExpenseType.PERSONAL, createdById: mockUserId },
+                        ],
+                    },
+                },
+                include: { expense: true },
+            });
+        });
+
+        it('should compute remainingAmount from the override-adjusted monthly amount for each expense', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.visibleExpenseFilter.mockReturnValue({ OR: [] });
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { ...mockPaymentStatusRecord, expenseId: mockFlexibleExpense.id, paidAmount: 300, expense: mockFlexibleExpense },
+            ]);
+            mockCalculator.getMonthlyAmounts.mockResolvedValue(new Map([[mockFlexibleExpense.id, 400]]));
+
+            const result = await service.getBatchPaymentStatuses(mockUserId, 6, 2026);
+
+            expect(mockCalculator.getMonthlyAmounts).toHaveBeenCalledWith([mockFlexibleExpense], 6, 2026);
+            expect(result[0].remainingAmount).toBe(100); // 400 (override) - 300 (paid)
+        });
+
+        it('should throw NotFoundException if user is not in a household', async () => {
+            mockExpenseHelper.requireMembership.mockRejectedValue(new NotFoundException('You must be in a household to manage expenses'));
+
+            try {
+                await service.getBatchPaymentStatuses(mockUserId, 6, 2026);
+                expect.unreachable('Should have thrown NotFoundException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(NotFoundException);
+                expect(error.message).toBe('You must be in a household to manage expenses');
+            }
+
+            expect(mockPrismaService.expensePaymentStatus.findMany).not.toHaveBeenCalled();
+        });
+    });
+    //#endregion
+
+    //#region cross-member IDOR prevention
+    describe('cross-member access control', () => {
+        const dto = { month: 6, year: 2026 };
+
+        beforeEach(() => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            // Another member's personal expense is invisible to this caller —
+            // the shared helper throws instead of returning it.
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
+        });
+
+        it('should not let a member mark another member\'s personal expense as paid', async () => {
+            try {
+                await service.markPaid(mockUserId, 'expense-other-001', dto);
+                expect.unreachable('Should have thrown NotFoundException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(NotFoundException);
+                expect(error.message).toBe('Expense not found');
+            }
+
+            expect(mockPrismaService.expensePaymentStatus.upsert).not.toHaveBeenCalled();
+        });
+
+        it('should not let a member undo another member\'s personal expense payment', async () => {
+            try {
+                await service.undoPaid(mockUserId, 'expense-other-001', dto);
+                expect.unreachable('Should have thrown NotFoundException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(NotFoundException);
+                expect(error.message).toBe('Expense not found');
+            }
+
+            expect(mockPrismaService.expensePaymentStatus.findUnique).not.toHaveBeenCalled();
+        });
+
+        it('should not let a member cancel another member\'s personal expense', async () => {
+            try {
+                await service.cancel(mockUserId, 'expense-other-001', dto);
+                expect.unreachable('Should have thrown NotFoundException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(NotFoundException);
+                expect(error.message).toBe('Expense not found');
+            }
+
+            expect(mockPrismaService.expensePaymentStatus.upsert).not.toHaveBeenCalled();
+        });
+
+        it('should not let a member read another member\'s personal expense payment statuses', async () => {
+            try {
+                await service.getPaymentStatuses(mockUserId, 'expense-other-001');
+                expect.unreachable('Should have thrown NotFoundException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(NotFoundException);
+                expect(error.message).toBe('Expense not found');
+            }
+
+            expect(mockPrismaService.expensePaymentStatus.findMany).not.toHaveBeenCalled();
+        });
+
+        it('should allow any member to mark a shared expense as paid', async () => {
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedExpense);
+            mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue({
+                ...mockPaymentStatusRecord,
+                expenseId: mockSharedExpense.id,
+            });
+
+            const result = await service.markPaid(mockUserId, mockSharedExpense.id, dto);
+
+            expect(result.expenseId).toBe(mockSharedExpense.id);
+            expect(mockPrismaService.expensePaymentStatus.upsert).toHaveBeenCalled();
+        });
+
+        it('should allow a member to mark their own personal expense as paid', async () => {
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockPersonalExpense);
+            mockPrismaService.expensePaymentStatus.upsert.mockResolvedValue(mockPaymentStatusRecord);
+
+            const result = await service.markPaid(mockUserId, mockExpenseId, dto);
+
+            expect(result.id).toBe('ps-001');
+            expect(mockPrismaService.expensePaymentStatus.upsert).toHaveBeenCalled();
         });
     });
     //#endregion

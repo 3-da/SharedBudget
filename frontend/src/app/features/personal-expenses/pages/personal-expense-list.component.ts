@@ -16,7 +16,6 @@ import { PartialPaymentDialogComponent, PartialPaymentDialogData } from '../../.
 
 @Component({
   selector: 'app-personal-expense-list',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule, ExpenseCardComponent, MonthPickerComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent, CurrencyEurPipe],
   template: `

@@ -6,7 +6,6 @@ import { CurrencyDisplayComponent } from '../../../shared/components/currency-di
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-savings-card',
-  standalone: true,
   imports: [MatCardModule, CurrencyDisplayComponent],
   template: `
     <mat-card>

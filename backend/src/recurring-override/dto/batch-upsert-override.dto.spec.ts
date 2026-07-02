@@ -144,6 +144,29 @@ describe('BatchOverrideItemDto', () => {
             expect(errors.length).toBeGreaterThan(0);
             expect(errors[0].property).toBe('amount');
         });
+
+        it('should reject a sub-cent amount (more than 2 decimal places)', async () => {
+            const dto = plainToInstance(BatchOverrideItemDto, { ...validItem, amount: 50.005 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBeGreaterThan(0);
+            expect(errors[0].property).toBe('amount');
+            expect(errors[0].constraints).toHaveProperty('isNumber');
+        });
+
+        it('should accept an amount with exactly 2 decimal places', async () => {
+            const dto = plainToInstance(BatchOverrideItemDto, { ...validItem, amount: 50.0 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBe(0);
+        });
+
+        it('should accept an amount with a single decimal place', async () => {
+            const dto = plainToInstance(BatchOverrideItemDto, { ...validItem, amount: 50.1 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBe(0);
+        });
     });
 });
 

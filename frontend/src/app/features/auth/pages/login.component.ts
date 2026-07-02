@@ -16,7 +16,6 @@ import { AuthService } from '../../../core/auth/auth.service';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-login',
-  standalone: true,
   imports: [
     ReactiveFormsModule, RouterLink, MatCardModule, MatFormFieldModule,
     MatInputModule, MatButtonModule, MatProgressBarModule, MatIconModule, PasswordFieldComponent,

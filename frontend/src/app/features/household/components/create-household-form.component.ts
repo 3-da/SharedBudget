@@ -7,7 +7,6 @@ import { HouseholdStore } from '../stores/household.store';
 
 @Component({
   selector: 'app-create-household-form',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `

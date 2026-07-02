@@ -63,6 +63,7 @@ describe('DashboardCalculatorService', () => {
             type: 'PERSONAL',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: null,
             yearlyPaymentStrategy: null,
             installmentFrequency: null,
@@ -80,6 +81,7 @@ describe('DashboardCalculatorService', () => {
             type: 'PERSONAL',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: null,
             yearlyPaymentStrategy: null,
             installmentFrequency: null,
@@ -97,6 +99,7 @@ describe('DashboardCalculatorService', () => {
             type: 'SHARED',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: null, // split equally
             yearlyPaymentStrategy: null,
             installmentFrequency: null,
@@ -114,6 +117,7 @@ describe('DashboardCalculatorService', () => {
             type: 'SHARED',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: mockUserId, // Alex pays full
             yearlyPaymentStrategy: null,
             installmentFrequency: null,
@@ -208,13 +212,109 @@ describe('DashboardCalculatorService', () => {
         });
 
         it('should calculate remaining expenses excluding paid ones', async () => {
-            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID' }]);
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID', paidAmount: null }]);
 
             const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
 
             const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
             expect(alexExpense!.remainingExpenses).toBe(0); // Gym is paid
             expect(result.remainingHouseholdExpenses).toBe(950); // 1000 - 50
+        });
+
+        it('should count only paidAmount as paid for flexible personal expenses', async () => {
+            // Isolated scenario: only Alex's flexible Food expense (250), paid with paidAmount=50
+            // Expected: total=250, remaining=200, householdRemaining=250 (shared all unpaid) + 200 = 1170
+            const flexExpense = {
+                id: 'exp-flex',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Food',
+                amount: { valueOf: () => 250 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'MONTHLY',
+                isFixed: false,
+                paidByUserId: null,
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { expenseId: 'exp-flex', status: 'PAID', paidAmount: { valueOf: () => 50 } },
+            ]);
+
+            // Only one expense: Alex's flexible Food (250) — no gym/rent/electricity
+            const result = await service.getExpenseData(mockMembers as any, [flexExpense] as any, currentMonth, currentYear);
+
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(250); // full planned amount preserved
+            expect(alexExpense!.remainingExpenses).toBe(200); // 250 - 50 paid = 200 remaining
+            expect(result.totalHouseholdExpenses).toBe(250);
+            expect(result.remainingHouseholdExpenses).toBe(200); // only 50 of 250 was paid
+        });
+
+        it('should count paidAmount for flexible shared expenses', async () => {
+            // Shared flexible expense: Groceries 300, paid 100 → remaining 200
+            const flexShared = {
+                id: 'exp-flex-shared',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Groceries',
+                amount: { valueOf: () => 300 },
+                type: 'SHARED',
+                category: 'RECURRING',
+                frequency: 'MONTHLY',
+                isFixed: false,
+                paidByUserId: null,
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { expenseId: 'exp-flex-shared', status: 'PAID', paidAmount: { valueOf: () => 100 } },
+            ]);
+
+            const result = await service.getExpenseData(mockMembers as any, [flexShared] as any, currentMonth, currentYear);
+
+            expect(result.sharedExpensesTotal).toBe(300); // full planned amount preserved
+            expect(result.totalHouseholdExpenses).toBe(300);
+            expect(result.remainingHouseholdExpenses).toBe(200); // 300 - 100 paid = 200 remaining
+        });
+
+        it('should not let an overpaid flexible shared expense drive remaining negative', async () => {
+            // Groceries planned 300 but paid 350 (overpaid); remaining must clamp to 0, not -50
+            const flexShared = {
+                id: 'exp-flex-shared',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Groceries',
+                amount: { valueOf: () => 300 },
+                type: 'SHARED',
+                category: 'RECURRING',
+                frequency: 'MONTHLY',
+                isFixed: false,
+                paidByUserId: null,
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { expenseId: 'exp-flex-shared', status: 'PAID', paidAmount: { valueOf: () => 350 } },
+            ]);
+
+            const result = await service.getExpenseData(mockMembers as any, [flexShared] as any, currentMonth, currentYear);
+
+            expect(result.totalHouseholdExpenses).toBe(300);
+            expect(result.remainingHouseholdExpenses).toBe(0); // paid contribution capped at the planned 300
         });
 
         it('should return all expenses as remaining when nothing is paid', async () => {
@@ -233,7 +333,7 @@ describe('DashboardCalculatorService', () => {
 
         it('should exclude skipped personal expenses from totals', async () => {
             // Skip Alex's gym expense (exp-1, 50 EUR)
-            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-1' }]);
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-1', amount: null, skipped: true }]);
 
             const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
 
@@ -244,12 +344,114 @@ describe('DashboardCalculatorService', () => {
 
         it('should exclude skipped shared expenses from totals', async () => {
             // Skip shared rent (exp-3, 800 EUR)
-            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-3' }]);
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-3', amount: null, skipped: true }]);
 
             const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
 
             expect(result.sharedExpensesTotal).toBe(120); // only electricity remains
             expect(result.totalHouseholdExpenses).toBe(200); // 50 + 30 + 120
+        });
+
+        it('should use the override amount when present instead of the base amount', async () => {
+            // Override Alex's gym (exp-1) from 50 to 75 for this month
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-1', amount: { valueOf: () => 75 }, skipped: false }]);
+
+            const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(75); // overridden amount used
+            expect(result.totalHouseholdExpenses).toBe(1025); // 75 + 30 + 920
+        });
+
+        it('should fall back to the base amount when an override has no amount', async () => {
+            // Override record exists but amount is null (skip-only override) and not skipped
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-1', amount: null, skipped: false }]);
+
+            const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(50); // base amount retained
+        });
+
+        it('should exclude a cancelled personal expense from totals entirely, not just from remaining', async () => {
+            // Alex cancels the gym (exp-1, 50 EUR) for this month
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-1', status: 'CANCELLED', paidAmount: null }]);
+
+            const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.personalExpensesTotal).toBe(0); // cancelled, not just paid
+            expect(alexExpense!.remainingExpenses).toBe(0);
+            expect(result.totalHouseholdExpenses).toBe(950); // 0 + 30 + 920
+            expect(result.remainingHouseholdExpenses).toBe(950); // cancelled expense never counted as owed
+        });
+
+        it('should exclude a cancelled shared expense from totals entirely', async () => {
+            // Rent (exp-3, 800 EUR) cancelled for this month
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-3', status: 'CANCELLED', paidAmount: null }]);
+
+            const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
+
+            expect(result.sharedExpensesTotal).toBe(120); // only electricity remains
+            expect(result.totalHouseholdExpenses).toBe(200); // 50 + 30 + 120
+            expect(result.remainingHouseholdExpenses).toBe(200); // cancelled rent never counted as owed
+        });
+
+        it('should not carry a stale paidAmount into remaining once an expense becomes fixed', async () => {
+            // Groceries was flexible and partially paid (paidAmount=100 of 300), then
+            // switched to isFixed via an approval — the PAID record's paidAmount is
+            // never cleared, but isFixed=true must still mean "fully paid".
+            const nowFixedExpense = {
+                id: 'exp-now-fixed',
+                householdId: mockHouseholdId,
+                createdById: mockUserId,
+                name: 'Groceries',
+                amount: { valueOf: () => 300 },
+                type: 'PERSONAL',
+                category: 'RECURRING',
+                frequency: 'MONTHLY',
+                isFixed: true,
+                paidByUserId: null,
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: null,
+                year: null,
+                deletedAt: null,
+            };
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { expenseId: 'exp-now-fixed', status: 'PAID', paidAmount: { valueOf: () => 100 } },
+            ]);
+
+            const result = await service.getExpenseData(mockMembers as any, [nowFixedExpense] as any, currentMonth, currentYear);
+
+            const alexExpense = result.personalExpenses.find((pe) => pe.userId === mockUserId);
+            expect(alexExpense!.remainingExpenses).toBe(0); // isFixed wins over the stale paidAmount
+            expect(result.remainingHouseholdExpenses).toBe(0);
+        });
+    });
+
+    describe('getMonthlyAmounts', () => {
+        it('should return each expense\'s base amount when no overrides exist', async () => {
+            const result = await service.getMonthlyAmounts(mockExpenses as any, currentMonth, currentYear);
+
+            expect(result.get('exp-1')).toBe(50);
+            expect(result.get('exp-3')).toBe(800);
+        });
+
+        it('should use the override amount when one exists for the month', async () => {
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-1', amount: { valueOf: () => 75 }, skipped: false }]);
+
+            const result = await service.getMonthlyAmounts(mockExpenses as any, currentMonth, currentYear);
+
+            expect(result.get('exp-1')).toBe(75);
+            expect(result.get('exp-2')).toBe(30); // unaffected
+        });
+
+        it('should return an empty map for an empty expense list', async () => {
+            const result = await service.getMonthlyAmounts([], currentMonth, currentYear);
+
+            expect(result.size).toBe(0);
         });
     });
 
@@ -379,13 +581,25 @@ describe('DashboardCalculatorService', () => {
 
         it('should exclude skipped shared expenses from settlement calculation', async () => {
             // Skip electricity (exp-4, 120 EUR, paid by Alex) — removing Alex's overpayment advantage
-            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-4' }]);
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-4', amount: null, skipped: true }]);
 
             // Only rent remains (exp-3, 800 split equally) → no settlement needed
             const result = await service.calculateSettlement(mockMembers as any, mockSharedExpenses as any, mockUserId, currentMonth, currentYear);
 
             expect(result.amount).toBe(0);
             expect(result.message).toBe('All shared expenses are balanced — no settlement needed.');
+        });
+
+        it('should use the override amount in the settlement calculation', async () => {
+            // Override electricity (exp-4, paid by Alex) from 120 to 200 for this month.
+            // Alex overpays by 200, fair share each = 100 → Sam owes Alex 100.
+            mockPrismaService.recurringOverride.findMany.mockResolvedValue([{ expenseId: 'exp-4', amount: { valueOf: () => 200 }, skipped: false }]);
+
+            const result = await service.calculateSettlement(mockMembers as any, mockSharedExpenses as any, mockUserId, currentMonth, currentYear);
+
+            expect(result.amount).toBe(100);
+            expect(result.owedByUserId).toBe(mockPartnerId);
+            expect(result.owedToUserId).toBe(mockUserId);
         });
     });
 
@@ -442,6 +656,37 @@ describe('DashboardCalculatorService', () => {
             } as any;
 
             expect(service.getMonthlyAmount(expense, currentMonth, currentYear)).toBe(50);
+        });
+
+        it('should use the override amount when provided for a MONTHLY recurring expense', () => {
+            const expense = {
+                amount: { valueOf: () => 50 },
+                category: 'RECURRING',
+                frequency: 'MONTHLY',
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: null,
+                year: null,
+            } as any;
+
+            expect(service.getMonthlyAmount(expense, currentMonth, currentYear, 80)).toBe(80);
+        });
+
+        it('should ignore a null/undefined override amount and use the base amount', () => {
+            const expense = {
+                amount: { valueOf: () => 50 },
+                category: 'RECURRING',
+                frequency: 'MONTHLY',
+                yearlyPaymentStrategy: null,
+                installmentFrequency: null,
+                paymentMonth: null,
+                month: null,
+                year: null,
+            } as any;
+
+            expect(service.getMonthlyAmount(expense, currentMonth, currentYear, null)).toBe(50);
+            expect(service.getMonthlyAmount(expense, currentMonth, currentYear, undefined)).toBe(50);
         });
 
         it('should return full amount for YEARLY+FULL in payment month', () => {
@@ -669,6 +914,56 @@ describe('DashboardCalculatorService', () => {
             expect(service.getMonthlyAmount(expense, 4, 2026)).toBe(100);
             // Non-installment month
             expect(service.getMonthlyAmount(expense, 2, 2026)).toBe(0);
+        });
+
+        it('should use the override directly (not re-divided) for YEARLY+INSTALLMENTS+QUARTERLY', () => {
+            const expense = {
+                amount: { valueOf: () => 1200 },
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'QUARTERLY',
+                paymentMonth: null,
+                month: null,
+                year: null,
+                createdAt: now, // anchor to current month
+            } as any;
+
+            // The override is a per-installment amount; it must be returned as-is, not /4
+            expect(service.getMonthlyAmount(expense, currentMonth, currentYear, 300)).toBe(300);
+        });
+
+        it('should still return 0 for an overridden YEARLY installment in a non-installment month', () => {
+            const expense = {
+                amount: { valueOf: () => 1200 },
+                category: 'RECURRING',
+                frequency: 'YEARLY',
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'QUARTERLY',
+                paymentMonth: null,
+                month: null,
+                year: null,
+                createdAt: new Date('2025-01-15'), // anchor month = 1 -> installments 1,4,7,10
+            } as any;
+
+            expect(service.getMonthlyAmount(expense, 2, 2026, 300)).toBe(0);
+        });
+
+        it('should use the override directly (not re-divided) for ONE_TIME+INSTALLMENTS', () => {
+            const expense = {
+                amount: { valueOf: () => 1200 },
+                category: 'ONE_TIME',
+                frequency: 'MONTHLY',
+                yearlyPaymentStrategy: 'INSTALLMENTS',
+                installmentFrequency: 'MONTHLY',
+                installmentCount: 24,
+                paymentMonth: null,
+                month: 1,
+                year: 2026,
+            } as any;
+
+            // Default would be 1200/24 = 50; the override replaces the per-installment amount
+            expect(service.getMonthlyAmount(expense, 1, 2026, 80)).toBe(80);
         });
     });
 

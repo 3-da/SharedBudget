@@ -8,7 +8,6 @@ Chart.register(...registerables);
 
 @Component({
   selector: 'app-base-chart',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<canvas #chartCanvas></canvas>`,
   styles: [`:host { display: block; position: relative; height: 100%; }`],

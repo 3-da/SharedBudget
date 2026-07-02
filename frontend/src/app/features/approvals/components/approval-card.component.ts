@@ -9,7 +9,6 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-approval-card',
-  standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, RelativeTimePipe],
   template: `
     <mat-card>

@@ -70,6 +70,22 @@ describe('UpsertSalaryDto', () => {
             expect(errors.length).toBeGreaterThan(0);
             expect(errors.some((e) => e.property === 'defaultAmount')).toBe(true);
         });
+
+        it('should reject a sub-cent defaultAmount (more than 2 decimal places)', async () => {
+            const dto = plainToInstance(UpsertSalaryDto, { defaultAmount: 3500.005, currentAmount: 3200 });
+            const errors = await validate(dto);
+
+            const amountError = errors.find((e) => e.property === 'defaultAmount');
+            expect(amountError).toBeDefined();
+            expect(amountError!.constraints).toHaveProperty('isNumber');
+        });
+
+        it('should accept a defaultAmount with exactly 2 decimal places', async () => {
+            const dto = plainToInstance(UpsertSalaryDto, { defaultAmount: 3500.99, currentAmount: 3200 });
+            const errors = await validate(dto);
+
+            expect(errors.some((e) => e.property === 'defaultAmount')).toBe(false);
+        });
     });
 
     describe('currentAmount validation', () => {
@@ -105,6 +121,22 @@ describe('UpsertSalaryDto', () => {
 
             expect(errors.length).toBeGreaterThan(0);
             expect(errors.some((e) => e.property === 'currentAmount')).toBe(true);
+        });
+
+        it('should reject a sub-cent currentAmount (more than 2 decimal places)', async () => {
+            const dto = plainToInstance(UpsertSalaryDto, { defaultAmount: 3500, currentAmount: 3200.005 });
+            const errors = await validate(dto);
+
+            const amountError = errors.find((e) => e.property === 'currentAmount');
+            expect(amountError).toBeDefined();
+            expect(amountError!.constraints).toHaveProperty('isNumber');
+        });
+
+        it('should accept a currentAmount with exactly 2 decimal places', async () => {
+            const dto = plainToInstance(UpsertSalaryDto, { defaultAmount: 3500, currentAmount: 3200.99 });
+            const errors = await validate(dto);
+
+            expect(errors.some((e) => e.property === 'currentAmount')).toBe(false);
         });
     });
 

@@ -1,13 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { PersonalExpenseStore } from './personal-expense.store';
 import { PersonalExpenseService } from '../services/personal-expense.service';
-import { ExpensePaymentService } from '../services/expense-payment.service';
+import { ExpensePaymentService } from '../../../shared/services/expense-payment.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 describe('PersonalExpenseStore', () => {
   let store: PersonalExpenseStore;
   let service: Record<string, ReturnType<typeof vi.fn>>;
+  let paymentService: Record<string, ReturnType<typeof vi.fn>>;
   let snackBar: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
@@ -17,9 +18,10 @@ describe('PersonalExpenseStore', () => {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      getSkipStatuses: vi.fn().mockReturnValue(of([])),
     };
     snackBar = { open: vi.fn() };
-    const paymentService = {
+    paymentService = {
       markPaid: vi.fn(),
       undoPaid: vi.fn(),
       cancel: vi.fn(),
@@ -56,6 +58,31 @@ describe('PersonalExpenseStore', () => {
     service['list'].mockReturnValue(throwError(() => new Error()));
     store.loadExpenses();
     expect(store.expenses()).toEqual([]);
+  });
+
+  it('loadExpenses sets the error signal on failure', () => {
+    service['list'].mockReturnValue(throwError(() => ({ error: { message: 'Server down' } })));
+    store.loadExpenses();
+    expect(store.error()).toBe('Server down');
+    expect(store.loading()).toBe(false);
+  });
+
+  it('loadExpenses falls back to a default message when the error has no detail', () => {
+    service['list'].mockReturnValue(throwError(() => new Error()));
+    store.loadExpenses();
+    expect(store.error()).toBe('Failed to load expenses');
+  });
+
+  it('loadExpenses shows the spinner even when expenses are already populated', () => {
+    // Pre-populate from a previous month
+    service['list'].mockReturnValue(of([mockExpense]));
+    store.loadExpenses();
+    expect(store.expenses().length).toBe(1);
+
+    // Switching months: never-completing observable so loading stays true during the fetch
+    service['list'].mockReturnValue(new Observable(() => {}));
+    store.loadExpenses(4, 2025);
+    expect(store.loading()).toBe(true);
   });
 
   it('totalMonthly computed sums amounts', () => {
@@ -96,5 +123,46 @@ describe('PersonalExpenseStore', () => {
     service['create'].mockReturnValue(throwError(() => ({ error: { message: 'fail' } })));
     store.createExpense({ name: 'X', amount: 1 });
     expect(store.error()).toBe('fail');
+  });
+
+  describe('paidTotal', () => {
+    it('uses the planned amount for a paid fixed expense', () => {
+      const fixedExpense = { ...mockExpense, isFixed: true };
+      service['list'].mockReturnValue(of([fixedExpense]));
+      paymentService['getBatchStatuses'].mockReturnValue(of([{ expenseId: 'e-1', status: 'PAID', paidAmount: null }]));
+
+      store.loadExpenses();
+
+      expect(store.paidTotal()).toBe(1000);
+    });
+
+    it('uses the actual paidAmount for a flexible expense paid within the planned amount', () => {
+      const flexExpense = { ...mockExpense, isFixed: false, amount: 300 };
+      service['list'].mockReturnValue(of([flexExpense]));
+      paymentService['getBatchStatuses'].mockReturnValue(of([{ expenseId: 'e-1', status: 'PAID', paidAmount: 250 }]));
+
+      store.loadExpenses();
+
+      expect(store.paidTotal()).toBe(250);
+    });
+
+    it('clamps an overpaid flexible expense at the planned amount, matching the dashboard', () => {
+      const flexExpense = { ...mockExpense, isFixed: false, amount: 300 };
+      service['list'].mockReturnValue(of([flexExpense]));
+      paymentService['getBatchStatuses'].mockReturnValue(of([{ expenseId: 'e-1', status: 'PAID', paidAmount: 350 }]));
+
+      store.loadExpenses();
+
+      expect(store.paidTotal()).toBe(300); // not 350
+    });
+
+    it('excludes expenses that have not been paid', () => {
+      service['list'].mockReturnValue(of([mockExpense]));
+      paymentService['getBatchStatuses'].mockReturnValue(of([]));
+
+      store.loadExpenses();
+
+      expect(store.paidTotal()).toBe(0);
+    });
   });
 });

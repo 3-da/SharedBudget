@@ -5,7 +5,6 @@ import { CdkOverlayOrigin, CdkConnectedOverlay } from '@angular/cdk/overlay';
 
 @Component({
   selector: 'app-month-picker',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule, CdkOverlayOrigin, CdkConnectedOverlay],
   template: `

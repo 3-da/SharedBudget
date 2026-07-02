@@ -6,6 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
+import { maxDecimalPlacesValidator } from '../../../shared/validators/max-decimal-places.validator';
 
 export interface WithdrawDialogData {
   title: string;
@@ -15,7 +16,6 @@ export interface WithdrawDialogData {
 
 @Component({
   selector: 'app-withdraw-dialog',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule, ReactiveFormsModule, CurrencyEurPipe],
   template: `
@@ -32,6 +32,7 @@ export interface WithdrawDialogData {
         <mat-label>Withdraw amount (EUR)</mat-label>
         <input matInput type="number" [formControl]="amountControl" min="0.01" [max]="data.currentAmount">
         <mat-hint>Max: {{ data.currentAmount | currencyEur }}</mat-hint>
+        <mat-error>Enter a valid amount up to your balance, with at most 2 decimal places</mat-error>
       </mat-form-field>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -66,6 +67,7 @@ export class WithdrawDialogComponent {
     Validators.required,
     Validators.min(0.01),
     Validators.max(this.data.currentAmount),
+    maxDecimalPlacesValidator(),
   ]);
 
   confirm(): void {

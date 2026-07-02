@@ -44,6 +44,7 @@ describe('ExpenseFormComponent', () => {
       amount: 1000,
       category: 'RECURRING',
       frequency: 'MONTHLY',
+      isFixed: true,
     });
   });
 

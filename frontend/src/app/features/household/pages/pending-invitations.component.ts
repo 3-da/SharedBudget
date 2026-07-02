@@ -12,7 +12,6 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 
 @Component({
   selector: 'app-pending-invitations',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, MatButtonModule, MatIconModule, RelativeTimePipe, EmptyStateComponent, LoadingSpinnerComponent],
   template: `

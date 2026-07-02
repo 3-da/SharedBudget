@@ -6,10 +6,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatRadioModule } from '@angular/material/radio';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { maxDecimalPlacesValidator } from '../../../shared/validators/max-decimal-places.validator';
 
 export interface RecurringOverrideDialogData {
   expenseName: string;
   currentAmount: number;
+  skipped: boolean;
   month: number;
   year: number;
 }
@@ -23,7 +25,6 @@ export interface RecurringOverrideDialogResult {
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-recurring-override-dialog',
-  standalone: true,
   imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, MatRadioModule, ReactiveFormsModule],
   template: `
     <h2 mat-dialog-title>Override: {{ data.expenseName }}</h2>
@@ -33,6 +34,7 @@ export interface RecurringOverrideDialogResult {
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Amount (EUR)</mat-label>
           <input matInput type="number" formControlName="amount" min="0">
+          <mat-error>Enter a valid amount, with at most 2 decimal places</mat-error>
         </mat-form-field>
         <mat-checkbox formControlName="skipped">Skip this month</mat-checkbox>
         <mat-radio-group formControlName="scope" class="scope-group">
@@ -58,8 +60,8 @@ export class RecurringOverrideDialogComponent {
   private readonly fb = inject(FormBuilder);
 
   form = this.fb.nonNullable.group({
-    amount: [this.data.currentAmount, [Validators.required, Validators.min(0)]],
-    skipped: [false],
+    amount: [this.data.currentAmount, [Validators.required, Validators.min(0), maxDecimalPlacesValidator()]],
+    skipped: [this.data.skipped],
     scope: ['single' as 'single' | 'all_upcoming'],
   });
 

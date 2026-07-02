@@ -183,5 +183,28 @@ describe('MarkPaidDto', () => {
             expect(paidAmountError).toBeDefined();
             expect(paidAmountError!.constraints).toHaveProperty('isNumber');
         });
+
+        it('should reject a sub-cent paidAmount (more than 2 decimal places)', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: 50.005 });
+            const errors = await validate(dto);
+
+            const paidAmountError = errors.find((e) => e.property === 'paidAmount');
+            expect(paidAmountError).toBeDefined();
+            expect(paidAmountError!.constraints).toHaveProperty('isNumber');
+        });
+
+        it('should accept a paidAmount with exactly 2 decimal places', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: 50.0 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBe(0);
+        });
+
+        it('should accept a paidAmount with a single decimal place', async () => {
+            const dto = plainToInstance(MarkPaidDto, { ...validData, paidAmount: 50.1 });
+            const errors = await validate(dto);
+
+            expect(errors.length).toBe(0);
+        });
     });
 });

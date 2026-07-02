@@ -7,7 +7,6 @@ import { cssVar } from '../../../shared/utils/chart-colors';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-salary-chart',
-  standalone: true,
   imports: [BaseChartComponent],
   template: `<app-base-chart [config]="chartConfig()" />`,
 })

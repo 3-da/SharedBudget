@@ -3,7 +3,6 @@ import { CurrencyEurPipe } from '../pipes/currency-eur.pipe';
 
 @Component({
   selector: 'app-currency-display',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyEurPipe],
   template: `<span [class]="colorClass()">{{ amount() | currencyEur }}</span>`,

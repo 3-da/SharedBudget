@@ -3,7 +3,6 @@ import { TestBed } from '@angular/core/testing';
 import { AutoFocusDirective } from './auto-focus.directive';
 
 @Component({
-  standalone: true,
   imports: [AutoFocusDirective],
   template: `<input appAutoFocus>`,
 })

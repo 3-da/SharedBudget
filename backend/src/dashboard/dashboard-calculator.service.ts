@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Expense, Prisma } from '../generated/prisma/client';
+import { roundCurrency } from '../common/utils/round-currency';
+import { Expense, ExpensePaymentStatus, Prisma } from '../generated/prisma/client';
 import {
     ApprovalStatus,
     ExpenseCategory,
@@ -19,8 +20,18 @@ type MemberWithUser = Prisma.HouseholdMemberGetPayload<{
     include: { user: { select: { id: true; firstName: true; lastName: true } } };
 }>;
 
+type MonthlyOverride = { amount: number | null; skipped: boolean };
+
+type ExpenseContext = {
+    amountOf: (expense: Expense) => number;
+    isExcluded: (expense: Expense) => boolean;
+    paidContributionOf: (expense: Expense) => number;
+};
+
 @Injectable()
 export class DashboardCalculatorService {
+    private readonly logger = new Logger(DashboardCalculatorService.name);
+
     constructor(private readonly prismaService: PrismaService) {}
 
     /**
@@ -56,7 +67,8 @@ export class DashboardCalculatorService {
     /**
      * Aggregates expense data for the household in a given month.
      * Includes remaining (unpaid) expenses calculation.
-     * Skipped recurring expenses (via RecurringOverride) are excluded from all totals.
+     * Skipped recurring expenses (via RecurringOverride) and cancelled months
+     * (via ExpensePaymentService.cancel) are excluded from all totals.
      *
      * @param members - Pre-fetched household members with user info
      * @param expenses - Pre-fetched household expenses (all types)
@@ -66,48 +78,25 @@ export class DashboardCalculatorService {
      */
     async getExpenseData(members: MemberWithUser[], expenses: Expense[], month: number, year: number): Promise<ExpenseSummaryDto> {
         const householdId = members[0]?.householdId;
+        this.logger.debug(`Aggregating ${expenses.length} expenses for household ${householdId} in ${month}/${year}`);
 
-        const [paymentStatuses, skippedExpenseIds] = await Promise.all([
-            householdId
-                ? this.prismaService.expensePaymentStatus.findMany({
-                      where: {
-                          expense: { householdId, deletedAt: null },
-                          month,
-                          year,
-                          status: PaymentStatus.PAID,
-                      },
-                  })
-                : Promise.resolve([]),
-            householdId ? this.loadSkippedExpenseIds(householdId, month, year) : Promise.resolve(new Set<string>()),
+        const [paymentStatuses, overrides] = await Promise.all([
+            this.loadPaymentStatusesForMonth(householdId, month, year),
+            householdId ? this.loadOverridesForMonth(householdId, month, year) : Promise.resolve(new Map<string, MonthlyOverride>()),
         ]);
-        const paidExpenseIds = new Set(paymentStatuses.map((p) => p.expenseId));
+        const context = this.buildExpenseContext(expenses, paymentStatuses, overrides, month, year);
 
-        // Calculate personal expenses per member (skip skipped expenses)
-        const personalExpenses: MemberExpenseSummaryDto[] = members.map((member) => {
-            const memberExpenses = expenses.filter((e) => e.type === ExpenseType.PERSONAL && e.createdById === member.userId && !skippedExpenseIds.has(e.id));
-            const total = memberExpenses.reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
-            const remaining = memberExpenses.filter((e) => !paidExpenseIds.has(e.id)).reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
-
-            return {
-                userId: member.userId,
-                firstName: member.user.firstName,
-                lastName: member.user.lastName,
-                personalExpensesTotal: Math.round(total * 100) / 100,
-                remainingExpenses: Math.round(remaining * 100) / 100,
-            };
-        });
-
-        // Calculate shared expenses total (skip skipped expenses)
-        const sharedExpenses = expenses.filter((e) => e.type === ExpenseType.SHARED && !skippedExpenseIds.has(e.id));
-        const sharedExpensesTotal = Math.round(sharedExpenses.reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0) * 100) / 100;
+        const personalExpenses = members.map((member) => this.summarizePersonalExpenses(member, expenses, context));
+        const sharedExpenses = expenses.filter((e) => e.type === ExpenseType.SHARED && !context.isExcluded(e));
+        const sharedExpensesTotal = roundCurrency(this.sumAmounts(sharedExpenses, context.amountOf));
 
         const totalPersonal = personalExpenses.reduce((sum, pe) => sum + pe.personalExpensesTotal, 0);
-        const totalHouseholdExpenses = Math.round((totalPersonal + sharedExpensesTotal) * 100) / 100;
+        const totalHouseholdExpenses = roundCurrency(totalPersonal + sharedExpensesTotal);
 
-        // Calculate remaining household expenses (total - paid)
+        // Remaining household expenses = total - what has actually been paid so far
         const totalPaidPersonal = personalExpenses.reduce((sum, pe) => sum + pe.personalExpensesTotal - pe.remainingExpenses, 0);
-        const paidShared = sharedExpenses.filter((e) => paidExpenseIds.has(e.id)).reduce((sum, e) => sum + this.getMonthlyAmount(e, month, year), 0);
-        const remainingHouseholdExpenses = Math.round((totalHouseholdExpenses - totalPaidPersonal - paidShared) * 100) / 100;
+        const paidShared = sharedExpenses.reduce((sum, e) => sum + context.paidContributionOf(e), 0);
+        const remainingHouseholdExpenses = roundCurrency(totalHouseholdExpenses - totalPaidPersonal - paidShared);
 
         return {
             personalExpenses,
@@ -115,6 +104,91 @@ export class DashboardCalculatorService {
             totalHouseholdExpenses,
             remainingHouseholdExpenses,
         };
+    }
+
+    /**
+     * Loads this month's PAID and CANCELLED payment records for the household.
+     * PAID records drive the paid-contribution calculation; CANCELLED records
+     * exclude that expense from the month's totals entirely.
+     */
+    private async loadPaymentStatusesForMonth(householdId: string | undefined, month: number, year: number): Promise<ExpensePaymentStatus[]> {
+        if (!householdId) return [];
+        return this.prismaService.expensePaymentStatus.findMany({
+            where: {
+                expense: { householdId, deletedAt: null },
+                month,
+                year,
+                status: { in: [PaymentStatus.PAID, PaymentStatus.CANCELLED] },
+            },
+        });
+    }
+
+    /**
+     * Builds the per-call lookups getExpenseData's summaries share: each expense's
+     * effective amount (computed once, not per reduce), whether it's excluded from
+     * this month's totals (skipped or cancelled), and how much of it has been paid.
+     */
+    private buildExpenseContext(
+        expenses: Expense[],
+        paymentStatuses: ExpensePaymentStatus[],
+        overrides: Map<string, MonthlyOverride>,
+        month: number,
+        year: number,
+    ): ExpenseContext {
+        const amountByExpenseId = this.buildAmountLookup(expenses, overrides, month, year);
+        const paidPaymentMap = this.buildPaidPaymentMap(paymentStatuses);
+        const cancelledExpenseIds = this.buildCancelledExpenseIds(paymentStatuses);
+
+        const amountOf = (expense: Expense): number => amountByExpenseId.get(expense.id) ?? 0;
+        const isExcluded = (expense: Expense): boolean => overrides.get(expense.id)?.skipped === true || cancelledExpenseIds.has(expense.id);
+        const paidContributionOf = (expense: Expense): number => this.getPaidContribution(expense, amountOf(expense), paidPaymentMap.get(expense.id));
+
+        return { amountOf, isExcluded, paidContributionOf };
+    }
+
+    private buildAmountLookup(expenses: Expense[], overrides: Map<string, MonthlyOverride>, month: number, year: number): Map<string, number> {
+        return new Map(expenses.map((e) => [e.id, this.getMonthlyAmount(e, month, year, overrides.get(e.id)?.amount)]));
+    }
+
+    private buildPaidPaymentMap(paymentStatuses: ExpensePaymentStatus[]): Map<string, ExpensePaymentStatus> {
+        return new Map(paymentStatuses.filter((p) => p.status === PaymentStatus.PAID).map((p) => [p.expenseId, p]));
+    }
+
+    private buildCancelledExpenseIds(paymentStatuses: ExpensePaymentStatus[]): Set<string> {
+        return new Set(paymentStatuses.filter((p) => p.status === PaymentStatus.CANCELLED).map((p) => p.expenseId));
+    }
+
+    /**
+     * How much of an expense's monthly amount counts as "paid" this month.
+     * Keyed off the expense's current isFixed flag (not the presence of a
+     * paidAmount value) so a stale paidAmount left over from before the
+     * expense's isFixed flag changed can't skew the result.
+     */
+    private getPaidContribution(expense: Expense, amount: number, payment: ExpensePaymentStatus | undefined): number {
+        if (!payment) return 0; // unpaid
+        if (expense.isFixed) return amount; // fixed: marked paid covers the full amount
+        // Flexible: actual paid amount, capped at the planned amount so an overpayment
+        // can't drive remainingHouseholdExpenses negative (the total uses planned amounts).
+        const paidAmount = payment.paidAmount != null ? Number(payment.paidAmount) : 0;
+        return Math.min(amount, paidAmount);
+    }
+
+    private summarizePersonalExpenses(member: MemberWithUser, expenses: Expense[], context: ExpenseContext): MemberExpenseSummaryDto {
+        const memberExpenses = expenses.filter((e) => e.type === ExpenseType.PERSONAL && e.createdById === member.userId && !context.isExcluded(e));
+        const total = this.sumAmounts(memberExpenses, context.amountOf);
+        const remaining = memberExpenses.reduce((sum, e) => sum + context.amountOf(e) - context.paidContributionOf(e), 0);
+
+        return {
+            userId: member.userId,
+            firstName: member.user.firstName,
+            lastName: member.user.lastName,
+            personalExpensesTotal: roundCurrency(total),
+            remainingExpenses: roundCurrency(remaining),
+        };
+    }
+
+    private sumAmounts(expenses: Expense[], amountOf: (expense: Expense) => number): number {
+        return expenses.reduce((sum, e) => sum + amountOf(e), 0);
     }
 
     /**
@@ -158,7 +232,7 @@ export class DashboardCalculatorService {
             const sharedSavingsDeduction = sharedSavingRecord?.reducesFromSalary !== false ? sharedSavings : 0;
 
             // Remaining budget = salary - expenses - savings (only those that reduce from salary)
-            const remainingBudget = Math.round((memberIncome.currentSalary - personalTotal - sharedShare - personalSavingsDeduction - sharedSavingsDeduction) * 100) / 100;
+            const remainingBudget = roundCurrency(memberIncome.currentSalary - personalTotal - sharedShare - personalSavingsDeduction - sharedSavingsDeduction);
 
             return {
                 userId: memberIncome.userId,
@@ -170,10 +244,10 @@ export class DashboardCalculatorService {
             };
         });
 
-        const totalPersonalSavings = Math.round(memberSavings.reduce((sum, m) => sum + m.personalSavings, 0) * 100) / 100;
-        const totalSharedSavings = Math.round(memberSavings.reduce((sum, m) => sum + m.sharedSavings, 0) * 100) / 100;
-        const totalSavings = Math.round((totalPersonalSavings + totalSharedSavings) * 100) / 100;
-        const totalRemainingBudget = Math.round(memberSavings.reduce((sum, m) => sum + m.remainingBudget, 0) * 100) / 100;
+        const totalPersonalSavings = roundCurrency(memberSavings.reduce((sum, m) => sum + m.personalSavings, 0));
+        const totalSharedSavings = roundCurrency(memberSavings.reduce((sum, m) => sum + m.sharedSavings, 0));
+        const totalSavings = roundCurrency(totalPersonalSavings + totalSharedSavings);
+        const totalRemainingBudget = roundCurrency(memberSavings.reduce((sum, m) => sum + m.remainingBudget, 0));
 
         return {
             members: memberSavings,
@@ -204,13 +278,13 @@ export class DashboardCalculatorService {
     async calculateSettlement(members: MemberWithUser[], sharedExpenses: Expense[], requestingUserId: string, month: number, year: number): Promise<SettlementResponseDto> {
         const householdId = members[0]?.householdId;
 
-        const [existingSettlement, skippedExpenseIds] = await Promise.all([
+        const [existingSettlement, overrides] = await Promise.all([
             householdId
                 ? this.prismaService.settlement.findUnique({
                       where: { householdId_month_year: { householdId, month, year } },
                   })
                 : Promise.resolve(null),
-            householdId ? this.loadSkippedExpenseIds(householdId, month, year) : Promise.resolve(new Set<string>()),
+            householdId ? this.loadOverridesForMonth(householdId, month, year) : Promise.resolve(new Map<string, MonthlyOverride>()),
         ]);
 
         const memberCount = members.length || 1;
@@ -225,10 +299,11 @@ export class DashboardCalculatorService {
         }
 
         for (const expense of sharedExpenses) {
+            const override = overrides.get(expense.id);
             // Skip expenses marked as skipped for this month
-            if (skippedExpenseIds.has(expense.id)) continue;
+            if (override?.skipped === true) continue;
 
-            const monthlyAmount = this.getMonthlyAmount(expense, month, year);
+            const monthlyAmount = this.getMonthlyAmount(expense, month, year, override?.amount);
 
             if (expense.paidByUserId) {
                 // One person pays the full amount
@@ -254,7 +329,7 @@ export class DashboardCalculatorService {
             userId: m.userId,
             firstName: m.user.firstName,
             lastName: m.user.lastName,
-            balance: Math.round((paid[m.userId] - fairShare[m.userId]) * 100) / 100,
+            balance: roundCurrency(paid[m.userId] - fairShare[m.userId]),
         }));
 
         // For Phase 1 (2 people): find who owes whom
@@ -276,7 +351,8 @@ export class DashboardCalculatorService {
             };
         }
 
-        const amount = Math.round(creditor.balance * 100) / 100;
+        const amount = roundCurrency(creditor.balance);
+        this.logger.debug(`Settlement for ${month}/${year}: ${debtor.firstName} owes ${creditor.firstName} ${amount}`);
 
         // Build message relative to the requesting user
         let message: string;
@@ -302,20 +378,41 @@ export class DashboardCalculatorService {
     }
 
     /**
-     * Returns the set of expense IDs that are marked as skipped for a given household/month/year.
-     * Used to exclude skipped recurring expenses from totals and settlement calculations.
+     * Computes each expense's effective amount for the given month, accounting
+     * for recurring overrides — the same rule getExpenseData applies. Lets other
+     * services (e.g. ExpensePaymentService, to report an override-aware
+     * remaining balance) reuse the schedule math and override lookup without
+     * duplicating either.
+     *
+     * @param expenses - The expenses to compute amounts for (must share a household)
+     * @param month - Target month (1-12)
+     * @param year - Target year
+     * @returns Map of expenseId to its effective monthly amount
+     */
+    async getMonthlyAmounts(expenses: Expense[], month: number, year: number): Promise<Map<string, number>> {
+        const householdId = expenses[0]?.householdId;
+        const overrides = householdId ? await this.loadOverridesForMonth(householdId, month, year) : new Map<string, MonthlyOverride>();
+        return this.buildAmountLookup(expenses, overrides, month, year);
+    }
+
+    /**
+     * Loads all recurring overrides for a given household/month/year.
+     * Each override carries a per-month amount (when the cost differs that month)
+     * and a skip flag (when the expense should be excluded that month).
+     * Callers use the amount to override the base expense cost and the skip flag
+     * to exclude the expense from totals and settlement.
      *
      * @param householdId - The household to query
      * @param month - Target month (1-12)
      * @param year - Target year
-     * @returns Set of skipped expense IDs
+     * @returns Map of expenseId to its override amount and skip flag
      */
-    private async loadSkippedExpenseIds(householdId: string, month: number, year: number): Promise<Set<string>> {
+    private async loadOverridesForMonth(householdId: string, month: number, year: number): Promise<Map<string, MonthlyOverride>> {
         const records = await this.prismaService.recurringOverride.findMany({
-            where: { expense: { householdId }, month, year, skipped: true },
-            select: { expenseId: true },
+            where: { expense: { householdId }, month, year },
+            select: { expenseId: true, amount: true, skipped: true },
         });
-        return new Set(records.map((r) => r.expenseId));
+        return new Map(records.map((r) => [r.expenseId, { amount: r.amount != null ? Number(r.amount) : null, skipped: r.skipped }]));
     }
 
     /**
@@ -350,52 +447,55 @@ export class DashboardCalculatorService {
      * @param expense - The expense entity
      * @param month - Target month (1-12)
      * @param year - Target year
+     * @param overrideAmount - Per-month override amount that replaces the base amount when present
      * @returns The effective amount for the given month
      */
-    getMonthlyAmount(expense: Expense, month: number, year: number): number {
-        const amount = Number(expense.amount);
+    getMonthlyAmount(expense: Expense, month: number, year: number, overrideAmount?: number | null): number {
+        const base = Number(expense.amount);
 
         if (expense.category === ExpenseCategory.ONE_TIME) {
-            // ONE_TIME with INSTALLMENTS: spread across multiple months starting from expense month/year
-            if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS && expense.installmentCount && expense.installmentFrequency) {
-                return this.getOneTimeInstallmentAmount(expense, amount, month, year);
-            }
-            // ONE_TIME FULL payment or no strategy: only in specific month/year
-            if (expense.month === month && expense.year === year) {
-                return amount;
-            }
+            return this.getOneTimeAmount(expense, base, month, year, overrideAmount);
+        }
+        if (expense.frequency === ExpenseFrequency.YEARLY) {
+            return this.getYearlyAmount(expense, base, month, overrideAmount);
+        }
+        // Monthly recurring applies in full every month
+        return overrideAmount ?? base;
+    }
+
+    private getOneTimeAmount(expense: Expense, base: number, month: number, year: number, overrideAmount?: number | null): number {
+        // INSTALLMENTS: spread across multiple months starting from the expense month/year
+        if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS && expense.installmentCount && expense.installmentFrequency) {
+            return this.getOneTimeInstallmentAmount(expense, base, month, year, overrideAmount);
+        }
+        // FULL payment or no strategy: only in the specific month/year
+        if (expense.month === month && expense.year === year) {
+            return overrideAmount ?? base;
+        }
+        return 0;
+    }
+
+    private getYearlyAmount(expense: Expense, base: number, month: number, overrideAmount?: number | null): number {
+        if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.FULL) {
+            // Full yearly payment lands only in the designated payment month
+            return expense.paymentMonth === month ? (overrideAmount ?? base) : 0;
+        }
+        if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
+            return this.getYearlyInstallmentAmount(expense, base, month, overrideAmount);
+        }
+        // Yearly without a strategy set: spread evenly across every month
+        return overrideAmount ?? base / 12;
+    }
+
+    private getYearlyInstallmentAmount(expense: Expense, base: number, month: number, overrideAmount?: number | null): number {
+        // Anchor installments to the creation month instead of fixed calendar months
+        const anchorMonth = expense.createdAt.getMonth() + 1;
+        const stepMonths = this.getStepMonths(expense.installmentFrequency ?? InstallmentFrequency.MONTHLY);
+        if (!this.isInstallmentMonth(month, anchorMonth, stepMonths)) {
             return 0;
         }
-
-        // Recurring expenses
-        if (expense.frequency === ExpenseFrequency.YEARLY) {
-            if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.FULL) {
-                // Full yearly payment: only in the designated payment month
-                return expense.paymentMonth === month ? amount : 0;
-            }
-
-            // Installment strategy — anchor to creation month instead of fixed calendar months
-            if (expense.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
-                const anchorMonth = expense.createdAt.getMonth() + 1; // 1-based month from creation date
-
-                switch (expense.installmentFrequency) {
-                    case InstallmentFrequency.MONTHLY:
-                        return amount / 12;
-                    case InstallmentFrequency.QUARTERLY:
-                        return this.isInstallmentMonth(month, anchorMonth, 3) ? amount / 4 : 0;
-                    case InstallmentFrequency.SEMI_ANNUAL:
-                        return this.isInstallmentMonth(month, anchorMonth, 6) ? amount / 2 : 0;
-                    default:
-                        return amount / 12;
-                }
-            }
-
-            // Fallback for yearly without strategy set
-            return amount / 12;
-        }
-
-        // Monthly recurring
-        return amount;
+        // The override is already the per-installment amount, so use it without re-dividing
+        return overrideAmount ?? base / (12 / stepMonths);
     }
 
     /**
@@ -404,12 +504,13 @@ export class DashboardCalculatorService {
      * within the total installment count range; otherwise returns 0.
      *
      * @param expense - The one-time expense entity
-     * @param amount - The total expense amount
+     * @param base - The total expense amount
      * @param month - Target month (1-12)
      * @param year - Target year
+     * @param overrideAmount - Per-installment override that replaces the split amount when present
      * @returns The installment amount for the given month, or 0 if not an installment month
      */
-    getOneTimeInstallmentAmount(expense: Expense, amount: number, month: number, year: number): number {
+    getOneTimeInstallmentAmount(expense: Expense, base: number, month: number, year: number, overrideAmount?: number | null): number {
         const startMonth = expense.month!;
         const startYear = expense.year!;
         const count = expense.installmentCount!;
@@ -426,7 +527,8 @@ export class DashboardCalculatorService {
         const installmentIndex = diff / stepMonths;
         if (installmentIndex >= count) return 0;
 
-        return Math.round((amount / count) * 100) / 100;
+        // The override is already the per-installment amount; otherwise split the total evenly
+        return overrideAmount ?? roundCurrency(base / count);
     }
 
     /**

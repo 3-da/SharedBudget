@@ -14,7 +14,6 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-dashboard',
-  standalone: true,
   imports: [
     MatButtonModule, MatIconModule, MatBadgeModule, RouterLink,
     IncomeSummaryCardComponent, ExpenseSummaryCardComponent, SavingsCardComponent,

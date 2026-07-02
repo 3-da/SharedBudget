@@ -4,23 +4,23 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { SalaryResponse } from '../../../shared/models/salary.model';
+import { maxDecimalPlacesValidator } from '../../../shared/validators/max-decimal-places.validator';
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-salary-form',
-  standalone: true,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Default Salary (EUR)</mat-label>
         <input matInput type="number" formControlName="defaultAmount" min="0">
-        <mat-error>Valid amount is required</mat-error>
+        <mat-error>Valid amount is required, with at most 2 decimal places</mat-error>
       </mat-form-field>
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Current Salary (EUR)</mat-label>
         <input matInput type="number" formControlName="currentAmount" min="0">
-        <mat-error>Valid amount is required</mat-error>
+        <mat-error>Valid amount is required, with at most 2 decimal places</mat-error>
       </mat-form-field>
       <button mat-flat-button type="submit" class="full-width" [disabled]="loading()">Save Salary</button>
     </form>
@@ -34,8 +34,8 @@ export class SalaryFormComponent {
 
   private readonly fb = inject(FormBuilder);
   form = this.fb.nonNullable.group({
-    defaultAmount: [0, [Validators.required, Validators.min(0)]],
-    currentAmount: [0, [Validators.required, Validators.min(0)]],
+    defaultAmount: [0, [Validators.required, Validators.min(0), maxDecimalPlacesValidator()]],
+    currentAmount: [0, [Validators.required, Validators.min(0), maxDecimalPlacesValidator()]],
   });
 
   constructor() {

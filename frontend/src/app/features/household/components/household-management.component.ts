@@ -18,7 +18,6 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/compo
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-household-management',
-  standalone: true,
   imports: [
     MatCardModule, MatButtonModule, MatIconModule, MatDividerModule, MatExpansionModule,
     MemberListComponent,

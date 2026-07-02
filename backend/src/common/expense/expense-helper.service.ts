@@ -82,4 +82,57 @@ export class ExpenseHelperService {
             throw new ConflictException('There is already a pending approval for this expense');
         }
     }
+
+    /**
+     * Finds an expense within the household, enforcing that personal expenses
+     * are only visible to their creator. Shared expenses are visible to any
+     * member. This is the single source of truth for expense visibility, used
+     * by every service that looks up an expense by ID before acting on it.
+     *
+     * Use case: Any read or mutation that targets one expense by ID — marking
+     * paid, overriding, cancelling — must first confirm the caller is allowed
+     * to see that expense.
+     *
+     * Scenario: Sam requests to override "Alex's gym membership", a personal
+     * expense Alex created. The expense exists in Sam's household, but since
+     * Sam did not create it, the lookup throws NotFoundException instead of
+     * revealing that the expense exists.
+     *
+     * @param expenseId - The expense ID to look up
+     * @param householdId - The household to scope the search to
+     * @param userId - The authenticated user's ID (checked against createdById for personal expenses)
+     * @returns The expense record
+     * @throws {NotFoundException} If the expense does not exist, belongs to another household, or is another member's personal expense
+     */
+    async findVisibleExpense(expenseId: string, householdId: string, userId: string) {
+        const expense = await this.prismaService.expense.findFirst({
+            where: { id: expenseId, householdId },
+        });
+
+        if (!expense) {
+            this.logger.warn(`Expense not found: ${expenseId} in household ${householdId}`);
+            throw new NotFoundException('Expense not found');
+        }
+
+        if (expense.type === ExpenseType.PERSONAL && expense.createdById !== userId) {
+            this.logger.warn(`User ${userId} attempted to access another member's personal expense ${expenseId}`);
+            throw new NotFoundException('Expense not found');
+        }
+
+        return expense;
+    }
+
+    /**
+     * Prisma where-fragment for the same visibility rule as findVisibleExpense,
+     * for use in batch queries that filter many expenses at once instead of
+     * loading one by ID.
+     *
+     * @param userId - The authenticated user's ID
+     * @returns An OR fragment: shared expenses, or the caller's own personal expenses
+     */
+    visibleExpenseFilter(userId: string) {
+        return {
+            OR: [{ type: ExpenseType.SHARED }, { type: ExpenseType.PERSONAL, createdById: userId }],
+        };
+    }
 }

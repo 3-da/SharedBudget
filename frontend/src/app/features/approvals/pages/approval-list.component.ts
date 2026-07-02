@@ -13,7 +13,6 @@ import { AuthService } from '../../../core/auth/auth.service';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-approval-list',
-  standalone: true,
   imports: [MatTabsModule, ApprovalCardComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
   template: `
     <app-page-header title="Approvals" subtitle="Review shared expense proposals" />

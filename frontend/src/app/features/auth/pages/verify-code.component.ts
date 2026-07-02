@@ -13,7 +13,6 @@ import { AuthService } from '../../../core/auth/auth.service';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-verify-code',
-  standalone: true,
   imports: [MatCardModule, MatButtonModule, MatProgressBarModule, MatIconModule, CodeInputComponent],
   template: `
     <div class="auth-container">

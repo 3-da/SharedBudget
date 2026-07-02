@@ -287,4 +287,4 @@ These are **not blockers for development** but **must be resolved before product
 ## Quick Reference
 
 > For project structure, API endpoints, and commands see [`PROJECT_INDEX.md`](./PROJECT_INDEX.md).
-> For data model, environment variables, and Redis key patterns see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+> For system design and the data model see [`docs/handbook/02-architecture.md`](./docs/handbook/02-architecture.md) and [`docs/handbook/03-data-model.md`](./docs/handbook/03-data-model.md).

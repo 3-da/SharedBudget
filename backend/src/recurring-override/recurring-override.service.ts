@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
@@ -6,7 +6,7 @@ import { UpsertOverrideDto } from './dto/upsert-override.dto';
 import { UpdateDefaultAmountDto } from './dto/update-default-amount.dto';
 import { BatchOverrideItemDto } from './dto/batch-upsert-override.dto';
 import { RecurringOverrideResponseDto } from './dto/recurring-override-response.dto';
-import { ExpenseCategory } from '../generated/prisma/enums';
+import { ExpenseCategory, ExpenseType } from '../generated/prisma/enums';
 
 @Injectable()
 export class RecurringOverrideService {
@@ -42,19 +42,14 @@ export class RecurringOverrideService {
         this.logger.debug(`Upsert override for expense ${expenseId}: ${month}/${year}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
-            throw new NotFoundException('Expense not found');
-        }
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         if (expense.category !== ExpenseCategory.RECURRING) {
             this.logger.warn(`Non-recurring expense override attempt: ${expenseId}`);
             throw new BadRequestException('Only recurring expenses can have overrides');
         }
+
+        this.rejectSharedExpense(expense.type, expenseId);
 
         const result = await this.prismaService.recurringOverride.upsert({
             where: {
@@ -100,19 +95,14 @@ export class RecurringOverrideService {
         this.logger.debug(`Update default amount for expense ${expenseId} to ${dto.amount}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
-            throw new NotFoundException('Expense not found');
-        }
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         if (expense.category !== ExpenseCategory.RECURRING) {
             this.logger.warn(`Non-recurring expense default amount update attempt: ${expenseId}`);
             throw new BadRequestException('Only recurring expenses can have their default amount updated');
         }
+
+        this.rejectSharedExpense(expense.type, expenseId);
 
         await this.prismaService.expense.update({
             where: { id: expenseId },
@@ -137,14 +127,7 @@ export class RecurringOverrideService {
         this.logger.debug(`List overrides for expense: ${expenseId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
-            throw new NotFoundException('Expense not found');
-        }
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         const overrides = await this.prismaService.recurringOverride.findMany({
             where: { expenseId },
@@ -159,6 +142,8 @@ export class RecurringOverrideService {
      *
      * Use case: Sam previously set a custom amount for July but now wants it
      * back to the default. Sam clicks "Undo" to remove that month's override.
+     * Allowed for shared expenses too — deleting an override only reverts to
+     * the already-approved default amount, so it doesn't need its own approval.
      *
      * @param userId - The authenticated user's ID
      * @param expenseId - The recurring expense ID
@@ -172,14 +157,7 @@ export class RecurringOverrideService {
         this.logger.debug(`Delete override for expense ${expenseId}: ${month}/${year}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
-            throw new NotFoundException('Expense not found');
-        }
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         await this.prismaService.recurringOverride.deleteMany({
             where: { expenseId, month, year },
@@ -198,6 +176,8 @@ export class RecurringOverrideService {
      *
      * Scenario: Sam updates the gym membership base price from 49.99 to 55 EUR.
      * Sam then clears all existing overrides so every month uses the new price.
+     * Allowed for shared expenses too — deleting overrides only reverts to the
+     * already-approved default amount, so it doesn't need its own approval.
      *
      * @param userId - The authenticated user's ID
      * @param expenseId - The recurring expense ID
@@ -209,14 +189,7 @@ export class RecurringOverrideService {
         this.logger.debug(`Delete all overrides for expense ${expenseId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
-            throw new NotFoundException('Expense not found');
-        }
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         const { count } = await this.prismaService.recurringOverride.deleteMany({
             where: { expenseId },
@@ -251,19 +224,14 @@ export class RecurringOverrideService {
         this.logger.debug(`Batch upsert ${overrides.length} overrides for expense ${expenseId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
-            throw new NotFoundException('Expense not found');
-        }
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         if (expense.category !== ExpenseCategory.RECURRING) {
             this.logger.warn(`Non-recurring expense batch override attempt: ${expenseId}`);
             throw new BadRequestException('Only recurring expenses can have overrides');
         }
+
+        this.rejectSharedExpense(expense.type, expenseId);
 
         const results = await this.prismaService.$transaction(
             overrides.map((o) =>
@@ -297,7 +265,9 @@ export class RecurringOverrideService {
      *
      * Use case: Sam previously applied an override to all upcoming months but now
      * wants to revert. Sam clicks "Undo all upcoming" which deletes overrides
-     * from the selected month onward.
+     * from the selected month onward. Allowed for shared expenses too — deleting
+     * overrides only reverts to the already-approved default amount, so it
+     * doesn't need its own approval.
      *
      * @param userId - The authenticated user's ID
      * @param expenseId - The recurring expense ID
@@ -311,14 +281,7 @@ export class RecurringOverrideService {
         this.logger.debug(`Delete upcoming overrides for expense ${expenseId} from ${fromMonth}/${fromYear}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId: membership.householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} for user: ${userId}`);
-            throw new NotFoundException('Expense not found');
-        }
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         const { count } = await this.prismaService.recurringOverride.deleteMany({
             where: {
@@ -330,6 +293,21 @@ export class RecurringOverrideService {
         await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Deleted ${count} upcoming overrides for expense ${expenseId} from ${fromMonth}/${fromYear}`);
         return { message: `Deleted ${count} upcoming override(s)` };
+    }
+
+    /**
+     * Blocks setting a new override amount or default amount on shared expenses.
+     * Shared expense amount changes must go through the approval flow
+     * (SharedExpenseService.proposeUpdate / ApprovalService) so the other
+     * household member can review them — bypassing it here would let one member
+     * silently change a shared cost. Not used for deletion: removing an override
+     * reverts to the already-approved default amount, so it's safe without approval.
+     */
+    private rejectSharedExpense(type: ExpenseType, expenseId: string): void {
+        if (type === ExpenseType.SHARED) {
+            this.logger.warn(`Shared expense override attempt bypassing approval: ${expenseId}`);
+            throw new ForbiddenException('Shared expense overrides require approval');
+        }
     }
 
     private mapToResponse(record: {

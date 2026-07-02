@@ -8,7 +8,6 @@ import { HouseholdRole } from '../../../shared/models/enums';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-member-finance-card',
-  standalone: true,
   imports: [MatCardModule, MatIconModule, CurrencyEurPipe],
   template: `
     <mat-card>

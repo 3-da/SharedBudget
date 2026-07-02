@@ -12,7 +12,6 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-salary-overview',
-  standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, SalaryFormComponent, SalaryChartComponent, LoadingSpinnerComponent, PageHeaderComponent, CurrencyEurPipe],
   template: `
     <app-page-header title="Salary" subtitle="Manage your monthly income" />

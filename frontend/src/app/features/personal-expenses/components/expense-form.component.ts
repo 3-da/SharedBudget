@@ -11,11 +11,12 @@ import { DecimalPipe } from '@angular/common';
 import { Expense, CreateExpenseRequest } from '../../../shared/models/expense.model';
 import { HouseholdMember } from '../../../shared/models/household.model';
 import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFrequency } from '../../../shared/models/enums';
+import { roundCurrency } from '../../../shared/utils/round-currency';
+import { maxDecimalPlacesValidator } from '../../../shared/validators/max-decimal-places.validator';
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-expense-form',
-  standalone: true,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, MatSlideToggleModule, DecimalPipe],
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
@@ -28,7 +29,7 @@ import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy, InstallmentFr
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Amount (EUR)</mat-label>
         <input matInput type="number" formControlName="amount" min="0.01" step="0.01">
-        <mat-error>Valid positive amount required</mat-error>
+        <mat-error>Valid positive amount required, with at most 2 decimal places</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
@@ -195,7 +196,7 @@ export class ExpenseFormComponent {
   private readonly fb = inject(FormBuilder);
   form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(100)]],
-    amount: [0, [Validators.required, Validators.min(0.01)]],
+    amount: [0, [Validators.required, Validators.min(0.01), maxDecimalPlacesValidator()]],
     category: ['RECURRING' as ExpenseCategory, Validators.required],
     frequency: ['MONTHLY' as ExpenseFrequency, Validators.required],
     yearlyPaymentStrategy: [null as YearlyPaymentStrategy | null],
@@ -241,7 +242,7 @@ export class ExpenseFormComponent {
       default: installmentsPerYear = 12;
     }
     const totalInstallments = installmentsPerYear * years;
-    return Math.round((amount / totalInstallments) * 100) / 100;
+    return roundCurrency(amount / totalInstallments);
   });
 
   months = Array.from({ length: 12 }, (_, i) => ({

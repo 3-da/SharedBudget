@@ -7,11 +7,20 @@ import { SavingsHistoryItemDto } from './dto/savings-history.dto';
 import { SettlementResponseDto } from './dto/settlement-response.dto';
 import { MarkSettlementPaidResponseDto } from './dto/mark-settlement-paid-response.dto';
 import { MemberIncomeDto } from './dto/member-income.dto';
-import { MemberExpenseSummaryDto } from './dto/expense-summary.dto';
+import { ExpenseSummaryDto, MemberExpenseSummaryDto } from './dto/expense-summary.dto';
 import { CacheService } from '../common/cache/cache.service';
 import { DashboardCalculatorService } from './dashboard-calculator.service';
 import { resolveMonthYear } from '../common/utils/resolve-month-year';
+import { roundCurrency } from '../common/utils/round-currency';
 import { ExpenseType } from '../generated/prisma/enums';
+
+type MonthlyResult = {
+    month: number;
+    year: number;
+    income: MemberIncomeDto[];
+    expenses: ExpenseSummaryDto;
+    savings: SavingsResponseDto;
+};
 
 @Injectable()
 export class DashboardService {
@@ -292,10 +301,40 @@ export class DashboardService {
      * @param currentYear - The current year
      * @returns Dashboard response with averaged values
      */
-    // noinspection JSUnusedPrivateSymbols
     private async computeYearlyAverageInternal(householdId: string, userId: string, currentMonth: number, currentYear: number): Promise<DashboardResponseDto> {
+        const months = this.buildTrailingMonths(currentMonth, currentYear);
+        const baseData = await this.fetchBaseData(householdId);
+        const monthlyResults = await this.loadMonthlyResults(baseData, months);
+
+        const avgIncome = this.averageIncome(monthlyResults);
+        const avgExpenses = this.averageExpenses(monthlyResults);
+        const avgSavings = this.averageSavings(monthlyResults);
+
+        const [settlement, pendingApprovalsCount] = await Promise.all([
+            this.calculator.calculateSettlement(baseData.members, baseData.sharedExpenses, userId, currentMonth, currentYear),
+            this.calculator.getPendingApprovalsCount(householdId, userId),
+        ]);
+
+        return {
+            income: avgIncome,
+            totalDefaultIncome: avgIncome.reduce((sum, m) => sum + m.defaultSalary, 0),
+            totalCurrentIncome: avgIncome.reduce((sum, m) => sum + m.currentSalary, 0),
+            expenses: avgExpenses,
+            savings: avgSavings,
+            settlement,
+            pendingApprovalsCount,
+            month: currentMonth,
+            year: currentYear,
+        };
+    }
+
+    /**
+     * Builds the list of 12 calendar months ending at (and including) currentMonth/currentYear,
+     * oldest first — the window computeYearlyAverageInternal averages over.
+     */
+    private buildTrailingMonths(currentMonth: number, currentYear: number): { month: number; year: number }[] {
         const months: { month: number; year: number }[] = [];
-        for (let i = 0; i < 12; i++) {
+        for (let i = 11; i >= 0; i--) {
             let m = currentMonth - i;
             let y = currentYear;
             if (m <= 0) {
@@ -304,11 +343,12 @@ export class DashboardService {
             }
             months.push({ month: m, year: y });
         }
+        return months;
+    }
 
-        // Pre-fetch members and expenses once for all 12 months
-        const { members, expenses, sharedExpenses } = await this.fetchBaseData(householdId);
-
-        const monthlyResults = await Promise.all(
+    private async loadMonthlyResults(baseData: Awaited<ReturnType<DashboardService['fetchBaseData']>>, months: { month: number; year: number }[]): Promise<MonthlyResult[]> {
+        const { members, expenses } = baseData;
+        return Promise.all(
             months.map(async ({ month, year }) => ({
                 month,
                 year,
@@ -317,139 +357,79 @@ export class DashboardService {
                 savings: await this.calculator.calculateSavings(members, expenses, month, year),
             })),
         );
+    }
 
-        const firstIncome = monthlyResults[0].income;
+    private averageIncome(monthlyResults: MonthlyResult[]): MemberIncomeDto[] {
+        const incomeByMonth = monthlyResults.map((r) => r.income);
+        const hasIncome = (i: MemberIncomeDto): boolean => i.currentSalary > 0 || i.defaultSalary > 0;
 
-        // Average incomes — only count months that have at least one salary entry
-        const incomeMonths = monthlyResults.filter((r) => r.income.some((i) => i.currentSalary > 0 || i.defaultSalary > 0));
+        return monthlyResults[0].income.map((member) => ({
+            ...member,
+            defaultSalary: this.averageMemberField(incomeByMonth, member.userId, hasIncome, (i) => i.defaultSalary),
+            currentSalary: this.averageMemberField(incomeByMonth, member.userId, hasIncome, (i) => i.currentSalary),
+        }));
+    }
 
-        const avgIncome: MemberIncomeDto[] = firstIncome.map((member) => {
-            const memberMonths = incomeMonths.filter((r) => r.income.find((i) => i.userId === member.userId && (i.currentSalary > 0 || i.defaultSalary > 0)));
-            const memberCount = memberMonths.length || 1;
-            const avgDefault =
-                Math.round(
-                    (memberMonths.reduce((sum, r) => {
-                        const m = r.income.find((i) => i.userId === member.userId);
-                        return sum + (m?.defaultSalary ?? 0);
-                    }, 0) /
-                        memberCount) *
-                        100,
-                ) / 100;
-            const avgCurrent =
-                Math.round(
-                    (memberMonths.reduce((sum, r) => {
-                        const m = r.income.find((i) => i.userId === member.userId);
-                        return sum + (m?.currentSalary ?? 0);
-                    }, 0) /
-                        memberCount) *
-                        100,
-                ) / 100;
+    private averageExpenses(monthlyResults: MonthlyResult[]): ExpenseSummaryDto {
+        const personalExpensesByMonth = monthlyResults.map((r) => r.expenses.personalExpenses);
+        const hasExpense = (pe: MemberExpenseSummaryDto): boolean => pe.personalExpensesTotal > 0;
 
-            return { ...member, defaultSalary: avgDefault, currentSalary: avgCurrent };
-        });
+        const personalExpenses: MemberExpenseSummaryDto[] = monthlyResults[0].expenses.personalExpenses.map((pe) => ({
+            ...pe,
+            personalExpensesTotal: this.averageMemberField(personalExpensesByMonth, pe.userId, hasExpense, (p) => p.personalExpensesTotal),
+            remainingExpenses: this.averageMemberField(personalExpensesByMonth, pe.userId, hasExpense, (p) => p.remainingExpenses),
+        }));
 
-        // Average expenses — only count months that have at least one expense
-        const expenseMonths = monthlyResults.filter((r) => r.expenses.totalHouseholdExpenses > 0);
-        const expenseCount = expenseMonths.length || 1;
+        const activeMonths = monthlyResults.filter((r) => r.expenses.totalHouseholdExpenses > 0);
+        return {
+            personalExpenses,
+            sharedExpensesTotal: this.average(activeMonths.map((r) => r.expenses.sharedExpensesTotal)),
+            totalHouseholdExpenses: this.average(activeMonths.map((r) => r.expenses.totalHouseholdExpenses)),
+            remainingHouseholdExpenses: this.average(activeMonths.map((r) => r.expenses.remainingHouseholdExpenses)),
+        };
+    }
 
-        const avgPersonalExpenses: MemberExpenseSummaryDto[] = monthlyResults[0].expenses.personalExpenses.map((pe) => {
-            const peMonths = expenseMonths.filter((r) => {
-                const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
-                return found && found.personalExpensesTotal > 0;
-            });
-            const peCount = peMonths.length || 1;
-            const avgTotal =
-                Math.round(
-                    (peMonths.reduce((sum, r) => {
-                        const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
-                        return sum + (found?.personalExpensesTotal ?? 0);
-                    }, 0) /
-                        peCount) *
-                        100,
-                ) / 100;
-            const avgRemaining =
-                Math.round(
-                    (peMonths.reduce((sum, r) => {
-                        const found = r.expenses.personalExpenses.find((p) => p.userId === pe.userId);
-                        return sum + (found?.remainingExpenses ?? 0);
-                    }, 0) /
-                        peCount) *
-                        100,
-                ) / 100;
-            return { ...pe, personalExpensesTotal: avgTotal, remainingExpenses: avgRemaining };
-        });
-        const avgSharedTotal = Math.round((expenseMonths.reduce((sum, r) => sum + r.expenses.sharedExpensesTotal, 0) / expenseCount) * 100) / 100;
-        const avgTotalHousehold = Math.round((expenseMonths.reduce((sum, r) => sum + r.expenses.totalHouseholdExpenses, 0) / expenseCount) * 100) / 100;
-        const avgRemainingHousehold = Math.round((expenseMonths.reduce((sum, r) => sum + r.expenses.remainingHouseholdExpenses, 0) / expenseCount) * 100) / 100;
+    private averageSavings(monthlyResults: MonthlyResult[]): SavingsResponseDto {
+        const savingsByMonth = monthlyResults.map((r) => r.savings.members);
+        const hasSavings = (sm: MemberSavingsDto): boolean => sm.personalSavings > 0 || sm.sharedSavings > 0;
 
-        // Average savings — only count months that have at least one saving record
-        const savingsMonths = monthlyResults.filter((r) => r.savings.totalSavings > 0);
-
-        const avgSavingsMembers: MemberSavingsDto[] = monthlyResults[0].savings.members.map((sm) => {
-            const smMonths = savingsMonths.filter((r) => {
-                const found = r.savings.members.find((s) => s.userId === sm.userId);
-                return found && (found.personalSavings > 0 || found.sharedSavings > 0);
-            });
-            const smCount = smMonths.length || 1;
-            const avgPersonal =
-                Math.round(
-                    (smMonths.reduce((sum, r) => {
-                        const found = r.savings.members.find((s) => s.userId === sm.userId);
-                        return sum + (found?.personalSavings ?? 0);
-                    }, 0) /
-                        smCount) *
-                        100,
-                ) / 100;
-            const avgShared =
-                Math.round(
-                    (smMonths.reduce((sum, r) => {
-                        const found = r.savings.members.find((s) => s.userId === sm.userId);
-                        return sum + (found?.sharedSavings ?? 0);
-                    }, 0) /
-                        smCount) *
-                        100,
-                ) / 100;
-            const avgBudget =
-                Math.round(
-                    (smMonths.reduce((sum, r) => {
-                        const found = r.savings.members.find((s) => s.userId === sm.userId);
-                        return sum + (found?.remainingBudget ?? 0);
-                    }, 0) /
-                        smCount) *
-                        100,
-                ) / 100;
-            return { ...sm, personalSavings: avgPersonal, sharedSavings: avgShared, remainingBudget: avgBudget };
-        });
-
-        const [settlement, pendingApprovalsCount] = await Promise.all([
-            this.calculator.calculateSettlement(members, sharedExpenses, userId, currentMonth, currentYear),
-            this.calculator.getPendingApprovalsCount(householdId, userId),
-        ]);
-
-        const totalDefaultIncome = avgIncome.reduce((sum, m) => sum + m.defaultSalary, 0);
-        const totalCurrentIncome = avgIncome.reduce((sum, m) => sum + m.currentSalary, 0);
+        const members: MemberSavingsDto[] = monthlyResults[0].savings.members.map((sm) => ({
+            ...sm,
+            personalSavings: this.averageMemberField(savingsByMonth, sm.userId, hasSavings, (s) => s.personalSavings),
+            sharedSavings: this.averageMemberField(savingsByMonth, sm.userId, hasSavings, (s) => s.sharedSavings),
+            remainingBudget: this.averageMemberField(savingsByMonth, sm.userId, hasSavings, (s) => s.remainingBudget),
+        }));
 
         return {
-            income: avgIncome,
-            totalDefaultIncome,
-            totalCurrentIncome,
-            expenses: {
-                personalExpenses: avgPersonalExpenses,
-                sharedExpensesTotal: avgSharedTotal,
-                totalHouseholdExpenses: avgTotalHousehold,
-                remainingHouseholdExpenses: avgRemainingHousehold,
-            },
-            savings: {
-                members: avgSavingsMembers,
-                totalPersonalSavings: Math.round(avgSavingsMembers.reduce((sum, m) => sum + m.personalSavings, 0) * 100) / 100,
-                totalSharedSavings: Math.round(avgSavingsMembers.reduce((sum, m) => sum + m.sharedSavings, 0) * 100) / 100,
-                totalSavings: Math.round(avgSavingsMembers.reduce((sum, m) => sum + m.personalSavings + m.sharedSavings, 0) * 100) / 100,
-                totalRemainingBudget: Math.round(avgSavingsMembers.reduce((sum, m) => sum + m.remainingBudget, 0) * 100) / 100,
-            },
-            settlement,
-            pendingApprovalsCount,
-            month: currentMonth,
-            year: currentYear,
+            members,
+            totalPersonalSavings: this.sum(members.map((m) => m.personalSavings)),
+            totalSharedSavings: this.sum(members.map((m) => m.sharedSavings)),
+            totalSavings: this.sum(members.map((m) => m.personalSavings + m.sharedSavings)),
+            totalRemainingBudget: this.sum(members.map((m) => m.remainingBudget)),
         };
+    }
+
+    /**
+     * Averages one field of one member's record across whichever months that
+     * member had data in (months where hasData is false are excluded, not
+     * treated as zero) — used by averageIncome/averageExpenses/averageSavings
+     * so the "only count active months" rule is stated once instead of once
+     * per field.
+     */
+    private averageMemberField<M extends { userId: string }>(recordsByMonth: M[][], userId: string, hasData: (record: M) => boolean, selector: (record: M) => number): number {
+        const activeValues = recordsByMonth
+            .map((records) => records.find((r) => r.userId === userId))
+            .filter((record): record is M => record != null && hasData(record))
+            .map(selector);
+        return this.average(activeValues);
+    }
+
+    private average(values: number[]): number {
+        const count = values.length || 1;
+        return roundCurrency(values.reduce((total, v) => total + v, 0) / count);
+    }
+
+    private sum(values: number[]): number {
+        return roundCurrency(values.reduce((total, v) => total + v, 0));
     }
 }
