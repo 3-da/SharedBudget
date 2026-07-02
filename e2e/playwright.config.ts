@@ -37,7 +37,11 @@ export default defineConfig({
       command: 'npm run start:dev',
       cwd: '../backend',
       url: 'http://127.0.0.1:3000/docs',
-      reuseExistingServer: !process.env.CI,
+      // Always reuse an already-running backend rather than !process.env.CI.
+      // In CI the workflow starts the backend itself (after running migrations,
+      // which this webServer command doesn't do) — Playwright must not try to
+      // start a competing second instance on the same port.
+      reuseExistingServer: true,
       timeout: 60_000,
       env: {
         NODE_ENV: 'test',
