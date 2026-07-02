@@ -173,7 +173,7 @@ jobs:
           PORT: 3000
 
       - name: Wait for backend
-        run: npx wait-on http://localhost:3000/api/v1 --timeout 30000
+        run: npx wait-on http://localhost:3000/api/v1 --timeout 120000
 
       - name: Install E2E deps
         run: cd e2e && npm ci && npx playwright install chromium
