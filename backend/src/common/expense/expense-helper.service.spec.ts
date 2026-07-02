@@ -226,7 +226,7 @@ describe('ExpenseHelperService', () => {
 
     //#region visibleExpenseFilter
     describe('visibleExpenseFilter', () => {
-        it('should return an OR fragment covering shared expenses and the caller\'s own personal expenses', () => {
+        it("should return an OR fragment covering shared expenses and the caller's own personal expenses", () => {
             const result = service.visibleExpenseFilter(mockUserId);
 
             expect(result).toEqual({

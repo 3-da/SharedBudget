@@ -110,7 +110,8 @@ export function ProposeSkipSharedExpenseEndpoint() {
         Patch(':id/skip'),
         ApiOperation({
             summary: 'Propose skipping a shared expense for a month',
-            description: 'Creates an approval request to skip a recurring shared expense for the specified month. The skip is NOT applied until approved by another member.',
+            description:
+                'Creates an approval request to skip a recurring shared expense for the specified month. The skip is NOT applied until approved by another member.',
         }),
         ApiResponse({ status: 201, description: 'Skip approval created.', type: ApprovalResponseDto }),
         ApiResponse({ status: 400, description: 'Expense is not recurring.', type: ErrorResponseDto }),

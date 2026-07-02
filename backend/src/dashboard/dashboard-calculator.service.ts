@@ -275,7 +275,13 @@ export class DashboardCalculatorService {
      * @param year - Target year
      * @returns Settlement calculation with amount, direction, and message
      */
-    async calculateSettlement(members: MemberWithUser[], sharedExpenses: Expense[], requestingUserId: string, month: number, year: number): Promise<SettlementResponseDto> {
+    async calculateSettlement(
+        members: MemberWithUser[],
+        sharedExpenses: Expense[],
+        requestingUserId: string,
+        month: number,
+        year: number,
+    ): Promise<SettlementResponseDto> {
         const householdId = members[0]?.householdId;
 
         const [existingSettlement, overrides] = await Promise.all([

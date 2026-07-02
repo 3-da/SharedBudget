@@ -63,12 +63,20 @@ export class SharedExpenseController {
     }
 
     @ProposeSkipSharedExpenseEndpoint()
-    async proposeSkipSharedExpense(@CurrentUser('id') userId: string, @Param('id') expenseId: string, @Body() dto: SkipExpenseDto): Promise<ApprovalResponseDto> {
+    async proposeSkipSharedExpense(
+        @CurrentUser('id') userId: string,
+        @Param('id') expenseId: string,
+        @Body() dto: SkipExpenseDto,
+    ): Promise<ApprovalResponseDto> {
         return this.sharedExpenseService.proposeSkipExpense(userId, expenseId, dto);
     }
 
     @ProposeUnskipSharedExpenseEndpoint()
-    async proposeUnskipSharedExpense(@CurrentUser('id') userId: string, @Param('id') expenseId: string, @Body() dto: SkipExpenseDto): Promise<ApprovalResponseDto> {
+    async proposeUnskipSharedExpense(
+        @CurrentUser('id') userId: string,
+        @Param('id') expenseId: string,
+        @Body() dto: SkipExpenseDto,
+    ): Promise<ApprovalResponseDto> {
         return this.sharedExpenseService.proposeUnskipExpense(userId, expenseId, dto);
     }
 }

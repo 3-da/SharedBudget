@@ -912,30 +912,28 @@ describe('RecurringOverrideService', () => {
             mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
         });
 
-        it('should not let a member override another member\'s personal expense', async () => {
-            await expect(service.upsertOverride(mockUserId, 'expense-other-001', 2026, 7, { amount: 55 })).rejects.toThrow(
-                'Expense not found',
-            );
+        it("should not let a member override another member's personal expense", async () => {
+            await expect(service.upsertOverride(mockUserId, 'expense-other-001', 2026, 7, { amount: 55 })).rejects.toThrow('Expense not found');
 
             expect(mockPrismaService.recurringOverride.upsert).not.toHaveBeenCalled();
         });
 
-        it('should not let a member change another member\'s personal expense default amount', async () => {
+        it("should not let a member change another member's personal expense default amount", async () => {
             await expect(service.updateDefaultAmount(mockUserId, 'expense-other-001', { amount: 999 })).rejects.toThrow('Expense not found');
 
             expect(mockPrismaService.expense.update).not.toHaveBeenCalled();
         });
 
-        it('should not let a member delete another member\'s personal expense override', async () => {
+        it("should not let a member delete another member's personal expense override", async () => {
             await expect(service.deleteOverride(mockUserId, 'expense-other-001', 2026, 7)).rejects.toThrow('Expense not found');
 
             expect(mockPrismaService.recurringOverride.deleteMany).not.toHaveBeenCalled();
         });
 
-        it('should not let a member batch-override another member\'s personal expense', async () => {
-            await expect(
-                service.batchUpsertOverrides(mockUserId, 'expense-other-001', [{ year: 2026, month: 7, amount: 55 }]),
-            ).rejects.toThrow('Expense not found');
+        it("should not let a member batch-override another member's personal expense", async () => {
+            await expect(service.batchUpsertOverrides(mockUserId, 'expense-other-001', [{ year: 2026, month: 7, amount: 55 }])).rejects.toThrow(
+                'Expense not found',
+            );
 
             expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
         });

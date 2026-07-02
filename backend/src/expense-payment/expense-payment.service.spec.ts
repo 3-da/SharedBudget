@@ -270,9 +270,7 @@ describe('ExpensePaymentService', () => {
             mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockFlexibleExpense);
 
             // Act & Assert
-            await expect(service.markPaid(mockUserId, mockFlexibleExpense.id, { month: 6, year: 2026 })).rejects.toThrow(
-                BadRequestException,
-            );
+            await expect(service.markPaid(mockUserId, mockFlexibleExpense.id, { month: 6, year: 2026 })).rejects.toThrow(BadRequestException);
             await expect(service.markPaid(mockUserId, mockFlexibleExpense.id, { month: 6, year: 2026 })).rejects.toThrow(
                 'paidAmount is required for flexible expenses',
             );
@@ -688,7 +686,7 @@ describe('ExpensePaymentService', () => {
             });
         });
 
-        it('should apply the matching month\'s override amount when computing remainingAmount', async () => {
+        it("should apply the matching month's override amount when computing remainingAmount", async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockFlexibleExpense);
             mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
@@ -707,7 +705,7 @@ describe('ExpensePaymentService', () => {
 
     //#region getBatchPaymentStatuses
     describe('getBatchPaymentStatuses', () => {
-        it('should scope the query to shared expenses and the caller\'s own personal expenses', async () => {
+        it("should scope the query to shared expenses and the caller's own personal expenses", async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
             mockExpenseHelper.visibleExpenseFilter.mockReturnValue({
                 OR: [{ type: ExpenseType.SHARED }, { type: ExpenseType.PERSONAL, createdById: mockUserId }],
@@ -724,10 +722,7 @@ describe('ExpensePaymentService', () => {
                     expense: {
                         householdId: mockHouseholdId,
                         deletedAt: null,
-                        OR: [
-                            { type: ExpenseType.SHARED },
-                            { type: ExpenseType.PERSONAL, createdById: mockUserId },
-                        ],
+                        OR: [{ type: ExpenseType.SHARED }, { type: ExpenseType.PERSONAL, createdById: mockUserId }],
                     },
                 },
                 include: { expense: true },
@@ -775,7 +770,7 @@ describe('ExpensePaymentService', () => {
             mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
         });
 
-        it('should not let a member mark another member\'s personal expense as paid', async () => {
+        it("should not let a member mark another member's personal expense as paid", async () => {
             try {
                 await service.markPaid(mockUserId, 'expense-other-001', dto);
                 expect.unreachable('Should have thrown NotFoundException');
@@ -787,7 +782,7 @@ describe('ExpensePaymentService', () => {
             expect(mockPrismaService.expensePaymentStatus.upsert).not.toHaveBeenCalled();
         });
 
-        it('should not let a member undo another member\'s personal expense payment', async () => {
+        it("should not let a member undo another member's personal expense payment", async () => {
             try {
                 await service.undoPaid(mockUserId, 'expense-other-001', dto);
                 expect.unreachable('Should have thrown NotFoundException');
@@ -799,7 +794,7 @@ describe('ExpensePaymentService', () => {
             expect(mockPrismaService.expensePaymentStatus.findUnique).not.toHaveBeenCalled();
         });
 
-        it('should not let a member cancel another member\'s personal expense', async () => {
+        it("should not let a member cancel another member's personal expense", async () => {
             try {
                 await service.cancel(mockUserId, 'expense-other-001', dto);
                 expect.unreachable('Should have thrown NotFoundException');
@@ -811,7 +806,7 @@ describe('ExpensePaymentService', () => {
             expect(mockPrismaService.expensePaymentStatus.upsert).not.toHaveBeenCalled();
         });
 
-        it('should not let a member read another member\'s personal expense payment statuses', async () => {
+        it("should not let a member read another member's personal expense payment statuses", async () => {
             try {
                 await service.getPaymentStatuses(mockUserId, 'expense-other-001');
                 expect.unreachable('Should have thrown NotFoundException');

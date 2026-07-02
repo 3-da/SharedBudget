@@ -23,13 +23,13 @@ export class ExpensePaymentResponseDto {
     @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'User who last changed the status' })
     paidById!: string;
 
-    @ApiPropertyOptional({ example: 45.50, nullable: true, description: 'Actual amount paid (for flexible expenses). Null for fixed expenses.' })
+    @ApiPropertyOptional({ example: 45.5, nullable: true, description: 'Actual amount paid (for flexible expenses). Null for fixed expenses.' })
     paidAmount!: number | null;
 
     @ApiPropertyOptional({
-        example: 4.50,
+        example: 4.5,
         nullable: true,
-        description: 'How much of this month\'s override-adjusted amount is still unpaid. Null unless the expense is currently PAID.',
+        description: "How much of this month's override-adjusted amount is still unpaid. Null unless the expense is currently PAID.",
     })
     remainingAmount!: number | null;
 

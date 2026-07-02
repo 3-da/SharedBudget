@@ -20,7 +20,11 @@ export class AddSavingDto {
     @Max(2099)
     year?: number;
 
-    @ApiPropertyOptional({ example: true, description: 'Whether this saving reduces the remaining salary budget. Set to false for windfalls (lottery wins, gifts).', default: true })
+    @ApiPropertyOptional({
+        example: true,
+        description: 'Whether this saving reduces the remaining salary budget. Set to false for windfalls (lottery wins, gifts).',
+        default: true,
+    })
     @IsOptional()
     @IsBoolean()
     reducesFromSalary?: boolean;

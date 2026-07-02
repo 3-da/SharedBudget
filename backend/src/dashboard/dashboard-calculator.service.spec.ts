@@ -212,7 +212,9 @@ describe('DashboardCalculatorService', () => {
         });
 
         it('should calculate remaining expenses excluding paid ones', async () => {
-            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID', paidAmount: null }]);
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
+                { expenseId: 'exp-1', month: currentMonth, year: currentYear, status: 'PAID', paidAmount: null },
+            ]);
 
             const result = await service.getExpenseData(mockMembers as any, mockExpenses as any, currentMonth, currentYear);
 
@@ -242,9 +244,7 @@ describe('DashboardCalculatorService', () => {
                 year: null,
                 deletedAt: null,
             };
-            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([
-                { expenseId: 'exp-flex', status: 'PAID', paidAmount: { valueOf: () => 50 } },
-            ]);
+            mockPrismaService.expensePaymentStatus.findMany.mockResolvedValue([{ expenseId: 'exp-flex', status: 'PAID', paidAmount: { valueOf: () => 50 } }]);
 
             // Only one expense: Alex's flexible Food (250) — no gym/rent/electricity
             const result = await service.getExpenseData(mockMembers as any, [flexExpense] as any, currentMonth, currentYear);
@@ -432,7 +432,7 @@ describe('DashboardCalculatorService', () => {
     });
 
     describe('getMonthlyAmounts', () => {
-        it('should return each expense\'s base amount when no overrides exist', async () => {
+        it("should return each expense's base amount when no overrides exist", async () => {
             const result = await service.getMonthlyAmounts(mockExpenses as any, currentMonth, currentYear);
 
             expect(result.get('exp-1')).toBe(50);
