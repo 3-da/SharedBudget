@@ -162,6 +162,64 @@ export async function apiCall<T = unknown>(
 }
 
 /**
+ * Registers a test user and verifies their email by reading the code directly
+ * out of Redis (no mailbox available in CI, so we bypass delivery entirely).
+ */
+async function registerAndVerify(user: (typeof TEST_USERS)[keyof typeof TEST_USERS]): Promise<void> {
+  await flushThrottleKeys();
+  const registerRes = await apiRegister(user);
+  if (registerRes.status !== 201) {
+    throw new Error(`Registration failed for ${user.email}: ${registerRes.status} ${JSON.stringify(registerRes.body)}`);
+  }
+
+  const redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT, password: REDIS_PASSWORD, lazyConnect: true });
+  try {
+    await redis.connect();
+    const code = await redis.get(`verify:${user.email}`);
+    if (!code) {
+      throw new Error(`No verification code found in Redis for ${user.email}`);
+    }
+    const res = await fetch(`${API_URL}/auth/verify-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email, code }),
+    });
+    if (!res.ok) {
+      throw new Error(`Verification failed for ${user.email}: ${res.status} ${await res.text()}`);
+    }
+  } finally {
+    await redis.quit();
+  }
+}
+
+/**
+ * Ensures the fixed E2E test users exist, are verified, and Alex+Sam share a
+ * household — bootstrapping them on a fresh database. If Alex can already log
+ * in, the fixtures were set up by an earlier run against this database and
+ * there is nothing to do.
+ */
+export async function ensureTestFixturesExist(): Promise<void> {
+  const alreadyExists = await apiLogin(TEST_USERS.alex.email, TEST_USERS.alex.password).catch(() => null);
+  if (alreadyExists) return;
+
+  await registerAndVerify(TEST_USERS.alex);
+  await registerAndVerify(TEST_USERS.sam);
+  await registerAndVerify(TEST_USERS.jordan);
+
+  const alexTokens = await apiLogin(TEST_USERS.alex.email, TEST_USERS.alex.password);
+  const householdRes = await apiCall<{ inviteCode: string }>('POST', '/household', alexTokens.accessToken, { name: TEST_HOUSEHOLD.name });
+  if (householdRes.status !== 201) {
+    throw new Error(`Household creation failed: ${householdRes.status} ${JSON.stringify(householdRes.body)}`);
+  }
+
+  const samTokens = await apiLogin(TEST_USERS.sam.email, TEST_USERS.sam.password);
+  const joinRes = await apiCall('POST', '/household/join', samTokens.accessToken, { inviteCode: householdRes.body.inviteCode });
+  if (joinRes.status !== 201) {
+    throw new Error(`Household join failed: ${joinRes.status} ${JSON.stringify(joinRes.body)}`);
+  }
+}
+
+/**
  * Clean up all E2E test data to prevent cross-run interference.
  * Deletes personal expenses, proposes+accepts shared expense deletions,
  * cancels pending approvals, and resets savings.
