@@ -1,6 +1,6 @@
 # SharedBudget — Project Index
 
-> **Generated:** 2026-02-20 | **Backend:** Complete (54 endpoints) | **Frontend:** Complete (Angular 21, builds clean) | **E2E:** 8 Playwright test suites
+> **Generated:** 2026-02-20 | **Backend:** Complete (67 endpoints) | **Frontend:** Complete (Angular 21, builds clean) | **E2E:** 10 Playwright test suites
 
 A household budget management app where members track personal/shared expenses, manage salaries, savings, and settle debts.
 
@@ -87,14 +87,13 @@ SharedBudget/
 │           ├── dashboard/      # Income, expenses, savings, settlement cards
 │           ├── savings/        # Personal & shared savings management
 │           └── settings/       # Profile + change password forms
-├── e2e/                        # Playwright E2E tests (8 suites)
+├── e2e/                        # Playwright E2E tests (10 suites)
 │   ├── tests/                  # Test specs (auth, expenses, approvals, dashboard, etc.)
 │   └── fixtures/               # Test data helpers
 ├── docker-compose.yml          # PostgreSQL 18 + Redis 7
 ├── CLAUDE.md                   # Development guidelines
-├── SPEC.md                     # Business requirements & API spec
-├── ARCHITECTURE.md             # Tech stack & data model
-└── PLAN.md                     # Bug fix & feature plan
+├── PROJECT_INDEX.md            # This file — quick reference
+└── docs/handbook/              # Technical handbook (architecture, data model, API, security, ...)
 ```
 
 ---
@@ -104,15 +103,15 @@ SharedBudget/
 | Module                  | Controller | Service(s)                                    | Endpoints | Purpose                                          |
 |-------------------------|-----------|-----------------------------------------------|-----------|--------------------------------------------------|
 | **auth**                | Yes       | AuthService                                   | 8         | Register, verify, login, refresh, logout, pwd reset |
-| **household**           | Yes       | HouseholdService, HouseholdInvitationService  | 11        | CRUD, join/leave, invite, transfer ownership     |
+| **household**           | Yes       | HouseholdService, HouseholdInvitationService  | 10        | CRUD, join/leave, invite, transfer ownership     |
 | **user**                | Yes       | UserService                                   | 8         | Profile get/update, change password, account deletion |
-| **salary**              | Yes       | SalaryService                                 | 4         | Upsert salary, get own/household/monthly         |
-| **personal-expense**    | Yes       | PersonalExpenseService                        | 5         | CRUD for personal expenses                       |
-| **shared-expense**      | Yes       | SharedExpenseService                          | 5         | Propose create/update/delete (needs approval)    |
-| **approval**            | Yes       | ApprovalService                               | 5         | List pending/history, accept, reject, cancel     |
-| **dashboard**           | Yes       | DashboardService                              | 4         | Overview, savings, settlement, mark-paid         |
-| **expense-payment**     | Yes       | ExpensePaymentService                         | 3         | Mark expense months as paid/pending              |
-| **recurring-override**  | Yes       | RecurringOverrideService                      | 4         | Override amounts per month, batch upsert, delete upcoming |
+| **salary**              | Yes       | SalaryService                                 | 5         | Upsert salary, get own/household/monthly         |
+| **personal-expense**    | Yes       | PersonalExpenseService                        | 4         | CRUD for personal expenses                       |
+| **shared-expense**      | Yes       | SharedExpenseService                          | 6         | Propose create/update/delete (needs approval)    |
+| **approval**            | Yes       | ApprovalService                               | 4         | List pending/history, accept, reject, cancel     |
+| **dashboard**           | Yes       | DashboardService, DashboardCalculatorService  | 4         | Overview, savings, settlement, mark-paid         |
+| **expense-payment**     | Yes       | ExpensePaymentService                         | 5         | Mark expense months as paid/pending              |
+| **recurring-override**  | Yes       | RecurringOverrideService                      | 7         | Override amounts per month, batch upsert, delete upcoming |
 | **saving**              | Yes       | SavingService                                 | 6         | Personal/shared savings add/withdraw, get own/household |
 | session                 | No        | SessionService                                | -         | Redis session CRUD                               |
 | cache                   | No        | CacheService                                  | -         | Redis caching layer with invalidation            |
@@ -122,7 +121,7 @@ SharedBudget/
 | expense-helper          | No        | ExpenseHelperService                          | -         | Shared expense mappers and membership check      |
 | logger                  | No        | -                                             | -         | Pino logger config with redaction                |
 
-**Total: 54 API endpoints across 11 controllers**
+**Total: 67 API endpoints across 11 controllers**
 
 ---
 
@@ -144,7 +143,7 @@ SharedBudget/
 
 ---
 
-## API Endpoints (54 total, all prefixed with `/api/v1`)
+## API Endpoints (67 total, all prefixed with `/api/v1`)
 
 ### Authentication (8)
 ```
@@ -280,7 +279,7 @@ GET  /savings/household              All household savings
 | ExpenseFrequency      | MONTHLY, YEARLY                        |
 | YearlyPaymentStrategy | FULL, INSTALLMENTS                     |
 | InstallmentFrequency  | MONTHLY, QUARTERLY, SEMI_ANNUAL        |
-| ApprovalAction        | CREATE, UPDATE, DELETE, WITHDRAW_SAVINGS |
+| ApprovalAction        | CREATE, UPDATE, DELETE, WITHDRAW_SAVINGS, SKIP_MONTH, UNSKIP_MONTH |
 | ApprovalStatus        | PENDING, ACCEPTED, REJECTED, CANCELLED |
 | InvitationStatus      | PENDING, ACCEPTED, DECLINED, CANCELLED |
 | PaymentStatus         | PENDING, PAID, CANCELLED               |
@@ -291,10 +290,10 @@ GET  /savings/household              All household savings
 
 | Area                | Spec Files | Tests | Scope                                               |
 |---------------------|-----------|-------|------------------------------------------------------|
-| Backend unit        | 55        | 723   | Services, controllers, DTOs, filters, helpers        |
-| Frontend unit       | 33        | -     | Services, stores, pipes, directives, components      |
-| E2E (Playwright)    | 8         | -     | Auth, expenses, approvals, dashboard, settlement, savings, salary, timeline |
-| **Total**           | **96**    |       |                                                      |
+| Backend unit        | 56        | 1100  | Services, controllers, DTOs, filters, helpers        |
+| Frontend unit       | 38        | 293   | Services, stores, pipes, directives, components      |
+| E2E (Playwright)    | 10        | -     | Auth, expenses, approvals, dashboard, settlement, savings, salary, settings, timeline |
+| **Total**           | **104**   |       |                                                      |
 
 ### E2E Test Suites (`e2e/tests/`)
 | File                        | Coverage                                          |
@@ -304,13 +303,15 @@ GET  /savings/household              All household savings
 | `shared-expenses.spec.ts`   | Propose create/update/delete, approval flow        |
 | `approvals.spec.ts`         | Accept, reject, cancel, history                    |
 | `dashboard.spec.ts`         | Financial overview, expense/income summaries       |
+| `household.spec.ts`         | Create, join, manage members, settlement           |
 | `savings.spec.ts`           | Personal & shared savings upsert                   |
 | `salary.spec.ts`            | Salary upsert, household salaries                  |
+| `settings.spec.ts`          | Profile update, change password                    |
 | `timeline-navigation.spec.ts` | Month navigation, recurring overrides           |
 
 ```bash
 # Run tests
-cd backend && npm run test       # Backend (vitest run) — 55 spec files
+cd backend && npm run test       # Backend (vitest run) — 56 spec files
 cd frontend && npm run test      # Frontend (vitest run)
 cd e2e && npm test               # E2E (playwright test) — requires running backend
 ```

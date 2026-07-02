@@ -20,6 +20,8 @@ describe('ExpensePaymentController', () => {
         status: PaymentStatus.PAID,
         paidAt: new Date('2026-06-15T10:30:00.000Z'),
         paidById: mockUserId,
+        paidAmount: null,
+        remainingAmount: null,
         createdAt: new Date(),
         updatedAt: new Date(),
     };

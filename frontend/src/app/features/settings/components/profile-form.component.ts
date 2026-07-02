@@ -7,7 +7,6 @@ import { User, UpdateProfileRequest } from '../../../shared/models/user.model';
 
 @Component({
   selector: 'app-profile-form',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `

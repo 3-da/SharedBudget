@@ -9,7 +9,6 @@ import { map } from 'rxjs';
 
 @Component({
   selector: 'app-shell',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, MatSidenavModule, ToolbarComponent, SidenavComponent],
   template: `

@@ -14,7 +14,6 @@ import { passwordMatchValidator } from '../../../shared/validators/password-matc
 
 @Component({
   selector: 'app-register',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule, RouterLink, MatCardModule, MatFormFieldModule,

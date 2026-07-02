@@ -16,10 +16,10 @@ import {MonthPickerComponent} from '../../../shared/components/month-picker.comp
 import {PageHeaderComponent} from '../../../shared/components/page-header.component';
 import {LoadingSpinnerComponent} from '../../../shared/components/loading-spinner.component';
 import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
+import {maxDecimalPlacesValidator} from '../../../shared/validators/max-decimal-places.validator';
 
 @Component({
   selector: 'app-savings-overview',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, ReactiveFormsModule, MonthPickerComponent, SavingsHistoryChartComponent, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
   template: `
@@ -163,8 +163,8 @@ export class SavingsOverviewComponent implements OnInit {
   readonly month = signal(new Date().getMonth() + 1);
   readonly year = signal(new Date().getFullYear());
   private readonly fb = inject(FormBuilder);
-  personalForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]], reducesFromSalary: [true] });
-  sharedForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01)]], reducesFromSalary: [true] });
+  personalForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01), maxDecimalPlacesValidator()]], reducesFromSalary: [true] });
+  sharedForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01), maxDecimalPlacesValidator()]], reducesFromSalary: [true] });
   private readonly dialog = inject(MatDialog);
   private readonly formDirs = viewChildren(FormGroupDirective);
 

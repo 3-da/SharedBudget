@@ -1,5 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, Min, Max, IsOptional, IsNumber } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsInt, Min, Max } from 'class-validator';
+import { IsCurrencyAmount } from '../../common/decorators/is-currency-amount.decorator';
 
 export class MarkPaidDto {
     @ApiProperty({ example: 6, description: 'Month (1-12)', minimum: 1, maximum: 12 })
@@ -14,13 +15,11 @@ export class MarkPaidDto {
     @Max(2099)
     year!: number;
 
-    @ApiPropertyOptional({
+    @IsCurrencyAmount({
         example: 45.5,
         description: 'Actual amount paid. Required for flexible expenses (isFixed=false), ignored for fixed expenses.',
-        minimum: 0.01,
+        min: 0.01,
+        optional: true,
     })
-    @IsOptional()
-    @IsNumber()
-    @Min(0.01)
     paidAmount?: number;
 }

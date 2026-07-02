@@ -2,9 +2,9 @@
 
 A production-grade household budget management app where couples collaboratively track expenses, manage salaries, savings, and settle debts — with a real-time approval workflow for shared financial decisions.
 
-**Try it live:** [sharedbudget.vercel.app](https://sharedbudget.vercel.app) | [API Docs (Swagger)](https://sharedbudget-api.onrender.com/docs)
+**Try it live:** [sharedbudget.vercel.app](https://sharedbudget.vercel.app)
 
-> The backend runs on Render's free tier — first request may take ~30s to cold-start.
+> The backend runs on Railway (always-warm Hobby plan). Interactive Swagger/OpenAPI docs are served at `/docs` when running locally (disabled in production for security).
 
 ---
 
@@ -64,7 +64,7 @@ I built SharedBudget as a full-stack portfolio project to demonstrate production
 
 | Skill                         | How it's demonstrated                                                                                                                            |
 |-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| **API Design**                | 54 RESTful endpoints across 11 feature modules, versioned under `/api/v1`, fully documented with Swagger/OpenAPI                                 |
+| **API Design**                | 67 RESTful endpoints across 11 feature modules, versioned under `/api/v1`, fully documented with Swagger/OpenAPI                                 |
 | **Authentication & Security** | JWT access/refresh token rotation, Argon2id password hashing, Redis-backed sessions, rate limiting, CORS, Helmet headers, enumeration prevention |
 | **Database Design**           | 11 Prisma models with 10 enums, proper indexing, soft-delete patterns, referential integrity across cascading deletes                            |
 | **Caching Strategy**          | Redis caching with TTL-based invalidation (1-5 min), atomic pipeline writes, cache-aside pattern for dashboard queries                           |
@@ -90,7 +90,7 @@ I built SharedBudget as a full-stack portfolio project to demonstrate production
 |----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Containerization** | Docker Compose with 5 services (PostgreSQL, Redis, Backend, Frontend, Nginx reverse proxy)                                                                  |
 | **CI-ready**         | Separate build and runtime stages, environment-based configuration                                                                                          |
-| **Cloud Deployment** | Vercel (frontend CDN) + Render (backend, PostgreSQL, Redis) — all on free tier                                                                              |
+| **Cloud Deployment** | Vercel (frontend CDN) + Railway (backend) + Neon (PostgreSQL) + Upstash (Redis)                                                                             |
 | **Documentation**    | Technical handbook (8 chapters), setup guide, project index, and development guidelines — covering every layer from user stories to deployment              |
 
 ### Engineering Process
@@ -98,7 +98,7 @@ I built SharedBudget as a full-stack portfolio project to demonstrate production
 | Practice                        | How it's applied                                                                                                   |
 |---------------------------------|--------------------------------------------------------------------------------------------------------------------|
 | **Spec-driven development**     | Every feature documented with acceptance criteria before implementation                                            |
-| **Backend-first approach**      | All 54 endpoints built and tested (723+ tests) before starting the frontend                                        |
+| **Backend-first approach**      | All 67 endpoints built and tested (723+ tests) before starting the frontend                                        |
 | **Systematic bug fixing**       | 8 tracked sprints of iterative fixes, 34/35 planned tasks completed                                                |
 | **AI-assisted development**     | Claude Code as pair programmer with strict rules enforced via `CLAUDE.md` (mandatory tests, logging, Swagger docs) |
 | **Comprehensive documentation** | Not just README — full architecture docs, deep-dives, and process guidelines                                       |
@@ -114,8 +114,8 @@ I built SharedBudget as a full-stack portfolio project to demonstrate production
 | **Database**   | PostgreSQL 18, Redis 7 (sessions, caching, rate limiting)                   |
 | **Auth**       | JWT (access + refresh tokens), Argon2id password hashing                    |
 | **Testing**    | Vitest (94 spec files, 723+ tests), Playwright (10 E2E suites)              |
-| **API Docs**   | Swagger/OpenAPI (auto-generated, 54 endpoints)                              |
-| **Deployment** | Vercel (frontend), Render (backend + PostgreSQL + Redis)                    |
+| **API Docs**   | Swagger/OpenAPI (auto-generated, 67 endpoints)                             |
+| **Deployment** | Vercel (frontend), Railway (backend), Neon (PostgreSQL), Upstash (Redis)    |
 | **DevOps**     | Docker Compose, Nginx reverse proxy                                         |
 
 ---
@@ -126,7 +126,7 @@ I built SharedBudget as a full-stack portfolio project to demonstrate production
 Frontend (Angular 21)              Backend (NestJS 11)              Data Layer
 +---------------------+          +---------------------+          +------------------+
 | 58 Components       |  HTTP   | 11 Feature Modules  |  Prisma  | PostgreSQL 18    |
-| Signal-based Stores | ------> | 54 REST Endpoints   | -------> | 11 Models        |
+| Signal-based Stores | ------> | 67 REST Endpoints   | -------> | 11 Models        |
 | Auth Interceptor    |  JWT    | Composite Decorators|          | 10 Enums         |
 | 9 Lazy-loaded Routes|         | Global Exception    |          +------------------+
 | Material Design 3   |         |   Filter            |  ioredis | Redis 7          |
@@ -344,7 +344,7 @@ These stories illustrate how real users interact with SharedBudget. They map dir
 
 | Document                                           | What it covers                                                                                       |
 |----------------------------------------------------|------------------------------------------------------------------------------------------------------|
-| [`PROJECT_INDEX.md`](./PROJECT_INDEX.md)           | Quick reference — all 54 endpoints, module map, test commands                                        |
+| [`PROJECT_INDEX.md`](./PROJECT_INDEX.md)           | Quick reference — all 67 endpoints, module map, test commands                                        |
 | [`CLAUDE.md`](./CLAUDE.md)                         | Development process rules (tests, logging, Swagger, code style)                                      |
 | [`docs/handbook/`](./docs/handbook/)               | Full technical handbook — user stories, architecture, data model, API, security, testing, deployment |
 

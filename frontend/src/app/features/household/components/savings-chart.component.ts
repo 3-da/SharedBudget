@@ -11,7 +11,6 @@ type SavingsViewMode = 'total' | 'personal' | 'shared';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-savings-chart',
-  standalone: true,
   imports: [MatCardModule, MatButtonToggleModule, BaseChartComponent],
   template: `
     <mat-card style="height: 100%">

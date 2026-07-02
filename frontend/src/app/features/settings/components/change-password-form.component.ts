@@ -7,7 +7,6 @@ import { ChangePasswordRequest } from '../../../shared/models/user.model';
 
 @Component({
   selector: 'app-change-password-form',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   template: `

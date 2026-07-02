@@ -14,7 +14,7 @@
 | ExpenseFrequency | `MONTHLY`, `YEARLY` | Payment frequency |
 | YearlyPaymentStrategy | `FULL`, `INSTALLMENTS` | How yearly expenses are paid |
 | InstallmentFrequency | `MONTHLY`, `QUARTERLY`, `SEMI_ANNUAL` | Installment schedule (12, 4, or 2 payments/year) |
-| ApprovalAction | `CREATE`, `UPDATE`, `DELETE`, `WITHDRAW_SAVINGS` | Type of proposed change |
+| ApprovalAction | `CREATE`, `UPDATE`, `DELETE`, `WITHDRAW_SAVINGS`, `SKIP_MONTH`, `UNSKIP_MONTH` | Type of proposed change |
 | ApprovalStatus | `PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED` | Approval lifecycle state |
 | InvitationStatus | `PENDING`, `ACCEPTED`, `DECLINED`, `CANCELLED` | Invitation lifecycle state |
 | PaymentStatus | `PENDING`, `PAID`, `CANCELLED` | Expense payment tracking |
@@ -113,6 +113,7 @@ The only model with cascade delete. Invitations are meaningless without their ho
 | installmentCount | Int? | Number of installment payments (ONE_TIME INSTALLMENTS) |
 | paymentMonth | Int? | 1-12, month to pay in full. Null if not FULL |
 | paidByUserId | UUID? | FK -> User. Null = split equally among members |
+| isFixed | Boolean | Defaults to `true`. `false` = flexible budget where the actual paid amount is recorded per month |
 | month | Int? | For ONE_TIME: which month |
 | year | Int? | For ONE_TIME: which year |
 | deletedAt | DateTime? | Soft delete timestamp |
@@ -139,7 +140,7 @@ The only model with cascade delete. Invitations are meaningless without their ho
 | id | UUID | Primary key |
 | expenseId | UUID? | FK -> Expense. **Null for CREATE actions** |
 | householdId | UUID | FK -> Household |
-| action | ApprovalAction | CREATE, UPDATE, DELETE, WITHDRAW_SAVINGS |
+| action | ApprovalAction | CREATE, UPDATE, DELETE, WITHDRAW_SAVINGS, SKIP_MONTH, UNSKIP_MONTH |
 | status | ApprovalStatus | Default PENDING |
 | requestedById | UUID | FK -> User (proposer) |
 | reviewedById | UUID? | FK -> User (reviewer). Null while PENDING |
@@ -185,7 +186,8 @@ The only model with cascade delete. Invitations are meaningless without their ho
 | month | Int | 1-12 |
 | year | Int | e.g., 2026 |
 | status | PaymentStatus | PENDING, PAID, CANCELLED |
-| paidById | UUID? | FK -> User |
+| paidById | UUID | FK -> User. Records who last changed the status |
+| paidAmount | Decimal(12,2)? | Actual amount paid for flexible (non-fixed) expenses. Null for fixed expenses |
 | paidAt | DateTime? | When marked as paid |
 
 **Constraint**: Unique on `(expenseId, month, year)`.
@@ -211,12 +213,16 @@ Allows temporary amount changes or skipping without mutating the base expense re
 |-------|------|-------|
 | id | UUID | Primary key |
 | userId | UUID | FK -> User |
+| householdId | UUID | FK -> Household. **Cascade delete** |
 | amount | Decimal(12,2) | Savings amount |
 | month | Int | 1-12 |
 | year | Int | e.g., 2026 |
 | isShared | Boolean | true = shared (approval for withdrawal), false = personal |
+| reducesFromSalary | Boolean | Defaults to `true`. `false` for windfalls (gifts, lottery) that don't reduce the remaining salary budget |
 
 **Constraint**: Unique on `(userId, month, year, isShared)`. A user can have both personal and shared savings for the same month.
+
+**Index**: `(householdId)`.
 
 ---
 

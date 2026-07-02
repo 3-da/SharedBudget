@@ -5,7 +5,6 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 
 @Component({
   selector: 'app-income-summary-card',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, CurrencyEurPipe],
   template: `

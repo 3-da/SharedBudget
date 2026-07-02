@@ -4,11 +4,11 @@ import { ChartConfiguration } from 'chart.js';
 import { BaseChartComponent } from '../../../shared/components/base-chart.component';
 import { DashboardOverview } from '../../../shared/models/dashboard.model';
 import { cssVar } from '../../../shared/utils/chart-colors';
+import { roundCurrency } from '../../../shared/utils/round-currency';
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-income-expense-chart',
-  standalone: true,
   imports: [MatCardModule, BaseChartComponent],
   template: `
     <mat-card style="height: 100%">
@@ -39,7 +39,7 @@ export class IncomeExpenseChartComponent {
       return exp?.personalExpensesTotal ?? 0;
     });
     const sharedShare = ov.expenses.sharedExpensesTotal / (ov.income.length || 1);
-    const sharedPerMember = ov.income.map(() => Math.round(sharedShare * 100) / 100);
+    const sharedPerMember = ov.income.map(() => roundCurrency(sharedShare));
 
     return {
       type: 'bar',

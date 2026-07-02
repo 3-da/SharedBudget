@@ -169,4 +169,70 @@ describe('ExpenseHelperService', () => {
         });
     });
     //#endregion
+
+    //#region findVisibleExpense
+    describe('findVisibleExpense', () => {
+        const mockPersonalExpense = {
+            id: mockExpenseId,
+            householdId: mockHouseholdId,
+            createdById: mockUserId,
+            type: ExpenseType.PERSONAL,
+        };
+
+        const mockSharedExpense = {
+            id: mockExpenseId,
+            householdId: mockHouseholdId,
+            createdById: 'someone-else',
+            type: ExpenseType.SHARED,
+        };
+
+        it('should return a shared expense regardless of who created it', async () => {
+            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedExpense);
+
+            const result = await service.findVisibleExpense(mockExpenseId, mockHouseholdId, mockUserId);
+
+            expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
+                where: { id: mockExpenseId, householdId: mockHouseholdId },
+            });
+            expect(result).toEqual(mockSharedExpense);
+        });
+
+        it('should return a personal expense when the caller is its creator', async () => {
+            mockPrismaService.expense.findFirst.mockResolvedValue(mockPersonalExpense);
+
+            const result = await service.findVisibleExpense(mockExpenseId, mockHouseholdId, mockUserId);
+
+            expect(result).toEqual(mockPersonalExpense);
+        });
+
+        it('should throw NotFoundException when the expense does not exist', async () => {
+            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+
+            await expect(service.findVisibleExpense(mockExpenseId, mockHouseholdId, mockUserId)).rejects.toThrow(NotFoundException);
+            await expect(service.findVisibleExpense(mockExpenseId, mockHouseholdId, mockUserId)).rejects.toThrow('Expense not found');
+        });
+
+        it('should throw NotFoundException when the personal expense belongs to another member (enumeration prevention)', async () => {
+            mockPrismaService.expense.findFirst.mockResolvedValue({
+                ...mockPersonalExpense,
+                createdById: 'other-member',
+            });
+
+            await expect(service.findVisibleExpense(mockExpenseId, mockHouseholdId, mockUserId)).rejects.toThrow(NotFoundException);
+            await expect(service.findVisibleExpense(mockExpenseId, mockHouseholdId, mockUserId)).rejects.toThrow('Expense not found');
+        });
+    });
+    //#endregion
+
+    //#region visibleExpenseFilter
+    describe('visibleExpenseFilter', () => {
+        it('should return an OR fragment covering shared expenses and the caller\'s own personal expenses', () => {
+            const result = service.visibleExpenseFilter(mockUserId);
+
+            expect(result).toEqual({
+                OR: [{ type: ExpenseType.SHARED }, { type: ExpenseType.PERSONAL, createdById: mockUserId }],
+            });
+        });
+    });
+    //#endregion
 });

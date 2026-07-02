@@ -66,6 +66,7 @@ describe('DashboardService', () => {
             type: 'PERSONAL',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: null,
             yearlyPaymentStrategy: null,
             installmentFrequency: null,
@@ -83,6 +84,7 @@ describe('DashboardService', () => {
             type: 'PERSONAL',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: null,
             yearlyPaymentStrategy: null,
             installmentFrequency: null,
@@ -100,6 +102,7 @@ describe('DashboardService', () => {
             type: 'SHARED',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: null, // split equally
             yearlyPaymentStrategy: null,
             installmentFrequency: null,
@@ -117,6 +120,7 @@ describe('DashboardService', () => {
             type: 'SHARED',
             category: 'RECURRING',
             frequency: 'MONTHLY',
+            isFixed: true,
             paidByUserId: mockUserId, // Alex pays full
             yearlyPaymentStrategy: null,
             installmentFrequency: null,

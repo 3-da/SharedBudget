@@ -2,9 +2,13 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
 import { CacheService } from '../common/cache/cache.service';
+import { DashboardCalculatorService } from '../dashboard/dashboard-calculator.service';
 import { MarkPaidDto } from './dto/mark-paid.dto';
 import { ExpensePaymentResponseDto } from './dto/expense-payment-response.dto';
+import { Expense } from '../generated/prisma/client';
 import { PaymentStatus } from '../generated/prisma/enums';
+
+type PaymentRecord = { status: PaymentStatus; paidAmount: unknown };
 
 @Injectable()
 export class ExpensePaymentService {
@@ -14,6 +18,7 @@ export class ExpensePaymentService {
         private readonly prismaService: PrismaService,
         private readonly expenseHelper: ExpenseHelperService,
         private readonly cacheService: CacheService,
+        private readonly calculator: DashboardCalculatorService,
     ) {}
 
     /**
@@ -36,7 +41,7 @@ export class ExpensePaymentService {
         this.logger.debug(`Mark expense paid: ${expenseId} for ${dto.month}/${dto.year} by user ${userId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.findExpenseInHousehold(expenseId, membership.householdId);
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         if (!expense.isFixed && dto.paidAmount == null) {
             this.logger.warn(`Flexible expense ${expenseId} requires paidAmount but none was provided`);
@@ -72,7 +77,7 @@ export class ExpensePaymentService {
 
         await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Expense ${expenseId} marked as paid for ${dto.month}/${dto.year}`);
-        return this.mapToResponse(result);
+        return this.mapToResponse(result, await this.computeRemainingAmount(expense, dto.month, dto.year, result));
     }
 
     /**
@@ -95,7 +100,7 @@ export class ExpensePaymentService {
         this.logger.debug(`Undo paid for expense: ${expenseId} for ${dto.month}/${dto.year}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.findExpenseInHousehold(expenseId, membership.householdId);
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         const existing = await this.prismaService.expensePaymentStatus.findUnique({
             where: {
@@ -124,7 +129,7 @@ export class ExpensePaymentService {
 
         await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Expense ${expenseId} payment undone for ${dto.month}/${dto.year}`);
-        return this.mapToResponse(result);
+        return this.mapToResponse(result, null);
     }
 
     /**
@@ -145,7 +150,7 @@ export class ExpensePaymentService {
         this.logger.debug(`Cancel expense: ${expenseId} for ${dto.month}/${dto.year}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        const expense = await this.findExpenseInHousehold(expenseId, membership.householdId);
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
         const result = await this.prismaService.expensePaymentStatus.upsert({
             where: {
@@ -172,7 +177,7 @@ export class ExpensePaymentService {
 
         await this.cacheService.invalidateExpenseCache(userId, expense.type, membership.householdId);
         this.logger.log(`Expense ${expenseId} cancelled for ${dto.month}/${dto.year}`);
-        return this.mapToResponse(result);
+        return this.mapToResponse(result, null);
     }
 
     /**
@@ -189,14 +194,26 @@ export class ExpensePaymentService {
         this.logger.debug(`Get payment statuses for expense: ${expenseId}`);
 
         const membership = await this.expenseHelper.requireMembership(userId);
-        await this.findExpenseInHousehold(expenseId, membership.householdId);
+        const expense = await this.expenseHelper.findVisibleExpense(expenseId, membership.householdId, userId);
 
-        const statuses = await this.prismaService.expensePaymentStatus.findMany({
-            where: { expenseId },
-            orderBy: [{ year: 'desc' }, { month: 'desc' }],
+        const [statuses, overrides] = await Promise.all([
+            this.prismaService.expensePaymentStatus.findMany({
+                where: { expenseId },
+                orderBy: [{ year: 'desc' }, { month: 'desc' }],
+            }),
+            this.prismaService.recurringOverride.findMany({
+                where: { expenseId },
+                select: { month: true, year: true, amount: true },
+            }),
+        ]);
+
+        const overrideAmountByPeriod = new Map(overrides.map((o) => [this.periodKey(o.year, o.month), o.amount != null ? Number(o.amount) : null]));
+
+        return statuses.map((s) => {
+            const overrideAmount = overrideAmountByPeriod.get(this.periodKey(s.year, s.month));
+            const monthlyAmount = this.calculator.getMonthlyAmount(expense, s.month, s.year, overrideAmount);
+            return this.mapToResponse(s, this.remainingFromAmount(expense, monthlyAmount, s));
         });
-
-        return statuses.map((s) => this.mapToResponse(s));
     }
 
     /**
@@ -217,31 +234,53 @@ export class ExpensePaymentService {
             where: {
                 month,
                 year,
-                expense: { householdId: membership.householdId, deletedAt: null },
+                expense: {
+                    householdId: membership.householdId,
+                    deletedAt: null,
+                    ...this.expenseHelper.visibleExpenseFilter(userId),
+                },
             },
+            include: { expense: true },
         });
 
-        return statuses.map((s) => this.mapToResponse(s));
+        const monthlyAmounts = await this.calculator.getMonthlyAmounts(
+            statuses.map((s) => s.expense),
+            month,
+            year,
+        );
+
+        return statuses.map((s) => {
+            const monthlyAmount = monthlyAmounts.get(s.expenseId) ?? 0;
+            return this.mapToResponse(s, this.remainingFromAmount(s.expense, monthlyAmount, s));
+        });
     }
 
     /**
-     * Finds an expense within the user's household, or throws NotFoundException.
-     * Only returns non-deleted expenses.
+     * How much of a month's override-adjusted amount is still unpaid for a
+     * single expense — loads that expense's own effective amount, then
+     * delegates to remainingFromAmount. Used by markPaid, where only one
+     * expense's remaining balance is needed. getBatchPaymentStatuses instead
+     * batches getMonthlyAmounts once for every expense and calls
+     * remainingFromAmount directly, to avoid an override lookup per expense.
      */
-    private async findExpenseInHousehold(expenseId: string, householdId: string) {
-        const expense = await this.prismaService.expense.findFirst({
-            where: { id: expenseId, householdId },
-        });
-
-        if (!expense) {
-            this.logger.warn(`Expense not found: ${expenseId} in household ${householdId}`);
-            throw new NotFoundException('Expense not found');
-        }
-
-        return expense;
+    private async computeRemainingAmount(expense: Expense, month: number, year: number, payment: PaymentRecord): Promise<number | null> {
+        if (payment.status !== PaymentStatus.PAID) return null;
+        const monthlyAmounts = await this.calculator.getMonthlyAmounts([expense], month, year);
+        return this.remainingFromAmount(expense, monthlyAmounts.get(expense.id) ?? 0, payment);
     }
 
-    private mapToResponse(record: any): ExpensePaymentResponseDto {
+    private remainingFromAmount(expense: Pick<Expense, 'isFixed'>, monthlyAmount: number, payment: PaymentRecord): number | null {
+        if (payment.status !== PaymentStatus.PAID) return null;
+        if (expense.isFixed) return 0;
+        const paidAmount = payment.paidAmount != null ? Number(payment.paidAmount) : 0;
+        return Math.max(0, monthlyAmount - paidAmount);
+    }
+
+    private periodKey(year: number, month: number): string {
+        return `${year}-${month}`;
+    }
+
+    private mapToResponse(record: any, remainingAmount: number | null): ExpensePaymentResponseDto {
         return {
             id: record.id,
             expenseId: record.expenseId,
@@ -251,6 +290,7 @@ export class ExpensePaymentService {
             paidAt: record.paidAt,
             paidById: record.paidById,
             paidAmount: record.paidAmount != null ? Number(record.paidAmount) : null,
+            remainingAmount,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
         };

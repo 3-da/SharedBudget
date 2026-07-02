@@ -8,6 +8,7 @@ import { SavingResponseDto } from './dto/saving-response.dto';
 import { Saving } from '../generated/prisma/client';
 import { ApprovalAction, ApprovalStatus } from '../generated/prisma/enums';
 import { resolveMonthYear } from '../common/utils/resolve-month-year';
+import { roundCurrency } from '../common/utils/round-currency';
 
 @Injectable()
 export class SavingService {
@@ -287,7 +288,7 @@ export class SavingService {
                 // Last record: deduct whatever remains to avoid rounding drift
                 deduction = remaining;
             } else {
-                deduction = Math.round((memberAmount / total) * amount * 100) / 100;
+                deduction = roundCurrency((memberAmount / total) * amount);
                 deduction = Math.min(deduction, memberAmount);
             }
 

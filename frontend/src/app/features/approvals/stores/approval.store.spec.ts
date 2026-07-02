@@ -8,7 +8,7 @@ import { DashboardStore } from '../../dashboard/stores/dashboard.store';
 describe('ApprovalStore', () => {
   let store: ApprovalStore;
   let service: Record<string, ReturnType<typeof vi.fn>>;
-  let sharedExpenseStore: { loadExpenses: ReturnType<typeof vi.fn> };
+  let sharedExpenseStore: { loadExpenses: ReturnType<typeof vi.fn>; reload: ReturnType<typeof vi.fn> };
   let dashboardStore: { loadAll: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
@@ -18,7 +18,7 @@ describe('ApprovalStore', () => {
       accept: vi.fn(),
       reject: vi.fn(),
     };
-    sharedExpenseStore = { loadExpenses: vi.fn() };
+    sharedExpenseStore = { loadExpenses: vi.fn(), reload: vi.fn() };
     dashboardStore = { loadAll: vi.fn() };
 
     TestBed.configureTestingModule({
@@ -69,22 +69,25 @@ describe('ApprovalStore', () => {
     expect(ids.size).toBe(2);
   });
 
-  it('accept reloads pending, history, and invalidates related stores', () => {
+  it('accept reloads pending, history, the dashboard, and the shared-expense list in place', () => {
     service['accept'].mockReturnValue(of({ message: 'ok' }));
     store.accept('a-1');
     expect(service['getPending']).toHaveBeenCalled();
     expect(service['getHistory']).toHaveBeenCalled();
-    expect(sharedExpenseStore.loadExpenses).toHaveBeenCalled();
     expect(dashboardStore.loadAll).toHaveBeenCalled();
+    // reload() (not loadExpenses()) so the user's currently viewed month isn't reset
+    expect(sharedExpenseStore.reload).toHaveBeenCalled();
+    expect(sharedExpenseStore.loadExpenses).not.toHaveBeenCalled();
   });
 
-  it('reject reloads pending, history, and invalidates related stores', () => {
+  it('reject reloads pending, history, the dashboard, and the shared-expense list in place', () => {
     service['reject'].mockReturnValue(of({ message: 'ok' }));
     store.reject('a-1', 'Too expensive');
     expect(service['getPending']).toHaveBeenCalled();
     expect(service['getHistory']).toHaveBeenCalled();
-    expect(sharedExpenseStore.loadExpenses).toHaveBeenCalled();
     expect(dashboardStore.loadAll).toHaveBeenCalled();
+    expect(sharedExpenseStore.reload).toHaveBeenCalled();
+    expect(sharedExpenseStore.loadExpenses).not.toHaveBeenCalled();
   });
 
   it('accept sets error on failure', () => {

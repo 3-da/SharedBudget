@@ -18,10 +18,10 @@ import { SavingsChartComponent } from '../components/savings-chart.component';
 import { MonthPickerComponent } from '../../../shared/components/month-picker.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
+import { roundCurrency } from '../../../shared/utils/round-currency';
 
 @Component({
   selector: 'app-household-detail',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule, MatIconModule, MatBadgeModule, MatTabsModule, MatButtonToggleModule, RouterLink,
@@ -178,7 +178,7 @@ export class HouseholdDetailComponent implements OnInit {
     const ov = this.store.overview();
     if (!ov) return 0;
     const memberCount = ov.income.length || 1;
-    return Math.round((ov.expenses.sharedExpensesTotal / memberCount) * 100) / 100;
+    return roundCurrency(ov.expenses.sharedExpensesTotal / memberCount);
   }
 
   getRoleForMember(userId: string) {

@@ -13,7 +13,6 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-member-detail',
-  standalone: true,
   imports: [
     MatCardModule, MatButtonModule, MatIconModule, MatDividerModule,
     PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent, CurrencyEurPipe,

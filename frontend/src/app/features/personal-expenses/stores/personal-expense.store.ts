@@ -1,11 +1,11 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { forkJoin } from 'rxjs';
 import { Expense, CreateExpenseRequest, UpdateExpenseRequest, PaymentStatus } from '../../../shared/models';
 import { ExpensePayment } from '../../../shared/models/expense-payment.model';
 import { extractHttpError } from '../../../shared/utils/extract-error';
+import { loadMonthlyExpenses } from '../../../shared/utils/load-monthly-expenses';
 import { PersonalExpenseService } from '../services/personal-expense.service';
-import { ExpensePaymentService } from '../services/expense-payment.service';
+import { ExpensePaymentService } from '../../../shared/services/expense-payment.service';
 import { RecurringOverrideService } from '../services/recurring-override.service';
 
 @Injectable({ providedIn: 'root' })
@@ -32,8 +32,10 @@ export class PersonalExpenseStore {
       .filter(e => statuses.get(e.id)?.status === PaymentStatus.PAID)
       .reduce((sum, e) => {
         const payment = statuses.get(e.id);
-        // For flexible expenses, use the actual paid amount; for fixed, use the planned amount
-        const amount = (!e.isFixed && payment?.paidAmount != null) ? payment.paidAmount : e.amount;
+        // For flexible expenses, use the actual paid amount capped at the planned
+        // amount — same clamp the dashboard applies — so an overpayment can't
+        // make this header show more paid than the household total counts.
+        const amount = (!e.isFixed && payment?.paidAmount != null) ? Math.min(payment.paidAmount, e.amount) : e.amount;
         return sum + amount;
       }, 0);
   });
@@ -50,26 +52,16 @@ export class PersonalExpenseStore {
   }
 
   loadExpenses(month?: number, year?: number): void {
-    const showSpinner = this.expenses().length === 0;
-    if (showSpinner) this.loading.set(true);
-    const now = new Date();
-    const m = month ?? now.getMonth() + 1;
-    const y = year ?? now.getFullYear();
-    forkJoin({
-      expenses: this.service.list(m, y),
-      statuses: this.paymentService.getBatchStatuses(m, y),
-      skipped: this.service.getSkipStatuses(m, y),
-    }).subscribe({
-      next: ({ expenses, statuses, skipped }) => {
-        this.expenses.set(expenses);
-        const map = new Map<string, ExpensePayment>();
-        for (const s of statuses) map.set(s.expenseId, s);
-        this.paymentStatuses.set(map);
-        this.skippedExpenseIds.set(new Set(skipped));
-        this.loading.set(false);
+    loadMonthlyExpenses(
+      {
+        list: (m, y) => this.service.list(m, y),
+        getBatchStatuses: (m, y) => this.paymentService.getBatchStatuses(m, y),
+        getSkipStatuses: (m, y) => this.service.getSkipStatuses(m, y),
       },
-      error: () => { this.expenses.set([]); this.loading.set(false); },
-    });
+      { expenses: this.expenses, paymentStatuses: this.paymentStatuses, skippedExpenseIds: this.skippedExpenseIds, loading: this.loading, error: this.error },
+      month,
+      year,
+    );
   }
 
   loadExpense(id: string): void {

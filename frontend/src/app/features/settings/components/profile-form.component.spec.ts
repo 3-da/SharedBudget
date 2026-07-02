@@ -10,7 +10,6 @@ const mockUser: User = {
 };
 
 @Component({
-  standalone: true,
   imports: [ProfileFormComponent],
   template: `<app-profile-form [user]="user()" (save)="onSave($event)" />`,
 })

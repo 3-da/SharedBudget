@@ -9,6 +9,7 @@ export interface ExpensePayment {
   paidAt: string | null;
   paidById: string;
   paidAmount: number | null;
+  remainingAmount: number | null;
   createdAt: string;
   updatedAt: string;
 }

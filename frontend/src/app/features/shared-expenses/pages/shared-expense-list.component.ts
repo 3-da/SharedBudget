@@ -16,7 +16,6 @@ import { PartialPaymentDialogComponent, PartialPaymentDialogData } from '../../.
 
 @Component({
   selector: 'app-shared-expense-list',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule, SharedExpenseCardComponent, MonthPickerComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
   template: `

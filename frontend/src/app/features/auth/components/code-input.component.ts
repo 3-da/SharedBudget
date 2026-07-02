@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, output, signal, viewChild
 
 @Component({
   selector: 'app-code-input',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="code-container" role="group" aria-label="Verification code, 6 digits">

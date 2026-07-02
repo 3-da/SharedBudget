@@ -10,7 +10,6 @@ import { CreateExpenseRequest } from '../../../shared/models/expense.model';
 
 @Component({
   selector: 'app-personal-expense-form-page',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, MatButtonModule, MatIconModule, ExpenseFormComponent, LoadingSpinnerComponent],
   template: `

@@ -11,7 +11,6 @@ import { CreateExpenseRequest } from '../../../shared/models/expense.model';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-shared-expense-form-page',
-  standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, ExpenseFormComponent, LoadingSpinnerComponent],
   template: `
     <div class="form-container">

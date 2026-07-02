@@ -8,7 +8,6 @@ import { cssVar } from '../../../shared/utils/chart-colors';
 
 @Component({
   selector: 'app-savings-history-chart',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, MatIconModule, BaseChartComponent],
   template: `

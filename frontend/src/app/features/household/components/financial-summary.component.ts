@@ -7,7 +7,6 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-financial-summary',
-  standalone: true,
   imports: [MatCardModule, MatIconModule, CurrencyEurPipe],
   template: `
     <div class="summary-row">

@@ -11,8 +11,9 @@ import { PersonalExpenseStore } from '../stores/personal-expense.store';
 import { RecurringOverrideService } from '../services/recurring-override.service';
 import { RecurringOverride } from '../../../shared/models/recurring-override.model';
 import { BatchOverrideItem } from '../../../shared/models/recurring-override.model';
-import { ExpenseCategory, ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy } from '../../../shared/models';
-import { TimelineMonth, getDefaultInstallmentCount, getStepMonths } from '../../../shared/utils/timeline';
+import { ExpenseCategory, ExpenseFrequency, YearlyPaymentStrategy } from '../../../shared/models';
+import { TimelineMonth, TimelineOverride, getDefaultInstallmentCount, buildRecurringTimeline, buildInstallmentTimeline, overrideKey } from '../../../shared/utils/timeline';
+import { roundCurrency } from '../../../shared/utils/round-currency';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner.component';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
@@ -25,7 +26,6 @@ import {
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-undo-scope-dialog',
-  standalone: true,
   imports: [MatDialogModule, MatButtonModule],
   template: `
     <h2 mat-dialog-title>Undo Override</h2>
@@ -42,7 +42,6 @@ class UndoScopeDialogComponent {}
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-recurring-timeline',
-  standalone: true,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
   template: `
     <app-page-header [title]="expenseName()" [subtitle]="timelineSubtitle()">
@@ -115,7 +114,7 @@ export class RecurringTimelineComponent {
     // For yearly installments, show per-installment amount
     if (e.frequency === ExpenseFrequency.YEARLY && e.yearlyPaymentStrategy === YearlyPaymentStrategy.INSTALLMENTS) {
       const count = e.installmentCount ?? getDefaultInstallmentCount(e.installmentFrequency);
-      return Math.round((amount / count) * 100) / 100;
+      return roundCurrency(amount / count);
     }
     return amount;
   });
@@ -136,86 +135,14 @@ export class RecurringTimelineComponent {
     const currentY = now.getFullYear();
 
     if (this.isOneTimeInstallment()) {
-      return this.buildInstallmentTimeline(expense, currentM, currentY);
+      return buildInstallmentTimeline(expense, currentM, currentY);
     }
 
-    return this.buildRecurringTimeline(currentM, currentY);
+    const overrideMap = new Map<string, TimelineOverride>(
+      this.overrides().map(o => [overrideKey(o.year, o.month), { amount: o.amount ?? null, skipped: !!o.skipped }]),
+    );
+    return buildRecurringTimeline(expense, this.defaultAmount(), currentM, currentY, overrideMap);
   });
-
-  private buildRecurringTimeline(currentM: number, currentY: number): TimelineMonth[] {
-    const expense = this.store.selectedExpense();
-    const overrideMap = new Map(this.overrides().map(o => [`${o.year}-${o.month}`, o]));
-    const months: TimelineMonth[] = [];
-
-    // For YEARLY frequency, only show applicable months based on payment strategy
-    const isYearly = expense?.frequency === ExpenseFrequency.YEARLY;
-    const strategy = expense?.yearlyPaymentStrategy;
-    const installFreq = expense?.installmentFrequency;
-    const expenseMonth = expense?.month ?? 1;
-
-    for (let offset = -12; offset <= 12; offset++) {
-      const d = new Date(currentY, currentM - 1 + offset);
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-
-      // Skip months that don't apply for yearly expenses
-      if (isYearly) {
-        if (strategy === YearlyPaymentStrategy.FULL) {
-          // Only show the payment month
-          if (m !== expenseMonth) continue;
-        } else if (strategy === YearlyPaymentStrategy.INSTALLMENTS) {
-          if (installFreq === InstallmentFrequency.QUARTERLY) {
-            // Show every 3 months starting from expense month
-            if ((m - expenseMonth + 12) % 3 !== 0) continue;
-          } else if (installFreq === InstallmentFrequency.SEMI_ANNUAL) {
-            // Show every 6 months starting from expense month
-            if ((m - expenseMonth + 12) % 6 !== 0) continue;
-          }
-          // MONTHLY installments show all months
-        }
-      }
-
-      const key = `${y}-${m}`;
-      const override = overrideMap.get(key);
-      months.push({
-        month: m, year: y,
-        label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        amount: override?.skipped ? 0 : (override?.amount ?? this.defaultAmount()),
-        isOverride: !!override,
-        isPast: y < currentY || (y === currentY && m < currentM),
-        isCurrent: y === currentY && m === currentM,
-      });
-    }
-    return months;
-  }
-
-  private buildInstallmentTimeline(expense: any, currentM: number, currentY: number): TimelineMonth[] {
-    const startMonth = expense.month ?? currentM;
-    const startYear = expense.year ?? currentY;
-    const freq = expense.installmentFrequency;
-    const totalAmount = Number(expense.amount);
-
-    const count = expense.installmentCount ?? getDefaultInstallmentCount(freq);
-    const stepMonths = getStepMonths(freq);
-
-    const perInstallment = Math.round((totalAmount / count) * 100) / 100;
-    const months: TimelineMonth[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const d = new Date(startYear, startMonth - 1 + (i * stepMonths));
-      const m = d.getMonth() + 1;
-      const y = d.getFullYear();
-      months.push({
-        month: m, year: y,
-        label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        amount: perInstallment,
-        isOverride: false,
-        isPast: y < currentY || (y === currentY && m < currentM),
-        isCurrent: y === currentY && m === currentM,
-      });
-    }
-    return months;
-  }
 
   constructor() {
     effect(() => {
@@ -231,10 +158,16 @@ export class RecurringTimelineComponent {
   }
 
   openOverride(m: TimelineMonth): void {
+    // Look up the raw override record instead of the timeline's display amount,
+    // which is zeroed out for a skipped month — pre-filling from that would
+    // silently turn "skipped" into an active EUR0 override on save.
+    const existingOverride = this.overrides().find(o => o.month === m.month && o.year === m.year);
+
     this.dialog.open(RecurringOverrideDialogComponent, {
       data: {
         expenseName: this.expenseName(),
-        currentAmount: m.amount,
+        currentAmount: existingOverride?.amount ?? this.defaultAmount(),
+        skipped: existingOverride?.skipped ?? false,
         month: m.month,
         year: m.year,
       } as RecurringOverrideDialogData,
@@ -259,8 +192,8 @@ export class RecurringTimelineComponent {
     ).subscribe(result => {
       if (Array.isArray(result)) {
         this.overrides.update(list => {
-          const keys = new Set(result.map(r => `${r.year}-${r.month}`));
-          const filtered = list.filter(x => !keys.has(`${x.year}-${x.month}`));
+          const keys = new Set(result.map(r => overrideKey(r.year, r.month)));
+          const filtered = list.filter(x => !keys.has(overrideKey(x.year, x.month)));
           return [...filtered, ...result];
         });
       } else {

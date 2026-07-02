@@ -11,7 +11,6 @@ import { ThemeService } from '../theme/theme.service';
 
 @Component({
   selector: 'app-toolbar',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, MatToolbarModule, MatIconModule, MatButtonModule, MatMenuModule, MatTooltipModule],
   template: `

@@ -1,11 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { forkJoin } from 'rxjs';
-import { Expense, CreateExpenseRequest, UpdateExpenseRequest, SkipExpenseRequest, PaymentStatus } from '../../../shared/models';
+import { Expense, CreateExpenseRequest, UpdateExpenseRequest, SkipExpenseRequest } from '../../../shared/models';
 import { ExpensePayment } from '../../../shared/models/expense-payment.model';
 import { extractHttpError } from '../../../shared/utils/extract-error';
+import { loadMonthlyExpenses } from '../../../shared/utils/load-monthly-expenses';
 import { SharedExpenseService } from '../services/shared-expense.service';
-import { ExpensePaymentService } from '../../personal-expenses/services/expense-payment.service';
+import { ExpensePaymentService } from '../../../shared/services/expense-payment.service';
 
 @Injectable({ providedIn: 'root' })
 export class SharedExpenseStore {
@@ -20,6 +20,11 @@ export class SharedExpenseStore {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
+  // Remembers the last month/year loadExpenses was called with, so reload()
+  // can refresh in place without resetting the user's selected month back to "now".
+  private lastRequestedMonth?: number;
+  private lastRequestedYear?: number;
+
   reset(): void {
     this.expenses.set([]);
     this.paymentStatuses.set(new Map());
@@ -30,30 +35,28 @@ export class SharedExpenseStore {
   }
 
   loadExpenses(month?: number, year?: number): void {
-    const showSpinner = this.expenses().length === 0;
-    if (showSpinner) this.loading.set(true);
-    const now = new Date();
-    const m = month ?? now.getMonth() + 1;
-    const y = year ?? now.getFullYear();
-    forkJoin({
-      expenses: this.service.list(m, y),
-      statuses: this.paymentService.getBatchStatuses(m, y),
-      skipped: this.service.getSkipStatuses(m, y),
-    }).subscribe({
-      next: ({ expenses, statuses, skipped }) => {
-        this.expenses.set(expenses);
-        const map = new Map<string, ExpensePayment>();
-        for (const s of statuses) map.set(s.expenseId, s);
-        this.paymentStatuses.set(map);
-        this.skippedExpenseIds.set(new Set(skipped));
-        this.loading.set(false);
+    this.lastRequestedMonth = month;
+    this.lastRequestedYear = year;
+    loadMonthlyExpenses(
+      {
+        list: (m, y) => this.service.list(m, y),
+        getBatchStatuses: (m, y) => this.paymentService.getBatchStatuses(m, y),
+        getSkipStatuses: (m, y) => this.service.getSkipStatuses(m, y),
       },
-      error: err => {
-        this.error.set(extractHttpError(err) ?? 'Failed to load expenses');
-        this.expenses.set([]);
-        this.loading.set(false);
-      },
-    });
+      { expenses: this.expenses, paymentStatuses: this.paymentStatuses, skippedExpenseIds: this.skippedExpenseIds, loading: this.loading, error: this.error },
+      month,
+      year,
+    );
+  }
+
+  /**
+   * Re-fetches the currently displayed month in place. Safe to call from
+   * outside the list page (e.g. after an approval is accepted elsewhere) —
+   * unlike calling loadExpenses() with no arguments, this won't reset the
+   * view to the current month if the user has navigated to a different one.
+   */
+  reload(): void {
+    this.loadExpenses(this.lastRequestedMonth, this.lastRequestedYear);
   }
 
   loadExpense(id: string): void {

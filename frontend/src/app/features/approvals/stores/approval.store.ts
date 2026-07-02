@@ -2,9 +2,9 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { Approval } from '../../../shared/models';
 import { ApprovalService } from '../services/approval.service';
 import { extractHttpError } from '../../../shared/utils/extract-error';
-import { SharedExpenseStore } from '../../shared-expenses/stores/shared-expense.store';
 import { DashboardStore } from '../../dashboard/stores/dashboard.store';
 import { NotificationStore } from '../../../core/stores/notification.store';
+import { SharedExpenseStore } from '../../shared-expenses/stores/shared-expense.store';
 
 @Injectable({ providedIn: 'root' })
 export class ApprovalStore {
@@ -17,9 +17,9 @@ export class ApprovalStore {
     new Set(this.pending().filter(a => a.expenseId).map(a => a.expenseId!))
   );
   private readonly service = inject(ApprovalService);
-  private readonly sharedExpenseStore = inject(SharedExpenseStore);
   private readonly dashboardStore = inject(DashboardStore);
   private readonly notificationStore = inject(NotificationStore);
+  private readonly sharedExpenseStore = inject(SharedExpenseStore);
 
   constructor() {
     effect(() => {
@@ -94,7 +94,7 @@ export class ApprovalStore {
   }
 
   private invalidateRelatedStores(): void {
-    this.sharedExpenseStore.loadExpenses();
     this.dashboardStore.loadAll();
+    this.sharedExpenseStore.reload();
   }
 }

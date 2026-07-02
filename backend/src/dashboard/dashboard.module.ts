@@ -9,5 +9,6 @@ import { ExpenseHelperModule } from '../common/expense/expense-helper.module';
     imports: [PrismaModule, ExpenseHelperModule],
     controllers: [DashboardController],
     providers: [DashboardService, DashboardCalculatorService],
+    exports: [DashboardCalculatorService],
 })
 export class DashboardModule {}

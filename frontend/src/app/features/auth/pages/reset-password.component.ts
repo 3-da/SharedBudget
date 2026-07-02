@@ -13,7 +13,6 @@ import { passwordMatchValidator } from '../../../shared/validators/password-matc
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-reset-password',
-  standalone: true,
   imports: [ReactiveFormsModule, RouterLink, MatCardModule, MatButtonModule, MatProgressBarModule, PasswordFieldComponent],
   template: `
     <div class="auth-container">

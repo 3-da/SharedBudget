@@ -1,10 +1,9 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, Min, IsOptional, IsInt, Max, IsBoolean } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Min, IsOptional, IsInt, Max, IsBoolean } from 'class-validator';
+import { IsCurrencyAmount } from '../../common/decorators/is-currency-amount.decorator';
 
 export class AddSavingDto {
-    @ApiProperty({ example: 50.0, description: 'Amount to add to savings', minimum: 0.01 })
-    @IsNumber()
-    @Min(0.01)
+    @IsCurrencyAmount({ example: 50.0, description: 'Amount to add to savings', min: 0.01 })
     amount!: number;
 
     @ApiPropertyOptional({ example: 6, description: 'Month (1-12). Defaults to current month.', minimum: 1, maximum: 12 })

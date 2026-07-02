@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ExpenseCategory, ExpenseFrequency, InstallmentFrequency, YearlyPaymentStrategy } from '../../generated/prisma/enums';
-import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
+import { IsCurrencyAmount } from '../../common/decorators/is-currency-amount.decorator';
 
 export class CreatePersonalExpenseDto {
     @ApiProperty({ example: 'Gym membership', description: 'Expense name', minLength: 1, maxLength: 100 })
@@ -10,9 +11,7 @@ export class CreatePersonalExpenseDto {
     @MaxLength(100)
     name!: string;
 
-    @ApiProperty({ example: 49.99, description: 'Amount in EUR', minimum: 1 })
-    @IsNumber()
-    @Min(1)
+    @IsCurrencyAmount({ example: 49.99, description: 'Amount in EUR', min: 1 })
     amount!: number;
 
     @IsEnum(ExpenseCategory)

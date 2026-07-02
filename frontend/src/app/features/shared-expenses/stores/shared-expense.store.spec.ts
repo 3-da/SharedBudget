@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { SharedExpenseStore } from './shared-expense.store';
 import { SharedExpenseService } from '../services/shared-expense.service';
-import { ExpensePaymentService } from '../../personal-expenses/services/expense-payment.service';
+import { ExpensePaymentService } from '../../../shared/services/expense-payment.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 describe('SharedExpenseStore', () => {
@@ -17,6 +17,7 @@ describe('SharedExpenseStore', () => {
       proposeCreate: vi.fn(),
       proposeUpdate: vi.fn(),
       proposeDelete: vi.fn(),
+      getSkipStatuses: vi.fn().mockReturnValue(of([])),
     };
     snackBar = { open: vi.fn() };
     const paymentService = {
@@ -52,6 +53,17 @@ describe('SharedExpenseStore', () => {
     expect(store.loading()).toBe(false);
   });
 
+  it('loadExpenses shows the spinner even when expenses are already populated', () => {
+    service['list'].mockReturnValue(of([mockExpense]));
+    store.loadExpenses();
+    expect(store.expenses().length).toBe(1);
+
+    // Switching months: never-completing observable keeps loading true during the fetch
+    service['list'].mockReturnValue(new Observable(() => {}));
+    store.loadExpenses(4, 2025);
+    expect(store.loading()).toBe(true);
+  });
+
   it('loadExpense sets selectedExpense', () => {
     service['get'].mockReturnValue(of(mockExpense));
     store.loadExpense('e-1');
@@ -84,5 +96,26 @@ describe('SharedExpenseStore', () => {
     service['proposeCreate'].mockReturnValue(throwError(() => ({ error: { message: 'denied' } })));
     store.proposeCreate({ name: 'X' });
     expect(store.error()).toBe('denied');
+  });
+
+  describe('reload', () => {
+    it('re-fetches the month/year the user last requested, not the current month', () => {
+      service['list'].mockReturnValue(of([mockExpense]));
+      store.loadExpenses(3, 2025); // user navigated to March 2025
+      service['list'].mockClear();
+
+      store.reload();
+
+      expect(service['list']).toHaveBeenCalledWith(3, 2025);
+    });
+
+    it('falls back to the current month when nothing has been loaded yet', () => {
+      const now = new Date();
+      service['list'].mockReturnValue(of([]));
+
+      store.reload();
+
+      expect(service['list']).toHaveBeenCalledWith(now.getMonth() + 1, now.getFullYear());
+    });
   });
 });

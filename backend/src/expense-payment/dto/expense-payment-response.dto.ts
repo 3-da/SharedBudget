@@ -26,6 +26,13 @@ export class ExpensePaymentResponseDto {
     @ApiPropertyOptional({ example: 45.50, nullable: true, description: 'Actual amount paid (for flexible expenses). Null for fixed expenses.' })
     paidAmount!: number | null;
 
+    @ApiPropertyOptional({
+        example: 4.50,
+        nullable: true,
+        description: 'How much of this month\'s override-adjusted amount is still unpaid. Null unless the expense is currently PAID.',
+    })
+    remainingAmount!: number | null;
+
     @ApiProperty({ description: 'Record creation timestamp' })
     createdAt!: Date;
 

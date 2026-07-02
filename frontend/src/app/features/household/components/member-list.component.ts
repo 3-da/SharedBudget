@@ -10,7 +10,6 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-member-list',
-  standalone: true,
   imports: [MatListModule, MatIconModule, MatMenuModule, MatButtonModule, RelativeTimePipe],
   template: `
     <mat-list>

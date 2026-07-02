@@ -23,7 +23,6 @@ import { HouseholdRole } from '../../../shared/models/enums';
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-settings',
-  standalone: true,
   imports: [
     MatExpansionModule, MatButtonModule, MatSelectModule, MatFormFieldModule, MatIconModule,
     FormsModule,

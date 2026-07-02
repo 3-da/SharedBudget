@@ -10,7 +10,6 @@ import { HouseholdStore } from '../../features/household/stores/household.store'
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sidenav',
-  standalone: true,
   imports: [RouterLink, RouterLinkActive, MatListModule, MatIconModule, MatBadgeModule],
   template: `
     <mat-nav-list>

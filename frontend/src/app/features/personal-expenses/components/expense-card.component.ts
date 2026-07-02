@@ -7,12 +7,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Expense, ExpenseCategory, YearlyPaymentStrategy, PaymentStatus } from '../../../shared/models';
 import { ExpensePayment } from '../../../shared/models/expense-payment.model';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
+import { PaymentBreakdownComponent } from '../../../shared/components/payment-breakdown.component';
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-expense-card',
-  standalone: true,
-  imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatTooltipModule, CurrencyEurPipe],
+  imports: [MatCardModule, MatButtonModule, MatIconModule, MatChipsModule, MatTooltipModule, CurrencyEurPipe, PaymentBreakdownComponent],
   template: `
     <mat-card [class.paid]="isPaid()">
       <mat-card-header>
@@ -36,7 +36,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       <mat-card-content>
         <span class="amount">{{ expense().amount | currencyEur }}</span>
         @if (isPaid() && !expense().isFixed && paymentStatus()?.paidAmount != null) {
-          <span class="paid-amount"> (paid: {{ paymentStatus()!.paidAmount! | currencyEur }})</span>
+          <app-payment-breakdown [paidAmount]="paymentStatus()!.paidAmount!" [remainingAmount]="paymentStatus()!.remainingAmount" />
         }
       </mat-card-content>
       <mat-card-actions>
@@ -70,7 +70,6 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   `,
   styles: [`
     .amount { font-size: 20px; font-weight: 500; }
-    .paid-amount { font-size: 14px; color: var(--mat-sys-on-surface-variant); margin-left: 4px; }
     mat-card-actions { display: flex; }
     .paid { opacity: 0.7; }
     .paid-chip { --mdc-chip-elevated-container-color: var(--chip-paid-bg); --mdc-chip-label-text-color: var(--chip-paid-text); }

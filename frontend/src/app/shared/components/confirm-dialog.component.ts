@@ -12,7 +12,6 @@ export interface ConfirmDialogData {
 
 @Component({
   selector: 'app-confirm-dialog',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatDialogModule, MatButtonModule],
   template: `

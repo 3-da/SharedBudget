@@ -5,7 +5,6 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { PasswordFieldComponent } from './password-field.component';
 
 @Component({
-  standalone: true,
   imports: [PasswordFieldComponent],
   template: `<app-password-field [control]="ctrl" />`,
 })

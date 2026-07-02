@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { maxDecimalPlacesValidator } from '../validators/max-decimal-places.validator';
 
 export interface PartialPaymentDialogData {
   expenseName: string;
@@ -13,7 +14,6 @@ export interface PartialPaymentDialogData {
 
 @Component({
   selector: 'app-partial-payment-dialog',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatDialogModule, MatButtonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, DecimalPipe],
   template: `
@@ -24,7 +24,7 @@ export interface PartialPaymentDialogData {
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Actual amount paid (EUR)</mat-label>
           <input matInput type="number" formControlName="paidAmount" min="0.01" step="0.01">
-          <mat-error>Enter a valid amount greater than 0</mat-error>
+          <mat-error>Enter a valid amount greater than 0, with at most 2 decimal places</mat-error>
         </mat-form-field>
       </form>
     </mat-dialog-content>
@@ -43,7 +43,7 @@ export class PartialPaymentDialogComponent {
 
   private readonly fb = inject(FormBuilder);
   readonly form = this.fb.nonNullable.group({
-    paidAmount: [this.data.plannedAmount, [Validators.required, Validators.min(0.01)]],
+    paidAmount: [this.data.plannedAmount, [Validators.required, Validators.min(0.01), maxDecimalPlacesValidator()]],
   });
 
   onConfirm(): void {

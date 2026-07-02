@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { RecurringOverrideService } from './recurring-override.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExpenseHelperService } from '../common/expense/expense-helper.service';
@@ -56,7 +56,6 @@ describe('RecurringOverrideService', () => {
 
     const mockPrismaService = {
         expense: {
-            findFirst: vi.fn(),
             update: vi.fn(),
         },
         recurringOverride: {
@@ -69,6 +68,7 @@ describe('RecurringOverrideService', () => {
 
     const mockExpenseHelper = {
         requireMembership: vi.fn(),
+        findVisibleExpense: vi.fn(),
     };
 
     const mockCacheService = {
@@ -100,7 +100,7 @@ describe('RecurringOverrideService', () => {
         it('should create an override for a recurring expense and return the response', async () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.upsert.mockResolvedValue(mockOverrideRecord);
 
             // Act
@@ -108,9 +108,7 @@ describe('RecurringOverrideService', () => {
 
             // Assert
             expect(mockExpenseHelper.requireMembership).toHaveBeenCalledWith(mockUserId);
-            expect(mockPrismaService.expense.findFirst).toHaveBeenCalledWith({
-                where: { id: mockExpenseId, householdId: mockHouseholdId },
-            });
+            expect(mockExpenseHelper.findVisibleExpense).toHaveBeenCalledWith(mockExpenseId, mockHouseholdId, mockUserId);
             expect(mockPrismaService.recurringOverride.upsert).toHaveBeenCalledWith({
                 where: {
                     expenseId_month_year: { expenseId: mockExpenseId, month: 7, year: 2026 },
@@ -136,7 +134,7 @@ describe('RecurringOverrideService', () => {
 
         it('should pass skipped=true when specified in dto', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.upsert.mockResolvedValue({
                 ...mockOverrideRecord,
                 skipped: true,
@@ -158,7 +156,7 @@ describe('RecurringOverrideService', () => {
 
         it('should invalidate personal expense cache for personal expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.upsert.mockResolvedValue(mockOverrideRecord);
 
             await service.upsertOverride(mockUserId, mockExpenseId, 2026, 7, dto);
@@ -166,17 +164,19 @@ describe('RecurringOverrideService', () => {
             expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
-        it('should invalidate shared expense cache for shared expenses', async () => {
+        it('should throw ForbiddenException for shared expenses (must go through approval)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedRecurringExpense);
-            mockPrismaService.recurringOverride.upsert.mockResolvedValue({
-                ...mockOverrideRecord,
-                expenseId: mockSharedRecurringExpense.id,
-            });
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedRecurringExpense);
 
-            await service.upsertOverride(mockUserId, mockSharedRecurringExpense.id, 2026, 7, dto);
+            try {
+                await service.upsertOverride(mockUserId, mockSharedRecurringExpense.id, 2026, 7, dto);
+                expect.unreachable('Should have thrown ForbiddenException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(ForbiddenException);
+                expect(error.message).toBe('Shared expense overrides require approval');
+            }
 
-            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
+            expect(mockPrismaService.recurringOverride.upsert).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -190,12 +190,12 @@ describe('RecurringOverrideService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found in household', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.upsertOverride(mockUserId, mockExpenseId, 2026, 7, dto);
@@ -210,7 +210,7 @@ describe('RecurringOverrideService', () => {
 
         it('should throw BadRequestException if expense is not recurring', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockOneTimeExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockOneTimeExpense);
 
             try {
                 await service.upsertOverride(mockUserId, mockOneTimeExpense.id, 2026, 7, dto);
@@ -225,7 +225,7 @@ describe('RecurringOverrideService', () => {
 
         it('should not reveal expenses from other households (enumeration prevention)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.upsertOverride(mockUserId, 'expense-in-other-household', 2026, 7, dto);
@@ -238,7 +238,7 @@ describe('RecurringOverrideService', () => {
 
         it('should handle boundary month value 1 (January)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.upsert.mockResolvedValue({
                 ...mockOverrideRecord,
                 month: 1,
@@ -258,7 +258,7 @@ describe('RecurringOverrideService', () => {
 
         it('should handle boundary month value 12 (December)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.upsert.mockResolvedValue({
                 ...mockOverrideRecord,
                 month: 12,
@@ -271,7 +271,7 @@ describe('RecurringOverrideService', () => {
 
         it('should handle amount of 0 (zero amount override)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.upsert.mockResolvedValue({
                 ...mockOverrideRecord,
                 amount: 0,
@@ -291,7 +291,7 @@ describe('RecurringOverrideService', () => {
         it('should update the default amount of a recurring expense', async () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.expense.update.mockResolvedValue({
                 ...mockRecurringExpense,
                 amount: 520.0,
@@ -310,7 +310,7 @@ describe('RecurringOverrideService', () => {
 
         it('should invalidate personal expense cache for personal expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.expense.update.mockResolvedValue(mockRecurringExpense);
 
             await service.updateDefaultAmount(mockUserId, mockExpenseId, dto);
@@ -318,14 +318,19 @@ describe('RecurringOverrideService', () => {
             expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
-        it('should invalidate shared expense cache for shared expenses', async () => {
+        it('should throw ForbiddenException for shared expenses (must go through approval)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedRecurringExpense);
-            mockPrismaService.expense.update.mockResolvedValue(mockSharedRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedRecurringExpense);
 
-            await service.updateDefaultAmount(mockUserId, mockSharedRecurringExpense.id, dto);
+            try {
+                await service.updateDefaultAmount(mockUserId, mockSharedRecurringExpense.id, dto);
+                expect.unreachable('Should have thrown ForbiddenException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(ForbiddenException);
+                expect(error.message).toBe('Shared expense overrides require approval');
+            }
 
-            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
+            expect(mockPrismaService.expense.update).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -339,12 +344,12 @@ describe('RecurringOverrideService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.updateDefaultAmount(mockUserId, mockExpenseId, dto);
@@ -359,7 +364,7 @@ describe('RecurringOverrideService', () => {
 
         it('should throw BadRequestException if expense is not recurring', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockOneTimeExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockOneTimeExpense);
 
             try {
                 await service.updateDefaultAmount(mockUserId, mockOneTimeExpense.id, dto);
@@ -374,7 +379,7 @@ describe('RecurringOverrideService', () => {
 
         it('should not reveal expenses from other households', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.updateDefaultAmount(mockUserId, 'expense-in-other-household', dto);
@@ -396,7 +401,7 @@ describe('RecurringOverrideService', () => {
                 { ...mockOverrideRecord, id: 'override-003', month: 3, year: 2026 },
             ];
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.findMany.mockResolvedValue(overrides);
 
             const result = await service.listOverrides(mockUserId, mockExpenseId);
@@ -413,7 +418,7 @@ describe('RecurringOverrideService', () => {
 
         it('should return empty array when no overrides exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.findMany.mockResolvedValue([]);
 
             const result = await service.listOverrides(mockUserId, mockExpenseId);
@@ -432,12 +437,12 @@ describe('RecurringOverrideService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.listOverrides(mockUserId, mockExpenseId);
@@ -452,7 +457,7 @@ describe('RecurringOverrideService', () => {
 
         it('should not reveal expenses from other households', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.listOverrides(mockUserId, 'expense-in-other-household');
@@ -465,7 +470,7 @@ describe('RecurringOverrideService', () => {
 
         it('should map all fields correctly in response', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.findMany.mockResolvedValue([mockOverrideRecord]);
 
             const result = await service.listOverrides(mockUserId, mockExpenseId);
@@ -488,7 +493,7 @@ describe('RecurringOverrideService', () => {
     describe('deleteOverride', () => {
         it('should delete a single override for a specific month', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
 
             const result = await service.deleteOverride(mockUserId, mockExpenseId, 2026, 7);
@@ -501,7 +506,7 @@ describe('RecurringOverrideService', () => {
 
         it('should invalidate cache after deleting override', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
 
             await service.deleteOverride(mockUserId, mockExpenseId, 2026, 7);
@@ -509,9 +514,22 @@ describe('RecurringOverrideService', () => {
             expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
+        it('should allow deleting an override for a shared expense (reverts to the already-approved default)', async () => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedRecurringExpense);
+            mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
+
+            const result = await service.deleteOverride(mockUserId, mockSharedRecurringExpense.id, 2026, 7);
+
+            expect(mockPrismaService.recurringOverride.deleteMany).toHaveBeenCalledWith({
+                where: { expenseId: mockSharedRecurringExpense.id, month: 7, year: 2026 },
+            });
+            expect(result).toEqual({ message: 'Override removed' });
+        });
+
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.deleteOverride(mockUserId, mockExpenseId, 2026, 7);
@@ -543,7 +561,7 @@ describe('RecurringOverrideService', () => {
         it('should delete all overrides for a recurring expense and return count', async () => {
             // Arrange
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 3 });
 
             // Act
@@ -558,7 +576,7 @@ describe('RecurringOverrideService', () => {
 
         it('should return count of 0 when no overrides exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 0 });
 
             const result = await service.deleteAllOverrides(mockUserId, mockExpenseId);
@@ -568,7 +586,7 @@ describe('RecurringOverrideService', () => {
 
         it('should invalidate personal expense cache for personal expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
 
             await service.deleteAllOverrides(mockUserId, mockExpenseId);
@@ -576,14 +594,17 @@ describe('RecurringOverrideService', () => {
             expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
-        it('should invalidate shared expense cache for shared expenses', async () => {
+        it('should allow deleting all overrides for a shared expense (reverts to the already-approved default)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedRecurringExpense);
-            mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedRecurringExpense);
+            mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 2 });
 
-            await service.deleteAllOverrides(mockUserId, mockSharedRecurringExpense.id);
+            const result = await service.deleteAllOverrides(mockUserId, mockSharedRecurringExpense.id);
 
-            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
+            expect(mockPrismaService.recurringOverride.deleteMany).toHaveBeenCalledWith({
+                where: { expenseId: mockSharedRecurringExpense.id },
+            });
+            expect(result).toEqual({ message: 'Deleted 2 override(s)' });
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -597,12 +618,12 @@ describe('RecurringOverrideService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.deleteAllOverrides(mockUserId, mockExpenseId);
@@ -617,7 +638,7 @@ describe('RecurringOverrideService', () => {
 
         it('should not reveal expenses from other households', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.deleteAllOverrides(mockUserId, 'expense-in-other-household');
@@ -651,7 +672,7 @@ describe('RecurringOverrideService', () => {
 
         it('should batch upsert overrides in a transaction and return all results', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.$transaction.mockResolvedValue(mockBatchResults);
 
             const result = await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
@@ -666,7 +687,7 @@ describe('RecurringOverrideService', () => {
 
         it('should invalidate personal expense cache for personal expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.$transaction.mockResolvedValue(mockBatchResults);
 
             await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
@@ -674,19 +695,24 @@ describe('RecurringOverrideService', () => {
             expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
-        it('should invalidate shared expense cache for shared expenses', async () => {
+        it('should throw ForbiddenException for shared expenses (must go through approval)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedRecurringExpense);
-            mockPrismaService.$transaction.mockResolvedValue(mockBatchResults);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedRecurringExpense);
 
-            await service.batchUpsertOverrides(mockUserId, mockSharedRecurringExpense.id, batchOverrides);
+            try {
+                await service.batchUpsertOverrides(mockUserId, mockSharedRecurringExpense.id, batchOverrides);
+                expect.unreachable('Should have thrown ForbiddenException');
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(ForbiddenException);
+                expect(error.message).toBe('Shared expense overrides require approval');
+            }
 
-            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
+            expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
         });
 
         it('should handle empty overrides array', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.$transaction.mockResolvedValue([]);
 
             const result = await service.batchUpsertOverrides(mockUserId, mockExpenseId, []);
@@ -705,12 +731,12 @@ describe('RecurringOverrideService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.batchUpsertOverrides(mockUserId, mockExpenseId, batchOverrides);
@@ -725,7 +751,7 @@ describe('RecurringOverrideService', () => {
 
         it('should throw BadRequestException if expense is not recurring', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockOneTimeExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockOneTimeExpense);
 
             try {
                 await service.batchUpsertOverrides(mockUserId, mockOneTimeExpense.id, batchOverrides);
@@ -740,7 +766,7 @@ describe('RecurringOverrideService', () => {
 
         it('should not reveal expenses from other households', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.batchUpsertOverrides(mockUserId, 'expense-in-other-household', batchOverrides);
@@ -757,7 +783,7 @@ describe('RecurringOverrideService', () => {
     describe('deleteUpcomingOverrides', () => {
         it('should delete overrides from a given month forward', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 5 });
 
             const result = await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);
@@ -773,7 +799,7 @@ describe('RecurringOverrideService', () => {
 
         it('should include overrides in the starting month (inclusive)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
 
             await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 12);
@@ -788,7 +814,7 @@ describe('RecurringOverrideService', () => {
 
         it('should handle January boundary (includes all of current and future years)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 12 });
 
             const result = await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 1);
@@ -804,7 +830,7 @@ describe('RecurringOverrideService', () => {
 
         it('should return count of 0 when no upcoming overrides exist', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 0 });
 
             const result = await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);
@@ -814,7 +840,7 @@ describe('RecurringOverrideService', () => {
 
         it('should invalidate personal expense cache for personal expenses', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockRecurringExpense);
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockRecurringExpense);
             mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
 
             await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);
@@ -822,14 +848,14 @@ describe('RecurringOverrideService', () => {
             expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.PERSONAL, mockHouseholdId);
         });
 
-        it('should invalidate shared expense cache for shared expenses', async () => {
+        it('should allow deleting upcoming overrides for a shared expense (reverts to the already-approved default)', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(mockSharedRecurringExpense);
-            mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 1 });
+            mockExpenseHelper.findVisibleExpense.mockResolvedValue(mockSharedRecurringExpense);
+            mockPrismaService.recurringOverride.deleteMany.mockResolvedValue({ count: 4 });
 
-            await service.deleteUpcomingOverrides(mockUserId, mockSharedRecurringExpense.id, 2026, 7);
+            const result = await service.deleteUpcomingOverrides(mockUserId, mockSharedRecurringExpense.id, 2026, 7);
 
-            expect(mockCacheService.invalidateExpenseCache).toHaveBeenCalledWith(mockUserId, ExpenseType.SHARED, mockHouseholdId);
+            expect(result).toEqual({ message: 'Deleted 4 upcoming override(s)' });
         });
 
         it('should throw NotFoundException if user is not in a household', async () => {
@@ -843,12 +869,12 @@ describe('RecurringOverrideService', () => {
                 expect(error.message).toBe('You must be in a household to manage expenses');
             }
 
-            expect(mockPrismaService.expense.findFirst).not.toHaveBeenCalled();
+            expect(mockExpenseHelper.findVisibleExpense).not.toHaveBeenCalled();
         });
 
         it('should throw NotFoundException if expense is not found', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.deleteUpcomingOverrides(mockUserId, mockExpenseId, 2026, 7);
@@ -863,7 +889,7 @@ describe('RecurringOverrideService', () => {
 
         it('should not reveal expenses from other households', async () => {
             mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
-            mockPrismaService.expense.findFirst.mockResolvedValue(null);
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
 
             try {
                 await service.deleteUpcomingOverrides(mockUserId, 'expense-in-other-household', 2026, 7);
@@ -872,6 +898,46 @@ describe('RecurringOverrideService', () => {
                 expect(error).toBeInstanceOf(NotFoundException);
                 expect(error.message).toBe('Expense not found');
             }
+        });
+    });
+    //#endregion
+
+    //#region cross-member IDOR prevention
+    describe('cross-member access control', () => {
+        beforeEach(() => {
+            mockExpenseHelper.requireMembership.mockResolvedValue(mockMembership);
+            // Another member's personal expense is invisible to this caller —
+            // the shared ExpenseHelperService.findVisibleExpense throws instead
+            // of returning it, so it can't be overridden, re-priced, or deleted.
+            mockExpenseHelper.findVisibleExpense.mockRejectedValue(new NotFoundException('Expense not found'));
+        });
+
+        it('should not let a member override another member\'s personal expense', async () => {
+            await expect(service.upsertOverride(mockUserId, 'expense-other-001', 2026, 7, { amount: 55 })).rejects.toThrow(
+                'Expense not found',
+            );
+
+            expect(mockPrismaService.recurringOverride.upsert).not.toHaveBeenCalled();
+        });
+
+        it('should not let a member change another member\'s personal expense default amount', async () => {
+            await expect(service.updateDefaultAmount(mockUserId, 'expense-other-001', { amount: 999 })).rejects.toThrow('Expense not found');
+
+            expect(mockPrismaService.expense.update).not.toHaveBeenCalled();
+        });
+
+        it('should not let a member delete another member\'s personal expense override', async () => {
+            await expect(service.deleteOverride(mockUserId, 'expense-other-001', 2026, 7)).rejects.toThrow('Expense not found');
+
+            expect(mockPrismaService.recurringOverride.deleteMany).not.toHaveBeenCalled();
+        });
+
+        it('should not let a member batch-override another member\'s personal expense', async () => {
+            await expect(
+                service.batchUpsertOverrides(mockUserId, 'expense-other-001', [{ year: 2026, month: 7, amount: 55 }]),
+            ).rejects.toThrow('Expense not found');
+
+            expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
         });
     });
     //#endregion
