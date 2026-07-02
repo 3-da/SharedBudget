@@ -160,8 +160,15 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sharedbudget_test?schema=public
 
+      - name: Build backend
+        run: cd backend && npm run build
+
       - name: Start backend
-        run: cd backend && npm run start:dev &
+        # start:prod runs the compiled output directly (no watch-mode/HMR overhead),
+        # which starts in seconds instead of the 30-120s+ nest --watch cold compile
+        # used to take. Output goes to a file since a backgrounded process's stdout
+        # isn't reliably captured by the Actions log otherwise.
+        run: cd backend && (npm run start:prod > ../backend.log 2>&1 &)
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sharedbudget_test?schema=public
           REDIS_HOST: localhost
@@ -173,10 +180,14 @@ jobs:
           PORT: 3000
 
       - name: Wait for backend
-        run: npx wait-on http://localhost:3000/api/v1 --timeout 120000
+        run: npx wait-on http://localhost:3000/api/v1 --timeout 30000
 
       - name: Install E2E deps
         run: cd e2e && npm ci && npx playwright install chromium
 
       - name: Run E2E tests
         run: cd e2e && npm test
+
+      - name: Show backend log on failure
+        if: failure()
+        run: cat backend.log || echo "no backend log found"
