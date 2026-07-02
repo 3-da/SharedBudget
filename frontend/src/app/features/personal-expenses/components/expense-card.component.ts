@@ -69,8 +69,10 @@ import { PaymentBreakdownComponent } from '../../../shared/components/payment-br
     </mat-card>
   `,
   styles: [`
+    :host { display: flex; height: 100%; }
+    mat-card { display: flex; flex-direction: column; width: 100%; }
     .amount { font-size: 20px; font-weight: 500; }
-    mat-card-actions { display: flex; }
+    mat-card-actions { display: flex; margin-top: auto; }
     .paid { opacity: 0.7; }
     .paid-chip { --mdc-chip-elevated-container-color: var(--chip-paid-bg); --mdc-chip-label-text-color: var(--chip-paid-text); }
     .skipped-chip { --mdc-chip-elevated-container-color: #ff9800; }
