@@ -1,13 +1,15 @@
-import { test as base, Page } from '@playwright/test';
+import { test as base, Browser, Page } from '@playwright/test';
 import { TEST_USERS, apiLogin, AuthTokens } from './test-data';
 
 /**
  * Extended test fixture that provides authenticated pages for Alex and Sam.
  *
- * The Angular app stores the refresh token in localStorage under 'sb_refresh_token'.
- * The access token is in-memory only. When the app loads with a refresh token
- * set, the auth guard allows access (it checks accessToken OR refreshToken),
- * and the interceptor auto-refreshes on the first 401 to get a new access token.
+ * The refresh token only ever exists as an HttpOnly cookie set by the backend
+ * (the login response body carries just the access token) — it can't be read
+ * from JS or forwarded from a raw fetch() into a browser context. So *Page
+ * fixtures log in through the real UI, the same way a user would; *Tokens
+ * fixtures separately hit the API directly for tests that only need a bearer
+ * token to seed/inspect data, not a browser session.
  *
  * Usage:
  *   test('my test', async ({ alexPage, samPage }) => { ... });
@@ -21,18 +23,15 @@ type AuthFixtures = {
   jordanPage: Page;
 };
 
-async function createAuthenticatedPage(browser: any, tokens: AuthTokens, baseURL: string): Promise<Page> {
+async function createAuthenticatedPage(browser: Browser, user: { email: string; password: string }, baseURL: string): Promise<Page> {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  // Navigate to the app origin so we can set localStorage
-  await page.goto(baseURL);
-
-  // Set refresh token — the auth guard checks refreshToken in localStorage
-  // The interceptor will auto-refresh to get an access token on first API call
-  await page.evaluate((refreshToken: string) => {
-    localStorage.setItem('sb_refresh_token', refreshToken);
-  }, tokens.refreshToken);
+  await page.goto(`${baseURL}/auth/login`);
+  await page.getByLabel('Email').fill(user.email);
+  await page.getByLabel('Password', { exact: true }).fill(user.password);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.waitForURL(url => !url.pathname.startsWith('/auth/login'), { timeout: 15_000 });
 
   return page;
 }
@@ -53,20 +52,20 @@ export const test = base.extend<AuthFixtures>({
     await use(tokens);
   },
 
-  alexPage: async ({ browser, alexTokens, baseURL }, use) => {
-    const page = await createAuthenticatedPage(browser, alexTokens, baseURL!);
+  alexPage: async ({ browser, baseURL }, use) => {
+    const page = await createAuthenticatedPage(browser, TEST_USERS.alex, baseURL!);
     await use(page);
     await page.context().close();
   },
 
-  samPage: async ({ browser, samTokens, baseURL }, use) => {
-    const page = await createAuthenticatedPage(browser, samTokens, baseURL!);
+  samPage: async ({ browser, baseURL }, use) => {
+    const page = await createAuthenticatedPage(browser, TEST_USERS.sam, baseURL!);
     await use(page);
     await page.context().close();
   },
 
-  jordanPage: async ({ browser, jordanTokens, baseURL }, use) => {
-    const page = await createAuthenticatedPage(browser, jordanTokens, baseURL!);
+  jordanPage: async ({ browser, baseURL }, use) => {
+    const page = await createAuthenticatedPage(browser, TEST_USERS.jordan, baseURL!);
     await use(page);
     await page.context().close();
   },

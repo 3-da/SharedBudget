@@ -19,7 +19,7 @@ test.describe('Authentication', () => {
 
       // Fill in credentials
       await page.getByLabel('Email').fill(TEST_USERS.alex.email);
-      await page.getByLabel('Password').fill(TEST_USERS.alex.password);
+      await page.getByLabel('Password', { exact: true }).fill(TEST_USERS.alex.password);
 
       // Submit the form
       await page.getByRole('button', { name: 'Sign In' }).click();
@@ -35,7 +35,7 @@ test.describe('Authentication', () => {
       await page.goto('/auth/login');
 
       await page.getByLabel('Email').fill(TEST_USERS.alex.email);
-      await page.getByLabel('Password').fill('WrongPassword999!');
+      await page.getByLabel('Password', { exact: true }).fill('WrongPassword999!');
 
       await page.getByRole('button', { name: 'Sign In' }).click();
 
