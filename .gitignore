@@ -46,3 +46,6 @@ generated
 *.tsbuildinfo
 nul
 docs/deep-dive
+
+# Claude Code local tooling
+.claude
