@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import * as Joi from 'joi';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -65,10 +65,13 @@ import { HealthModule } from './health/health.module';
         MailModule,
         ThrottlerModule.forRootAsync({
             imports: [RedisModule],
-            inject: [REDIS_CLIENT],
-            useFactory: (redis: Redis) => ({
+            inject: [REDIS_CLIENT, ConfigService],
+            useFactory: (redis: Redis, configService: ConfigService) => ({
                 throttlers: [{ ttl: 60000, limit: 100 }],
                 storage: new ThrottlerRedisStorage(redis),
+                // Rate limiting is exercised separately; skip it under E2E so the
+                // suite's many real logins don't trip the per-route login limit.
+                skipIf: () => configService.get<string>('NODE_ENV') === 'test',
             }),
         }),
         PrismaModule,

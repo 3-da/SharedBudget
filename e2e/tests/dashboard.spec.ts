@@ -147,7 +147,7 @@ test.describe('Dashboard overview cards', () => {
     );
     await alexPage.goto('/dashboard');
     const response = await responsePromise;
-    const timing = response.timing();
+    const timing = response.request().timing();
     expect(timing.responseEnd).toBeLessThan(2000);
   });
 });
@@ -191,13 +191,17 @@ test.describe('Settlement on household page', () => {
     });
     expect(proposalRes.status).toBe(201);
 
-    // Sam accepts the approval
-    const pendingForSam = await getPendingApprovals(samTokens.accessToken);
-    const approval = pendingForSam.find(
-      (a: any) => a.proposedData?.name === 'E2E Dashboard Settlement',
-    );
-    expect(approval).toBeTruthy();
-    const acceptRes = await acceptApproval(samTokens.accessToken, approval.id);
+    // Sam accepts the approval. Poll for it — the pending-approvals list is
+    // cached, so it can lag a beat behind the proposal just created.
+    let approval: ApprovalResponse | undefined;
+    await expect
+      .poll(async () => {
+        const pending = await getPendingApprovals(samTokens.accessToken);
+        approval = pending.find((a: any) => a.proposedData?.name === 'E2E Dashboard Settlement');
+        return Boolean(approval);
+      }, { timeout: 10_000 })
+      .toBe(true);
+    const acceptRes = await acceptApproval(samTokens.accessToken, approval!.id);
     expect(acceptRes.status).toBe(200);
 
     // Navigate to the household page

@@ -122,8 +122,8 @@ test.describe('Approvals', () => {
 
     // Assert: Verify it now appears in the History tab as ACCEPTED
     await samPage.getByRole('tab', { name: /History/i }).click();
-    await expect(samPage.getByText('E2E Accept Test')).toBeVisible({ timeout: 10_000 });
-    await expect(samPage.getByText('ACCEPTED')).toBeVisible();
+    await expect(samPage.getByText('E2E Accept Test').first()).toBeVisible({ timeout: 10_000 });
+    await expect(samPage.getByText('ACCEPTED').first()).toBeVisible();
   });
 
   test('rejecting an approval requires a message and removes from pending', async ({
@@ -170,8 +170,8 @@ test.describe('Approvals', () => {
 
     // Assert: Verify it appears in the History tab as REJECTED
     await samPage.getByRole('tab', { name: /History/i }).click();
-    await expect(samPage.getByText('E2E Reject Test')).toBeVisible({ timeout: 10_000 });
-    await expect(samPage.getByText('REJECTED')).toBeVisible();
+    await expect(samPage.getByText('E2E Reject Test').first()).toBeVisible({ timeout: 10_000 });
+    await expect(samPage.getByText('REJECTED').first()).toBeVisible();
   });
 
   test('own proposals show Cancel button instead of Accept/Reject', async ({

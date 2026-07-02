@@ -32,8 +32,13 @@ async function fillNameAndAmount(page: Page, name: string, amount: number): Prom
  * Opens the dropdown by clicking the label, then clicks the matching option.
  */
 async function selectMatOption(page: Page, label: string, optionText: string): Promise<void> {
-  await page.getByLabel(label).click();
-  await page.getByRole('option', { name: optionText }).click();
+  // force:true bypasses the actionability wait — a just-closed mat-select's
+  // overlay can briefly linger over the next combobox and otherwise makes the
+  // click hang until the test times out.
+  await page.getByRole('combobox', { name: label }).click({ force: true });
+  const option = page.getByRole('option', { name: optionText, exact: true });
+  await option.click();
+  await option.waitFor({ state: 'detached', timeout: 5_000 }).catch(() => {});
 }
 
 /**
@@ -70,9 +75,10 @@ test.describe('Personal Expenses', () => {
     await submitCreateForm(alexPage);
 
     // Verify the expense appears in the list
-    await expect(alexPage.getByText('E2E Gym')).toBeVisible();
-    // Amount is formatted with de-DE locale: 49,99
-    await expect(alexPage.getByText('49,99')).toBeVisible();
+    const gymCard = alexPage.locator('app-expense-card', { hasText: 'E2E Gym' });
+    await expect(gymCard).toBeVisible();
+    // Amount is formatted with de-DE locale: 49,99 €
+    await expect(gymCard.getByText('49,99 €')).toBeVisible();
   });
 
   test('create a ONE_TIME FULL expense and verify it shows in the list', async ({ alexPage }) => {
@@ -95,9 +101,10 @@ test.describe('Personal Expenses', () => {
     await submitCreateForm(alexPage);
 
     // Verify the expense appears in the list
-    await expect(alexPage.getByText('E2E Furniture')).toBeVisible();
-    // 500 formatted as de-DE: 500,00
-    await expect(alexPage.getByText('500,00')).toBeVisible();
+    const furnitureCard = alexPage.locator('app-expense-card', { hasText: 'E2E Furniture' });
+    await expect(furnitureCard).toBeVisible();
+    // 500 formatted as de-DE: 500,00 €
+    await expect(furnitureCard.getByText('500,00 €')).toBeVisible();
   });
 
   test('create a ONE_TIME INSTALLMENTS MONTHLY expense and verify it shows in the list', async ({ alexPage }) => {
@@ -131,9 +138,10 @@ test.describe('Personal Expenses', () => {
     await submitCreateForm(alexPage);
 
     // Verify the expense appears in the list
-    await expect(alexPage.getByText('E2E Laptop')).toBeVisible();
-    // Total amount displayed on the card: 1200 formatted as de-DE: 1.200,00
-    await expect(alexPage.getByText('1.200,00')).toBeVisible();
+    const laptopCard = alexPage.locator('app-expense-card', { hasText: 'E2E Laptop' });
+    await expect(laptopCard).toBeVisible();
+    // Total amount displayed on the card: 1200 formatted as de-DE: 1.200,00 €
+    await expect(laptopCard.getByText('1.200,00 €')).toBeVisible();
   });
 
   test('edit an existing expense amount and verify the update', async ({ alexPage }) => {

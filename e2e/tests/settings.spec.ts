@@ -47,7 +47,7 @@ test.describe('Profile update', () => {
     await lastNameInput.fill('TestOwner');
 
     // Submit the profile form
-    const saveButton = alexPage.locator('app-profile-form').getByRole('button', { name: /Save/i });
+    const saveButton = alexPage.locator('app-profile-form').getByRole('button', { name: 'Update Profile' });
     await expect(saveButton).toBeVisible({ timeout: 5_000 });
     await saveButton.click();
 
@@ -79,7 +79,7 @@ test.describe('Password change', () => {
 
     // Fill with wrong current password
     await changePasswordForm.getByLabel('Current Password').fill('WrongPassword123!');
-    await changePasswordForm.getByLabel('New Password').fill('NewPassword456!');
+    await changePasswordForm.getByLabel('New Password', { exact: true }).fill('NewPassword456!');
     await changePasswordForm.getByLabel('Confirm New Password').fill('NewPassword456!');
 
     await changePasswordForm.getByRole('button', { name: /Change Password|Save/i }).click();
@@ -92,21 +92,21 @@ test.describe('Password change', () => {
     await expect(snackbar).toBeVisible({ timeout: 10_000 });
   });
 
-  test('can change password and re-login with new password', async ({ browser, alexTokens }) => {
+  test('can change password and re-login with new password', async ({ browser }) => {
     const newPassword = 'NewTestPassword999!';
     const originalPassword = TEST_USERS.alex.password;
 
-    // Create authenticated page for Alex
+    // Create authenticated page for Alex via the real login UI
     const context = await browser.newContext();
     const page = await context.newPage();
 
     try {
-      await page.goto('/');
-
-      // Set refresh token
-      await page.evaluate((refreshToken: string) => {
-        localStorage.setItem('sb_refresh_token', refreshToken);
-      }, alexTokens.refreshToken);
+      await flushThrottleKeys();
+      await page.goto('/auth/login');
+      await page.getByLabel('Email').fill(TEST_USERS.alex.email);
+      await page.getByLabel('Password', { exact: true }).fill(originalPassword);
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await page.waitForURL(url => !url.pathname.startsWith('/auth/login'), { timeout: 15_000 });
 
       await page.goto('/settings');
       await page.waitForLoadState('networkidle');
@@ -121,7 +121,7 @@ test.describe('Password change', () => {
 
       // Fill with correct current password and new password
       await changePasswordForm.getByLabel('Current Password').fill(originalPassword);
-      await changePasswordForm.getByLabel('New Password').fill(newPassword);
+      await changePasswordForm.getByLabel('New Password', { exact: true }).fill(newPassword);
       await changePasswordForm.getByLabel('Confirm New Password').fill(newPassword);
 
       await flushThrottleKeys();
@@ -142,13 +142,17 @@ test.describe('Password change', () => {
     const loginRes = await apiCall<{ accessToken: string }>(
       'POST',
       '/auth/login',
-      undefined,
+      '',
       { email: TEST_USERS.alex.email, password: newPassword },
     );
     expect(loginRes.status).toBe(200);
     expect(loginRes.body.accessToken).toBeTruthy();
 
-    // Restore original password via API so other tests are not affected
+    // Restore original password via API so other tests are not affected.
+    // The endpoint's DTO only accepts currentPassword + newPassword — sending
+    // a confirmPassword field is rejected by the global whitelist validator,
+    // which previously left Alex stuck on the new password and broke every
+    // later login.
     await flushThrottleKeys();
     const restoreRes = await apiCall(
       'PUT',
@@ -157,7 +161,6 @@ test.describe('Password change', () => {
       {
         currentPassword: newPassword,
         newPassword: originalPassword,
-        confirmPassword: originalPassword,
       },
     );
     expect(restoreRes.status === 200 || restoreRes.status === 204).toBe(true);

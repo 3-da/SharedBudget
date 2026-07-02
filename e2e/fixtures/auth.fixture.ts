@@ -1,5 +1,5 @@
 import { test as base, Browser, Page } from '@playwright/test';
-import { TEST_USERS, apiLogin, AuthTokens } from './test-data';
+import { TEST_USERS, apiLogin, flushThrottleKeys, AuthTokens } from './test-data';
 
 /**
  * Extended test fixture that provides authenticated pages for Alex and Sam.
@@ -24,6 +24,11 @@ type AuthFixtures = {
 };
 
 async function createAuthenticatedPage(browser: Browser, user: { email: string; password: string }, baseURL: string): Promise<Page> {
+  // The login endpoint allows only 5 attempts per 60s (5-minute block after that).
+  // Every test that needs an authenticated page logs in fresh through the UI, so
+  // without this a normal test run trips the limit well before hitting real bugs.
+  await flushThrottleKeys();
+
   const context = await browser.newContext();
   const page = await context.newPage();
 

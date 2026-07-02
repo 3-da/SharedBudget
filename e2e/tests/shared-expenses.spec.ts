@@ -141,23 +141,11 @@ test.describe('Shared Expenses', () => {
     samTokens,
     alexPage,
   }) => {
-    // Arrange: Get Alex's user ID from the proposal response
-    const proposalRes = await proposeSharedExpense(alexTokens.accessToken, {
-      name: 'E2E Paid By Alex',
-      amount: 600,
-    });
-    expect(proposalRes.status).toBe(201);
-    const alexUserId = (proposalRes.body as any).requestedBy?.id;
+    // Arrange: Get Alex's user ID (the propose response does not include the
+    // requestedBy relation, so read it from the profile endpoint instead).
+    const alexProfile = await apiCall<{ id: string }>('GET', '/users/me', alexTokens.accessToken);
+    const alexUserId = alexProfile.body.id;
     expect(alexUserId).toBeTruthy();
-
-    // Cancel the first proposal (it was created without paidByUserId)
-    const pending = await getPendingApprovals(alexTokens.accessToken);
-    const firstApproval = pending.find(
-      (a: any) => a.proposedData?.name === 'E2E Paid By Alex',
-    );
-    if (firstApproval) {
-      await cancelApproval(alexTokens.accessToken, firstApproval.id);
-    }
 
     // Create a new proposal with paidByUserId set to Alex
     const proposalWithPayer = await proposeSharedExpense(alexTokens.accessToken, {
@@ -167,12 +155,16 @@ test.describe('Shared Expenses', () => {
     });
     expect(proposalWithPayer.status).toBe(201);
 
-    // Sam accepts the approval via API
-    const pendingForSam = await getPendingApprovals(samTokens.accessToken);
-    const approvalToAccept = pendingForSam.find(
-      (a: any) => a.proposedData?.name === 'E2E Paid By Alex',
-    );
-    expect(approvalToAccept).toBeTruthy();
+    // Sam accepts the approval via API. Poll for it — the pending-approvals list
+    // is cached, so it can lag a beat behind the proposal just created.
+    let approvalToAccept: any;
+    await expect
+      .poll(async () => {
+        const pending = await getPendingApprovals(samTokens.accessToken);
+        approvalToAccept = pending.find((a: any) => a.proposedData?.name === 'E2E Paid By Alex');
+        return Boolean(approvalToAccept);
+      }, { timeout: 10_000 })
+      .toBe(true);
     const acceptRes = await acceptApproval(samTokens.accessToken, approvalToAccept.id);
     expect(acceptRes.status).toBe(200);
 

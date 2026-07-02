@@ -209,9 +209,10 @@ test.describe('Month Picker Navigation', () => {
       await monthLabel(alexPage).click();
       await expect(monthOverlay(alexPage)).toBeVisible();
 
-      // Click the transparent backdrop to close
-      // The backdrop is a CDK overlay backdrop element
-      await alexPage.locator('.cdk-overlay-backdrop').click({ force: true });
+      // Click the transparent backdrop near a corner to close it. A centered
+      // force-click would land on the overlay panel itself (which sits on top
+      // of the backdrop) and never trigger the backdrop click.
+      await alexPage.locator('.cdk-overlay-backdrop').click({ position: { x: 5, y: 5 } });
 
       // Verify the overlay closed
       await expect(monthOverlay(alexPage)).toBeHidden();
@@ -521,8 +522,11 @@ test.describe('Month Picker Navigation', () => {
       await alexPage.waitForLoadState('networkidle');
       await expect(alexPage.getByText(/timeline/i)).toBeVisible({ timeout: 10_000 });
 
-      // The timeline should contain multiple mat-card elements (one per month)
+      // The timeline should contain multiple mat-card elements (one per month).
+      // Wait for the first card to render before counting (count() is a single
+      // snapshot and does not auto-retry).
       const timelineCards = alexPage.locator('.timeline mat-card');
+      await expect(timelineCards.first()).toBeVisible({ timeout: 10_000 });
       const cardCount = await timelineCards.count();
       expect(cardCount).toBeGreaterThan(0);
 

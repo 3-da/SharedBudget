@@ -69,8 +69,9 @@ test.describe('Salary', () => {
     await expect(incomeCard.getByText('Alex TestOwner')).toBeVisible();
 
     // The salary amount should be non-zero (3500 from previous test)
-    // de-DE format: 3.500,00
-    await expect(incomeCard.getByText('3.500,00')).toBeVisible();
+    // de-DE format: 3.500,00 € — appears for both the member row and the Total,
+    // so scope to the first match.
+    await expect(incomeCard.getByText('3.500,00 €').first()).toBeVisible();
   });
 
   test('year navigation works on salary page', async ({ alexPage }) => {

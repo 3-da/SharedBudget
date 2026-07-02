@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TEST_USERS, apiLogin } from '../fixtures/test-data';
+import { TEST_USERS, flushThrottleKeys } from '../fixtures/test-data';
 
 /**
  * Auth E2E tests.
@@ -98,24 +98,14 @@ test.describe('Authentication', () => {
 
   test.describe('Logout', () => {
     test('should redirect to login page after logout', async ({ page }) => {
-      // Authenticate via API to get a valid refresh token
-      const tokens = await apiLogin(TEST_USERS.alex.email, TEST_USERS.alex.password);
-
-      // Navigate to the app origin and set the refresh token in localStorage
-      await page.goto('/');
-      await page.evaluate(
-        (refreshToken: string) => {
-          localStorage.setItem('sb_refresh_token', refreshToken);
-        },
-        tokens.refreshToken,
-      );
-
-      // Navigate to the app -- the auth guard will allow access because
-      // a refresh token exists, and the interceptor will auto-refresh
-      await page.goto('/household');
-
-      // Wait for the toolbar to appear (indicates the shell has loaded)
-      await expect(page.getByText('SharedBudget')).toBeVisible({ timeout: 10_000 });
+      // Log in through the real UI (the refresh token lives in an HttpOnly
+      // cookie set by the backend, so it cannot be injected client-side).
+      await flushThrottleKeys();
+      await page.goto('/auth/login');
+      await page.getByLabel('Email').fill(TEST_USERS.alex.email);
+      await page.getByLabel('Password', { exact: true }).fill(TEST_USERS.alex.password);
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await page.waitForURL(url => !url.pathname.startsWith('/auth/login'), { timeout: 15_000 });
 
       // Open the user menu by clicking the account circle icon button
       await page.getByRole('button', { name: 'User menu' }).click();
@@ -125,12 +115,6 @@ test.describe('Authentication', () => {
 
       // Should redirect to the login page
       await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 });
-
-      // Refresh token should be cleared from localStorage
-      const refreshToken = await page.evaluate(() =>
-        localStorage.getItem('sb_refresh_token'),
-      );
-      expect(refreshToken).toBeNull();
     });
   });
 
@@ -145,13 +129,13 @@ test.describe('Authentication', () => {
 
       // Should be on the register page
       await expect(page).toHaveURL(/\/auth\/register/);
-      await expect(page.getByText('Create Account')).toBeVisible();
+      await expect(page.locator('mat-card-title', { hasText: 'Create Account' })).toBeVisible();
     });
 
     test('should navigate from register to login page', async ({ page }) => {
       await page.goto('/auth/register');
 
-      await expect(page.getByText('Create Account')).toBeVisible();
+      await expect(page.locator('mat-card-title', { hasText: 'Create Account' })).toBeVisible();
 
       // Click the "Already have an account?" link
       await page.getByRole('link', { name: 'Already have an account?' }).click();
