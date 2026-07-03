@@ -188,7 +188,10 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Install E2E deps
-        run: cd e2e && npm ci && npx playwright install chromium
+        # The Playwright config runs both chromium and firefox projects, so CI
+        # must install both browsers (plus their system libs) — installing only
+        # chromium left every firefox test failing with "Executable doesn't exist".
+        run: cd e2e && npm ci && npx playwright install --with-deps chromium firefox
 
       - name: Run E2E tests
         run: cd e2e && npm test
