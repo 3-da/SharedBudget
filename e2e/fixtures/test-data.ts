@@ -12,6 +12,13 @@ const REDIS_HOST = process.env.REDIS_HOST ?? 'localhost';
 const REDIS_PORT = parseInt(process.env.REDIS_PORT ?? '6379', 10);
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD ?? 'redis_secret';
 
+// CI's Redis service runs without auth; supplying a password there makes
+// ioredis log a warning on every connection. Omit AUTH when the password
+// is empty instead of passing the empty string along.
+function createRedisClient(): Redis {
+  return new Redis({ host: REDIS_HOST, port: REDIS_PORT, password: REDIS_PASSWORD || undefined, lazyConnect: true });
+}
+
 export const TEST_USERS = {
   alex: {
     email: 'alex@test.com',
@@ -105,7 +112,7 @@ const APP_KEY_PREFIXES = ['refresh:', 'user_sessions:', 'verify:', 'reset:'];
  * is NOT a known application key (refresh tokens, sessions, etc.).
  */
 export async function flushThrottleKeys(): Promise<void> {
-  const redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT, password: REDIS_PASSWORD, lazyConnect: true });
+  const redis = createRedisClient();
   try {
     await redis.connect();
     let cursor = '0';
@@ -172,7 +179,7 @@ async function registerAndVerify(user: (typeof TEST_USERS)[keyof typeof TEST_USE
     throw new Error(`Registration failed for ${user.email}: ${registerRes.status} ${JSON.stringify(registerRes.body)}`);
   }
 
-  const redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT, password: REDIS_PASSWORD, lazyConnect: true });
+  const redis = createRedisClient();
   try {
     await redis.connect();
     const code = await redis.get(`verify:${user.email}`);

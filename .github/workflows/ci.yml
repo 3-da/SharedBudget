@@ -197,6 +197,10 @@ jobs:
         # (duplicate expense cards -> strict-mode violations). The suite is
         # browser-agnostic; run firefox locally with `npm test -- --project=firefox`.
         run: cd e2e && npm test -- --project=chromium
+        env:
+          # Empty like the backend's: the CI Redis service runs without auth,
+          # so the fixtures must not fall back to the local compose password.
+          REDIS_PASSWORD: ''
 
       - name: Show backend log on failure
         if: failure()
