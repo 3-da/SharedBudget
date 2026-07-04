@@ -518,9 +518,12 @@ test.describe('Month Picker Navigation', () => {
       // Click the timeline button
       await expenseCard.getByRole('button', { name: /timeline/i }).click();
 
-      // Wait for the timeline page to load
+      // Wait for the timeline page to load. Don't gate on page text: the
+      // subtitle reads "Recurring expense timeline" for recurring expenses
+      // but "Installment schedule" for installments, so /timeline/i only
+      // matches for one of the two card types that can be first in the list.
       await alexPage.waitForLoadState('networkidle');
-      await expect(alexPage.getByText(/timeline/i)).toBeVisible({ timeout: 10_000 });
+      await expect(alexPage.locator('.timeline')).toBeVisible({ timeout: 10_000 });
 
       // The timeline should contain multiple mat-card elements (one per month).
       // Wait for the first card to render before counting (count() is a single
