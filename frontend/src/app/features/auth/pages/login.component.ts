@@ -12,6 +12,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { switchMap } from 'rxjs';
 import { PasswordFieldComponent } from '../components/password-field.component';
 import { AuthService } from '../../../core/auth/auth.service';
+import { LoginRequest } from '../../../shared/models/auth.model';
+
+const RECRUITER_DEMO_LOGIN_CREDENTIALS: LoginRequest = {
+  email: 'alex@demo.com',
+  password: 'Demo1234!',
+};
 
 @Component({
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +53,16 @@ import { AuthService } from '../../../core/auth/auth.service';
               </div>
             </div>
           }
+          <section class="demo-access" aria-labelledby="demo-access-title">
+            <span class="demo-access-label">Portfolio demo</span>
+            <h2 id="demo-access-title">Recruiters can explore instantly</h2>
+            <p>Open a ready-made household with realistic financial history. No setup or credentials required.</p>
+            <button mat-flat-button type="button" class="full-width demo-access-button" [disabled]="loading()" (click)="loginAsRecruiter()">
+              <mat-icon aria-hidden="true">rocket_launch</mat-icon>
+              Open recruiter demo
+            </button>
+          </section>
+          <div class="login-divider"><span>or sign in with your account</span></div>
           <form [formGroup]="form" (ngSubmit)="onSubmit()">
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Email</mat-label>
@@ -84,6 +100,15 @@ import { AuthService } from '../../../core/auth/auth.service';
     .full-width { width: 100%; }
     .submit-btn { margin-top: var(--space-md); height: 48px; font-size: 1rem; }
     mat-card-content { padding: var(--space-md) var(--space-lg); }
+    .demo-access { padding: var(--space-md); border: 1px solid color-mix(in srgb, var(--color-brand) 28%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--color-brand) 7%, var(--color-panel)); }
+    .demo-access-label { color: var(--color-brand); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .demo-access h2 { margin: 7px 0 6px; color: var(--color-ink); font-size: 1.05rem; line-height: 1.3; }
+    .demo-access p { margin: 0 0 var(--space-md); color: var(--color-ink-muted); font-size: 0.82rem; line-height: 1.55; }
+    .demo-access-button { height: 48px; font-size: 0.94rem; }
+    .demo-access-button mat-icon { margin-right: 6px; }
+    .login-divider { display: flex; align-items: center; gap: 12px; margin: var(--space-lg) 0; color: var(--color-ink-muted); font-size: 0.72rem; }
+    .login-divider::before, .login-divider::after { height: 1px; flex: 1; background: var(--color-border); content: ''; }
+    .login-divider span { white-space: nowrap; }
     .wake-up-banner {
       display: flex; align-items: flex-start; gap: var(--space-sm);
       background: var(--mat-sys-tertiary-container);
@@ -122,38 +147,59 @@ export class LoginComponent implements OnDestroy {
     if (this.wakeUpTimer) clearTimeout(this.wakeUpTimer);
   }
 
-  private sanitizeReturnUrl(url: string): string {
-    if (!url || url.startsWith('//') || url.includes('@') || /^https?:/i.test(url)) {
-      return '/household';
+  onSubmit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
     }
-    return url.startsWith('/') ? url : '/household';
+
+    this.loginWithCredentials(this.form.getRawValue());
   }
 
-  onSubmit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-    this.loading.set(true);
-    this.showWakeUpMessage.set(false);
+  loginAsRecruiter(): void {
+    this.form.setValue(RECRUITER_DEMO_LOGIN_CREDENTIALS);
+    this.loginWithCredentials(RECRUITER_DEMO_LOGIN_CREDENTIALS);
+  }
 
-    // Show wake-up message if response takes more than 4 seconds
-    this.wakeUpTimer = setTimeout(() => {
-      if (this.loading()) this.showWakeUpMessage.set(true);
-    }, 4000);
+  private loginWithCredentials(loginCredentials: LoginRequest): void {
+    this.startLoginAttempt();
 
-    this.authService.login(this.form.getRawValue()).pipe(
+    this.authService.login(loginCredentials).pipe(
       switchMap(() => this.authService.loadCurrentUser()),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: () => {
-        this.clearWakeUpTimer();
-        this.router.navigateByUrl(this.sanitizeReturnUrl(this.returnUrl()));
-      },
-      error: err => {
-        this.clearWakeUpTimer();
-        this.loading.set(false);
-        const msg = err.error?.message || 'Login failed';
-        this.snackBar.open(msg, 'Close', { duration: 5000, panelClass: 'error-snackbar' });
-      },
+      next: () => this.completeSuccessfulLogin(),
+      error: error => this.handleFailedLogin(error),
     });
+  }
+
+  private startLoginAttempt(): void {
+    this.loading.set(true);
+    this.showWakeUpMessage.set(false);
+    this.wakeUpTimer = setTimeout(() => {
+      if (this.loading()) this.showWakeUpMessage.set(true);
+    }, 4000);
+  }
+
+  private completeSuccessfulLogin(): void {
+    this.clearWakeUpTimer();
+    this.router.navigateByUrl(this.sanitizeReturnUrl(this.returnUrl()));
+  }
+
+  private handleFailedLogin(error: { error?: { message?: string } }): void {
+    this.clearWakeUpTimer();
+    this.loading.set(false);
+
+    const loginErrorMessage = error.error?.message || 'Login failed';
+    this.snackBar.open(loginErrorMessage, 'Close', { duration: 5000, panelClass: 'error-snackbar' });
+  }
+
+  private sanitizeReturnUrl(returnUrl: string): string {
+    if (!returnUrl || returnUrl.startsWith('//') || returnUrl.includes('@') || /^https?:/i.test(returnUrl)) {
+      return '/household';
+    }
+
+    return returnUrl.startsWith('/') ? returnUrl : '/household';
   }
 
   private clearWakeUpTimer(): void {

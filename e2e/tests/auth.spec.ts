@@ -11,6 +11,19 @@ import { TEST_USERS, flushThrottleKeys } from '../fixtures/test-data';
  */
 test.describe('Authentication', () => {
   test.describe('Login', () => {
+    test('should offer one-click access to the recruiter demo', async ({ page }) => {
+      await flushThrottleKeys();
+      await page.goto('/auth/login');
+
+      const recruiterDemoButton = page.getByRole('button', { name: 'Open recruiter demo' });
+      await expect(page.getByText('Recruiters can explore instantly')).toBeVisible();
+      await expect(recruiterDemoButton).toBeVisible();
+
+      await recruiterDemoButton.click();
+
+      await expect(page).toHaveURL(/\/household/, { timeout: 15_000 });
+    });
+
     test('should redirect to main app after login with valid credentials', async ({ page }) => {
       await page.goto('/auth/login');
 

@@ -42,6 +42,19 @@ describe('LoginComponent', () => {
     expect(component.loading()).toBe(false);
   });
 
+  it('should log recruiters into the prepared demo household', () => {
+    authService['login'].mockReturnValue(of({ accessToken: 'at' }));
+    authService['loadCurrentUser'].mockReturnValue(of({ id: 'u1' }));
+
+    component.loginAsRecruiter();
+
+    expect(authService['login']).toHaveBeenCalledWith({
+      email: 'alex@demo.com',
+      password: 'Demo1234!',
+    });
+    expect(authService['loadCurrentUser']).toHaveBeenCalled();
+  });
+
   describe('onSubmit', () => {
     it('should mark form touched and not call service when form invalid', () => {
       component.onSubmit();
