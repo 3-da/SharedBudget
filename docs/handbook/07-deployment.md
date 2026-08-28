@@ -114,17 +114,16 @@ All required environment variables. Source: `ARCHITECTURE.md`.
 
 | Component | Platform | Notes |
 |-----------|----------|-------|
-| Backend API | Render (Web Service) | NestJS, auto-deploy from Git |
-| PostgreSQL | Render (Managed Database) | PostgreSQL 18 |
-| Redis | Render (Managed Redis) | Redis 7 with TLS |
-| Frontend | Vercel | Static Angular build |
+| Backend API | Railway | NestJS Docker service |
+| PostgreSQL | Neon | Managed PostgreSQL |
+| Redis | Upstash | Managed Redis with TLS |
+| Frontend | Vercel | Angular production build and API proxy |
 
-### Backend Build
+### Backend Build and Startup
 
 ```bash
 cd backend
-npm run build           # NestJS production build
-npm run start:prod      # Start production server
+docker build -t sharedbudget-backend .
 ```
 
 ### Frontend Build
@@ -135,7 +134,8 @@ npx ng build            # Production build
 # Output: dist/frontend/browser/
 ```
 
-The `dist/frontend/browser/` directory is deployed as static files.
+Vercel builds and deploys `dist/frontend/browser/`, serves SPA route fallback,
+and proxies `/api/*` to Railway according to `frontend/vercel.json`.
 
 ### Database Migrations
 
@@ -144,13 +144,14 @@ cd backend
 npx prisma migrate deploy    # Apply unapplied migrations (no generation)
 ```
 
-Run before starting the backend in production. Tracked in `_prisma_migrations` table.
+The backend Docker command applies migrations before demo seeding and application
+startup. Applied migrations are tracked in the `_prisma_migrations` table.
 
 ### Redis TLS Configuration
 
-Set `REDIS_TLS=true` on Render where Redis runs on a separate host with TLS. Docker Compose keeps `REDIS_TLS=false` (Redis on localhost).
-
-The `redis.module.ts` conditionally adds `tls: {}` to the ioredis configuration based on this variable.
+Production supplies an Upstash `REDIS_URL` whose `rediss://` scheme enables TLS
+and carries authentication. Docker Compose uses the separate host, port, and
+password values with `REDIS_TLS=false` because Redis is local.
 
 ---
 
@@ -210,6 +211,10 @@ npm run seed:demo             # Reset the three demo accounts with 12 months of 
 Set `SEED_DEMO_DATA=true` on the portfolio backend to reset the shared demo
 accounts whenever a new backend deployment starts. Set `DEMO_REFERENCE_MONTH`
 to `YYYY-MM` only when the demo must remain anchored to a specific month.
+
+The public login page exposes **Open live demo**, which authenticates as
+`alex@demo.com` through the normal login endpoint. CI runs the same seed before
+Playwright so the one-click production contract is covered end to end.
 
 ---
 

@@ -42,11 +42,11 @@ describe('LoginComponent', () => {
     expect(component.loading()).toBe(false);
   });
 
-  it('should log recruiters into the prepared demo household', () => {
+  it('should log visitors into the prepared public demo household', () => {
     authService['login'].mockReturnValue(of({ accessToken: 'at' }));
     authService['loadCurrentUser'].mockReturnValue(of({ id: 'u1' }));
 
-    component.loginAsRecruiter();
+    component.loginToPublicDemo();
 
     expect(authService['login']).toHaveBeenCalledWith({
       email: 'alex@demo.com',

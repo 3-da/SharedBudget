@@ -20,12 +20,6 @@ const logger = new Logger('RedisModule');
  * namespace collisions between the three concerns.
  */
 
-/**
- * `@Global()` is intentional — the REDIS_CLIENT token is injected directly by CacheModule,
- * SessionService, AuthService, and ThrottlerRedisStorage. Making it global avoids importing
- * RedisModule in every feature module and ensures a single Redis connection pool.
- */
-
 @Global()
 @Module({
     imports: [ConfigModule],
@@ -47,8 +41,7 @@ const logger = new Logger('RedisModule');
                         return targetErrors.some((e) => err.message.includes(e));
                     },
                 };
-                // On Render, REDIS_URL (connectionString) is provided and carries auth.
-                // Locally, fall back to separate REDIS_HOST / REDIS_PORT / REDIS_PASSWORD vars.
+                // Hosted REDIS_URL carries TLS and auth; local Docker uses separate connection values.
                 const client = redisUrl
                     ? new Redis(redisUrl, sharedOptions)
                     : new Redis({

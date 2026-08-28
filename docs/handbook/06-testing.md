@@ -6,10 +6,10 @@
 
 | Category | Spec Files | Tests | Tool |
 |----------|-----------|-------|------|
-| Backend unit | 55 | 723 | Vitest 4.x |
-| Frontend unit | 33 | -- | Vitest 4.x |
-| E2E | 8 | ~40 | Playwright |
-| **Total** | **96** | | |
+| Backend unit | 58 | 1,143 | Vitest 4.x |
+| Frontend unit | 43 | 323 | Vitest 4.x |
+| E2E | 10 | 80 defined; 74 pass and 6 skip in Chromium CI | Playwright |
+| **Total** | **111** | **1,546 defined cases** | |
 
 **Vitest over Jest**: Native ESM support (Prisma generates ESM-only code), ~2x faster cold start via esbuild transformation, near-identical API (`vi.fn()` instead of `jest.fn()`).
 
@@ -261,13 +261,13 @@ Requires a running backend with a seeded database.
 
 ```bash
 # Backend unit tests
-cd backend && npm run test          # vitest run (55 spec files)
+cd backend && npm run test          # vitest run (58 spec files)
 cd backend && npm run test:cov      # Coverage report
 
 # Frontend unit tests
-cd frontend && npm run test         # vitest run (33 spec files)
+cd frontend && npm run test         # vitest run (43 spec files)
 cd frontend && npm run test:cov     # Coverage report
 
 # E2E tests (requires running backend + seeded DB)
-cd e2e && npm test                  # Playwright (8 suites)
+cd e2e && npm test                  # Playwright (10 suites)
 ```

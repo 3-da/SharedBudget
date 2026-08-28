@@ -1,59 +1,49 @@
-# Frontend
+# SharedBudget frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.3.
+The frontend is an Angular 21 single-page application for household finance management. It uses standalone components, lazy-loaded feature routes, Angular signals, zoneless change detection, Angular Material 3, and Chart.js.
 
-## Development server
+The production application is available at [sharedbudget.vercel.app](https://sharedbudget.vercel.app). Visitors can use the **Open live demo** button on the login page without entering credentials or creating an account.
 
-To start a local development server, run:
+## Main areas
 
-```bash
-ng serve
-```
+- `src/app/core/` — authentication, API access, global error handling, and the application shell
+- `src/app/shared/` — models, reusable components, pipes, validators, directives, and utilities
+- `src/app/features/` — auth, household, dashboard, expenses, income, savings, decisions, and settings
+- `src/styles/` — design tokens and shared theme variables
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## API integration
 
-## Code scaffolding
+Application services call `/api/v1`. Local development uses the Angular proxy configuration to reach the backend on port `3000`; Vercel rewrites `/api/*` to the Railway backend.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Authentication uses an in-memory access token and a refresh token managed by the backend. `AuthService`, the auth interceptor, and route guards own the browser session flow.
 
-```bash
-ng generate component component-name
-```
+## Commands
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Run these from `frontend/`:
 
 ```bash
-ng build
+npm install
+npm start                 # http://localhost:4200
+npm test                  # 43 Vitest spec files, 323 tests
+npm run test:cov
+npm run build             # production output in dist/frontend/browser
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+The backend must be available for real login and data requests. See the [root setup guide](../README.md#run-locally) for the complete local stack.
 
-## Running unit tests
+## Production
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Vercel builds the Angular production bundle and serves the SPA with route fallback, immutable asset caching, API proxying, and security headers configured in `vercel.json`.
+
+The one-click public demo deliberately uses the normal `AuthService.login()` path. It verifies the same API, token, current-user, and navigation behavior as a manual login.
+
+## Verification
+
+Frontend changes should pass:
 
 ```bash
-ng test
+npm test
+npm run build
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Browser workflows live in [`../e2e/`](../e2e/) and run in GitHub Actions after both production builds succeed.

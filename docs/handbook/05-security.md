@@ -214,7 +214,7 @@ The user row is preserved for referential integrity (foreign keys from expenses,
 | A03 Injection | Prisma parameterized queries. Zero raw SQL. |
 | A04 Insecure Design | Approval workflow for shared mutations. Rate limiting on auth endpoints. |
 | A05 Security Misconfiguration | Swagger disabled in production. Whitelist validation. Error messages sanitized. |
-| A06 Vulnerable Components | Dependencies at current versions. Node.js 24 LTS. |
+| A06 Vulnerable Components | Lockfiles, automated builds, and Node.js 22 LTS container images. |
 | A07 Auth Failures | Enumeration prevention. Token rotation. Session invalidation. Block durations. |
 | A08 Data Integrity Failures | Input validation at DTO and DB level. Prisma $transaction for atomic operations. |
 | A09 Logging Failures | Pino structured logging with request ID correlation. Sensitive field redaction. |
@@ -226,7 +226,7 @@ The user row is preserved for referential integrity (foreign keys from expenses,
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Redis TLS encryption | Done | Controlled via `REDIS_TLS=true` env var. Set on Render when Redis runs on separate host. |
+| Redis TLS encryption | Done | Production uses the TLS-enabled Upstash `REDIS_URL`; local Docker stays on localhost. |
 | Docker port binding to localhost | Done | `127.0.0.1:${REDIS_PORT:-6379}:6379` in docker-compose.yml. |
 | ioredis retry/reconnect strategy | Done | `retryStrategy`, `maxRetriesPerRequest`, `reconnectOnError`, error/reconnecting handlers in redis.module.ts. |
 | Disable dangerous Redis commands | Pending | `FLUSHALL`, `FLUSHDB`, `CONFIG`, `DEBUG` still enabled. Use `rename-command` or Redis 7 ACLs in production. |

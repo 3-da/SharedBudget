@@ -11,15 +11,15 @@ import { TEST_USERS, flushThrottleKeys } from '../fixtures/test-data';
  */
 test.describe('Authentication', () => {
   test.describe('Login', () => {
-    test('should offer one-click access to the recruiter demo', async ({ page }) => {
+    test('should offer one-click access to the public demo', async ({ page }) => {
       await flushThrottleKeys();
       await page.goto('/auth/login');
 
-      const recruiterDemoButton = page.getByRole('button', { name: 'Open recruiter demo' });
-      await expect(page.getByText('Recruiters can explore instantly')).toBeVisible();
-      await expect(recruiterDemoButton).toBeVisible();
+      const liveDemoButton = page.getByRole('button', { name: 'Open live demo' });
+      await expect(page.getByText('Explore instantly, no signup')).toBeVisible();
+      await expect(liveDemoButton).toBeVisible();
 
-      await recruiterDemoButton.click();
+      await liveDemoButton.click();
 
       await expect(page).toHaveURL(/\/household/, { timeout: 15_000 });
     });

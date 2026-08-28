@@ -1,6 +1,6 @@
 # SharedBudget -- API Reference
 
-63 endpoints across 11 controllers. All paths prefixed with `/api/v1`. Every endpoint requires JWT authentication unless marked **Public**.
+The API is organized across 11 domain controllers. All paths are prefixed with `/api/v1`. Every endpoint requires JWT authentication unless marked **Public**.
 
 Global rate limit: 100 requests per 60 seconds (all endpoints). Individual throttle overrides listed per endpoint.
 

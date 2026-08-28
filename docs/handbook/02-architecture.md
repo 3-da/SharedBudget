@@ -66,7 +66,7 @@
 | redis | Redis connection + REDIS_CLIENT token | Cache, session, throttler |
 | session | SessionService (Redis sessions) | Auth |
 | cache | CacheService (cache-aside pattern) | Dashboard, expenses, salary, savings, approvals |
-| mail | MailService (logs in dev) | Auth |
+| mail | MailService (Resend in production, console fallback locally) | Auth |
 | expense-helper | ExpenseHelperService | Personal/shared expenses, approval |
 | logger | Pino logger with request ID and redaction | All modules |
 | throttler | ThrottlerModule (forRootAsync, Redis storage) | All controllers (global) |

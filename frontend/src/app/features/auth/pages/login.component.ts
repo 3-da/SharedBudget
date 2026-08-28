@@ -14,7 +14,7 @@ import { PasswordFieldComponent } from '../components/password-field.component';
 import { AuthService } from '../../../core/auth/auth.service';
 import { LoginRequest } from '../../../shared/models/auth.model';
 
-const RECRUITER_DEMO_LOGIN_CREDENTIALS: LoginRequest = {
+const PUBLIC_DEMO_LOGIN_CREDENTIALS: LoginRequest = {
   email: 'alex@demo.com',
   password: 'Demo1234!',
 };
@@ -55,11 +55,11 @@ const RECRUITER_DEMO_LOGIN_CREDENTIALS: LoginRequest = {
           }
           <section class="demo-access" aria-labelledby="demo-access-title">
             <span class="demo-access-label">Portfolio demo</span>
-            <h2 id="demo-access-title">Recruiters can explore instantly</h2>
+            <h2 id="demo-access-title">Explore instantly, no signup</h2>
             <p>Open a ready-made household with realistic financial history. No setup or credentials required.</p>
-            <button mat-flat-button type="button" class="full-width demo-access-button" [disabled]="loading()" (click)="loginAsRecruiter()">
+            <button mat-flat-button type="button" class="full-width demo-access-button" [disabled]="loading()" (click)="loginToPublicDemo()">
               <mat-icon aria-hidden="true">rocket_launch</mat-icon>
-              Open recruiter demo
+              Open live demo
             </button>
           </section>
           <div class="login-divider"><span>or sign in with your account</span></div>
@@ -156,9 +156,9 @@ export class LoginComponent implements OnDestroy {
     this.loginWithCredentials(this.form.getRawValue());
   }
 
-  loginAsRecruiter(): void {
-    this.form.setValue(RECRUITER_DEMO_LOGIN_CREDENTIALS);
-    this.loginWithCredentials(RECRUITER_DEMO_LOGIN_CREDENTIALS);
+  loginToPublicDemo(): void {
+    this.form.setValue(PUBLIC_DEMO_LOGIN_CREDENTIALS);
+    this.loginWithCredentials(PUBLIC_DEMO_LOGIN_CREDENTIALS);
   }
 
   private loginWithCredentials(loginCredentials: LoginRequest): void {

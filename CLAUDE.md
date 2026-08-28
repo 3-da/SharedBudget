@@ -11,7 +11,7 @@ This file contains **process rules** for Claude Code when working on this projec
 > - `docs/handbook/04-api-reference.md` — All endpoints by domain
 > - `docs/handbook/05-security.md` — Auth model, threat countermeasures, GDPR
 > - `docs/handbook/06-testing.md` — Testing strategy, tools, coverage
-> - `docs/handbook/07-deployment.md` — Docker, env vars, Render + Vercel
+> - `docs/handbook/07-deployment.md` — Docker, env vars, Railway + Vercel
 
 ---
 
@@ -277,7 +277,7 @@ Pattern: Store JSON payload with TTL, use pipeline for atomic multi-key writes, 
 ### Pre-Production Checklist — Redis Hardening
 These are **not blockers for development** but **must be resolved before production deployment**.
 
-- [x] **Enable TLS encryption** — Controlled via `REDIS_TLS=true` env var (defaults to `false`). Set `REDIS_TLS=true` on Render when Redis runs on a separate host with TLS. Docker Compose keeps `REDIS_TLS=false`.
+- [x] **Enable TLS encryption** — Production uses the TLS-enabled Upstash `REDIS_URL`; Docker Compose keeps `REDIS_TLS=false` for localhost.
 - [x] **Bind Docker port to localhost only** — `docker-compose.yml` binds Redis to `127.0.0.1:${REDIS_PORT:-6379}:6379`.
 - [x] **Add ioredis retry/reconnect strategy** — `redis.module.ts` has `retryStrategy`, `maxRetriesPerRequest`, `reconnectOnError`, and `error`/`reconnecting` event handlers.
 - [ ] **Disable dangerous Redis commands** — The Redis server allows `FLUSHALL`, `FLUSHDB`, `CONFIG`, `DEBUG` by default. Use `rename-command` in `redis.conf` or Redis 7 ACLs to disable them in production.

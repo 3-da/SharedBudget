@@ -20,7 +20,7 @@ SharedBudget is a household expense tracking application for couples who share a
 | API docs | @nestjs/swagger | 11.2.5 |
 | Logging | nestjs-pino + pino | 4.5.0 / 10.3.0 |
 | Language | TypeScript | 5.7 (BE) / 5.9 (FE) |
-| Runtime | Node.js | 24.13.0 LTS |
+| Runtime | Node.js | 22 LTS |
 
 ---
 
@@ -66,9 +66,11 @@ SharedBudget implements 15 user stories across these feature areas:
 
 ## Project Status
 
-- **Backend**: Complete -- 63 endpoints across 11 controllers, 19 modules
-- **Frontend**: Complete -- Angular 21, 9 features, 19 pages, 28 feature components, 7 signal stores
-- **Testing**: 55 backend spec files (723 tests), 33 frontend spec files, 8 Playwright E2E suites
+- **Backend**: Complete -- versioned NestJS API across 11 domain controllers
+- **Frontend**: Complete -- Angular 21 responsive application with nine lazy-loaded feature areas
+- **Portfolio demo**: One-click public login backed by three automatically reset demo accounts and twelve months of seeded history
+- **Testing**: 58 backend spec files (1,143 tests), 43 frontend spec files (323 tests), and 10 Playwright E2E suites (80 Chromium cases)
+- **Delivery**: GitHub Actions gates lint, unit tests, production builds, and E2E tests before release
 - **Phase 1 constraint**: Households limited to 2 members (couple). Phase 2 targets multi-member support.
 
 ---
@@ -76,7 +78,7 @@ SharedBudget implements 15 user stories across these feature areas:
 ## Constraints and Limitations
 
 - **2-member household limit.** Settlement calculations, dashboard aggregations, and the `Settlement` model assume exactly 2 members. Multi-party support requires schema and query changes.
-- **No real email delivery.** `MailService` logs emails in development. A production email provider (SendGrid, SES) is not integrated.
+- **Email delivery depends on environment.** `MailService` uses Resend when `RESEND_API_KEY` is configured and logs messages locally when it is absent.
 - **No cache warming.** The cache starts cold on each deployment. First requests pay full DB query cost.
 - **Redis dangerous commands.** `FLUSHALL`, `FLUSHDB`, `CONFIG`, `DEBUG` are not disabled. Must be restricted before production via `rename-command` or Redis 7 ACLs.
 - **Swagger disabled in production.** API documentation is available only in non-production environments (`/docs`).
