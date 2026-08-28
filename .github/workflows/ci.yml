@@ -163,6 +163,11 @@ jobs:
       - name: Build backend
         run: cd backend && npm run build
 
+      - name: Seed demo accounts
+        run: cd backend && node dist/scripts/seed-demo.js
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sharedbudget_test?schema=public
+
       - name: Start backend
         # start:prod runs the compiled output directly (no watch-mode/HMR overhead),
         # which starts in seconds instead of the 30-120s+ nest --watch cold compile
