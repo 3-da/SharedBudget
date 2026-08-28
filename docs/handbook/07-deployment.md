@@ -204,8 +204,12 @@ E2E tests require a running backend with a seeded database.
 
 ```bash
 cd backend
-npm run seed                  # Seed demo data for development
+npm run seed:demo             # Reset the three demo accounts with 12 months of portfolio data
 ```
+
+Set `SEED_DEMO_DATA=true` on the portfolio backend to reset the shared demo
+accounts whenever a new backend deployment starts. Set `DEMO_REFERENCE_MONTH`
+to `YYYY-MM` only when the demo must remain anchored to a specific month.
 
 ---
 

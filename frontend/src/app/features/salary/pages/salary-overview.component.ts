@@ -14,14 +14,14 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
   selector: 'app-salary-overview',
   imports: [MatCardModule, MatButtonModule, MatIconModule, SalaryFormComponent, SalaryChartComponent, LoadingSpinnerComponent, PageHeaderComponent, CurrencyEurPipe],
   template: `
-    <app-page-header title="Salary" subtitle="Manage your monthly income" />
+    <app-page-header title="Income" subtitle="Keep your household plan grounded in real earnings" />
 
     @if (store.loading()) {
       <app-loading-spinner />
     } @else {
       <div class="salary-layout">
         <mat-card>
-          <mat-card-header><mat-card-title>My Salary</mat-card-title></mat-card-header>
+          <mat-card-header><mat-card-title>Monthly salary</mat-card-title><mat-card-subtitle>Set your default and current income</mat-card-subtitle></mat-card-header>
           <mat-card-content>
             <app-salary-form
               [salary]="store.mySalary()"
@@ -45,19 +45,25 @@ import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
               <div class="stat"><span class="stat-label">Yearly Total</span><strong>{{ store.yearlyTotal() | currencyEur }}</strong></div>
               <div class="stat"><span class="stat-label">Monthly Avg</span><strong>{{ store.yearlyAverage() | currencyEur }}</strong></div>
             </div>
-            <app-salary-chart [salaries]="store.yearlySalaries()" />
+            <div class="salary-chart-frame">
+              <app-salary-chart [salaries]="store.yearlySalaries()" />
+            </div>
           </mat-card-content>
         </mat-card>
       </div>
     }
   `,
   styles: [`
-    .salary-layout { display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-md); max-width: 1100px; margin: 0 auto; align-items: start; }
-    .salary-layout mat-card-header { margin-bottom: var(--space-sm); }
+    .salary-layout { display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.7fr); gap: 14px; max-width: 1120px; align-items: stretch; }
+    .salary-layout > mat-card { min-width: 0; }
+    .salary-layout mat-card-header { margin-bottom: 4px; }
     .year-nav { display: flex; align-items: center; gap: var(--space-sm); }
-    .stats-row { display: flex; gap: var(--space-lg); margin-bottom: var(--space-sm); }
-    .stat { display: flex; flex-direction: column; }
-    .stat-label { font-size: 0.85rem; color: var(--mat-sys-on-surface-variant); }
+    .stats-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    .stat { display: flex; min-width: 130px; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 11px; background: var(--color-panel-subtle); }
+    .stat strong { color: var(--color-ink); font-size: 1rem; }
+    .stat-label { color: var(--color-ink-muted); font-size: 0.7rem; }
+    .salary-chart-frame { height: 360px; min-height: 0; }
+    .salary-chart-frame app-salary-chart { display: block; height: 100%; }
     @media (max-width: 768px) { .salary-layout { grid-template-columns: 1fr; } }
   `],
 })

@@ -29,7 +29,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
     ProfileFormComponent, ChangePasswordFormComponent, PageHeaderComponent,
   ],
   template: `
-    <app-page-header title="Settings" subtitle="Manage your account" />
+    <app-page-header title="Account settings" subtitle="Manage your profile, security, and household access" />
     <div class="settings-container">
       <mat-accordion>
         <mat-expansion-panel expanded>
@@ -50,7 +50,6 @@ import { HouseholdRole } from '../../../shared/models/enums';
             (save)="onChangePassword($event)" />
         </mat-expansion-panel>
 
-        <!-- Pending delete account request (target member sees this) -->
         @if (pendingIncomingRequest()) {
           <mat-expansion-panel expanded class="warn-panel">
             <mat-expansion-panel-header>
@@ -80,7 +79,6 @@ import { HouseholdRole } from '../../../shared/models/enums';
           </mat-expansion-panel>
         }
 
-        <!-- Danger Zone -->
         <mat-expansion-panel class="danger-panel">
           <mat-expansion-panel-header>
             <mat-panel-title>
@@ -90,7 +88,6 @@ import { HouseholdRole } from '../../../shared/models/enums';
           </mat-expansion-panel-header>
 
           <div class="danger-zone">
-            <!-- Owner with multiple members: request flow -->
             @if (isOwnerWithMembers()) {
               @if (pendingOutgoingRequestId()) {
                 <div class="pending-request-info">
@@ -123,7 +120,6 @@ import { HouseholdRole } from '../../../shared/models/enums';
                 </button>
               }
             } @else {
-              <!-- Member or sole owner: simple delete -->
               <p class="danger-description">
                 @if (isSoleOwner()) {
                   Deleting your account will permanently delete the household and all its data.
@@ -142,12 +138,12 @@ import { HouseholdRole } from '../../../shared/models/enums';
     </div>
   `,
   styles: [`
-    .settings-container { max-width: 600px; margin: 16px auto; }
+    .settings-container { max-width: 760px; }
     .warn-panel { border-left: 4px solid var(--mat-sys-error); }
     .danger-panel { border-left: 4px solid var(--mat-sys-error); }
     .danger-zone { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm) 0; }
-    .danger-description { color: var(--mat-sys-on-surface-variant); margin: 0; }
-    .secondary-text { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; }
+    .danger-description { color: var(--color-ink-muted); margin: 0; }
+    .secondary-text { color: var(--color-ink-muted); font-size: 0.875rem; }
     .delete-request-info { display: flex; flex-direction: column; gap: var(--space-md); }
     .delete-request-info p { margin: 0; }
     .action-row { display: flex; gap: var(--space-md); flex-wrap: wrap; }

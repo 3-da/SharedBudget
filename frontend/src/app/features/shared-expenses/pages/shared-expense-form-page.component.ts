@@ -16,7 +16,9 @@ import { CreateExpenseRequest } from '../../../shared/models/expense.model';
     <div class="form-container">
       <mat-card>
         <mat-card-header>
+          <span class="form-kicker">Household decision</span>
           <mat-card-title>{{ isEdit() ? 'Propose Update' : 'Propose New' }} Shared Expense</mat-card-title>
+          <mat-card-subtitle>Your household partner will review this change before it takes effect.</mat-card-subtitle>
           <button mat-icon-button class="close-btn" (click)="router.navigate(['/expenses/shared'])" aria-label="Close form">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
@@ -36,9 +38,12 @@ import { CreateExpenseRequest } from '../../../shared/models/expense.model';
     </div>
   `,
   styles: [`
-    .form-container { max-width: 600px; margin: 16px auto; }
-    mat-card-header { position: relative; }
-    .close-btn { position: absolute; top: 8px; right: 8px; }
+    .form-container { max-width: 680px; margin: 10px auto; }
+    mat-card { border-radius: var(--radius-lg); }
+    mat-card-header { position: relative; flex-direction: column; padding: 28px 30px 0; }
+    mat-card-content { padding: 28px 30px 30px; }
+    .form-kicker { margin-bottom: 7px; color: var(--color-positive); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+    .close-btn { position: absolute; top: 18px; right: 18px; }
   `],
 })
 export class SharedExpenseFormPageComponent {

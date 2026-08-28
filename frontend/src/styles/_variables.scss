@@ -1,89 +1,89 @@
 :root {
-  // Semantic status colors — light theme (WCAG AA compliant)
-  --color-positive: #00796b;
-  --color-positive-container: rgba(0, 121, 107, 0.12);
-  --color-negative: #c62828;
-  --color-negative-container: rgba(198, 40, 40, 0.12);
-  --color-warning: #e65100;
-  --color-warning-container: rgba(230, 81, 0, 0.12);
-  --color-info: #1565c0;
-  --color-info-container: rgba(21, 101, 192, 0.12);
-
-  // Chart palette — light theme
-  --chart-1: rgba(0, 121, 107, 0.75);
-  --chart-2: rgba(198, 40, 40, 0.75);
-  --chart-3: rgba(230, 81, 0, 0.75);
-  --chart-4: rgba(21, 101, 192, 0.75);
-  --chart-1-border: rgb(0, 121, 107);
-  --chart-2-border: rgb(198, 40, 40);
-  --chart-3-border: rgb(230, 81, 0);
-  --chart-4-border: rgb(21, 101, 192);
-  --chart-line-1: rgba(0, 188, 212, 0.85);
-  --chart-line-1-fill: rgba(0, 188, 212, 0.1);
-  --chart-line-2: rgba(255, 152, 0, 0.85);
-  --chart-line-2-fill: rgba(255, 152, 0, 0.1);
-
-  // Chip status colors
-  --chip-accepted-bg: #2e7d32;
-  --chip-accepted-text: #fff;
-  --chip-rejected-bg: #c62828;
-  --chip-rejected-text: #fff;
-  --chip-cancelled-bg: #616161;
-  --chip-cancelled-text: #fff;
-  --chip-paid-bg: #2e7d32;
-  --chip-paid-text: #fff;
-
-  // Spacing
+  --color-positive: #13795b;
+  --color-positive-container: #e7f5ef;
+  --color-negative: #c2414f;
+  --color-negative-container: #fff0f1;
+  --color-warning: #b66a13;
+  --color-warning-container: #fff5e7;
+  --color-info: #315ca8;
+  --color-info-container: #edf3ff;
+  --color-brand: #315ca8;
+  --color-brand-strong: #244987;
+  --color-brand-soft: #eaf0ff;
+  --color-ink: #172033;
+  --color-ink-muted: #667085;
+  --color-canvas: #f4f6fa;
+  --color-panel: #ffffff;
+  --color-panel-subtle: #f8f9fc;
+  --color-border: #e2e7ef;
+  --color-border-strong: #ccd4e0;
+  --chart-1: rgba(49, 92, 168, 0.78);
+  --chart-2: rgba(19, 121, 91, 0.78);
+  --chart-3: rgba(182, 106, 19, 0.78);
+  --chart-4: rgba(124, 91, 183, 0.78);
+  --chart-1-border: #315ca8;
+  --chart-2-border: #13795b;
+  --chart-3-border: #b66a13;
+  --chart-4-border: #7c5bb7;
+  --chart-line-1: rgba(49, 92, 168, 0.9);
+  --chart-line-1-fill: rgba(49, 92, 168, 0.1);
+  --chart-line-2: rgba(19, 121, 91, 0.9);
+  --chart-line-2-fill: rgba(19, 121, 91, 0.1);
+  --chip-accepted-bg: #dff3e9;
+  --chip-accepted-text: #0f684d;
+  --chip-rejected-bg: #fde7e9;
+  --chip-rejected-text: #a73340;
+  --chip-cancelled-bg: #eceff3;
+  --chip-cancelled-text: #535f70;
+  --chip-paid-bg: #dff3e9;
+  --chip-paid-text: #0f684d;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 32px;
   --space-2xl: 48px;
-
-  // Breakpoints
+  --space-3xl: 64px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --shadow-sm: 0 1px 2px rgba(23, 32, 51, 0.04), 0 4px 14px rgba(23, 32, 51, 0.04);
+  --shadow-md: 0 12px 32px rgba(23, 32, 51, 0.09);
   --bp-mobile: 768px;
   --bp-tablet: 1024px;
   --bp-desktop: 1280px;
-
-  // Layout
-  --sidenav-width: 260px;
-  --toolbar-height: 64px;
-  --content-max-width: 1200px;
+  --sidenav-width: 272px;
+  --toolbar-height: 76px;
+  --content-max-width: 1320px;
 }
 
-// Dark theme overrides
 .dark-theme {
-  --color-positive: #4db6ac;
-  --color-positive-container: rgba(77, 182, 172, 0.15);
-  --color-negative: #ef5350;
-  --color-negative-container: rgba(239, 83, 80, 0.15);
-  --color-warning: #ffb74d;
-  --color-warning-container: rgba(255, 183, 77, 0.15);
-  --color-info: #42a5f5;
-  --color-info-container: rgba(66, 165, 245, 0.15);
-
-  // Chart palette — dark theme (brighter for dark bg)
-  --chart-1: rgba(77, 182, 172, 0.8);
-  --chart-2: rgba(239, 83, 80, 0.8);
-  --chart-3: rgba(255, 183, 77, 0.8);
-  --chart-4: rgba(66, 165, 245, 0.8);
-  --chart-1-border: rgb(77, 182, 172);
-  --chart-2-border: rgb(239, 83, 80);
-  --chart-3-border: rgb(255, 183, 77);
-  --chart-4-border: rgb(66, 165, 245);
-  --chart-line-1: rgba(77, 208, 225, 0.9);
-  --chart-line-1-fill: rgba(77, 208, 225, 0.15);
-  --chart-line-2: rgba(255, 183, 77, 0.9);
-  --chart-line-2-fill: rgba(255, 183, 77, 0.15);
-
-  // Chip status colors — dark theme
-  --chip-accepted-bg: #388e3c;
-  --chip-accepted-text: #fff;
-  --chip-rejected-bg: #d32f2f;
-  --chip-rejected-text: #fff;
-  --chip-cancelled-bg: #757575;
-  --chip-cancelled-text: #fff;
-  --chip-paid-bg: #388e3c;
-  --chip-paid-text: #fff;
+  --color-positive: #60c7a2;
+  --color-positive-container: #173b31;
+  --color-negative: #ff8993;
+  --color-negative-container: #48252b;
+  --color-warning: #f0b45f;
+  --color-warning-container: #43311e;
+  --color-info: #8facf0;
+  --color-info-container: #243453;
+  --color-brand: #8facf0;
+  --color-brand-strong: #b7c9f6;
+  --color-brand-soft: #243453;
+  --color-ink: #f1f4fa;
+  --color-ink-muted: #aab3c2;
+  --color-canvas: #111722;
+  --color-panel: #19212e;
+  --color-panel-subtle: #202a38;
+  --color-border: #2c3747;
+  --color-border-strong: #3a4759;
+  --chip-accepted-bg: #1f493c;
+  --chip-accepted-text: #8bddbe;
+  --chip-rejected-bg: #512931;
+  --chip-rejected-text: #ffabb2;
+  --chip-cancelled-bg: #343e4d;
+  --chip-cancelled-text: #c5ccd7;
+  --chip-paid-bg: #1f493c;
+  --chip-paid-text: #8bddbe;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 14px 36px rgba(0, 0, 0, 0.24);
 }

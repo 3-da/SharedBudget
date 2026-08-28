@@ -7,7 +7,8 @@ import {MatInputModule} from '@angular/material/input';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {FormBuilder, FormGroupDirective, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatDialog} from '@angular/material/dialog';
-import {filter} from 'rxjs';
+import {debounceTime, filter, Subject} from 'rxjs';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {SavingStore} from '../stores/saving.store';
 import {HouseholdStore} from '../../household/stores/household.store';
 import {SavingsHistoryChartComponent} from '../components/savings-history-chart.component';
@@ -18,12 +19,14 @@ import {LoadingSpinnerComponent} from '../../../shared/components/loading-spinne
 import {CurrencyEurPipe} from '../../../shared/pipes/currency-eur.pipe';
 import {maxDecimalPlacesValidator} from '../../../shared/validators/max-decimal-places.validator';
 
+const MONTH_SELECTION_DEBOUNCE_MILLISECONDS = 150;
+
 @Component({
   selector: 'app-savings-overview',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatCheckboxModule, ReactiveFormsModule, MonthPickerComponent, SavingsHistoryChartComponent, PageHeaderComponent, LoadingSpinnerComponent, CurrencyEurPipe],
   template: `
-    <app-page-header title="Savings" subtitle="Manage your personal and shared savings">
+    <app-page-header title="Savings" subtitle="Build personal security and shared goals together">
       <app-month-picker
         [selectedMonth]="month()"
         [selectedYear]="year()"
@@ -117,34 +120,33 @@ import {maxDecimalPlacesValidator} from '../../../shared/validators/max-decimal-
     }
   `,
   styles: [`
-    /* Ensure cards stretch and their content is spaced so forms align at the bottom */
-    .savings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); max-width: 900px; margin: 0 auto; }
+    .savings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 1040px; }
     .savings-layout mat-card { display: flex; flex-direction: column; height: 100%; }
     .savings-layout mat-card > mat-card-content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; }
 
     .summary-card { grid-column: 1 / -1; }
     .breakdown-card { grid-column: 1; }
-    .current-amount { font-size: 1.2rem; font-weight: 500; margin-bottom: var(--space-sm); }
+    .current-amount { margin-bottom: 14px; color: var(--color-ink); font-size: 1.7rem; font-weight: 700; letter-spacing: -0.045em; }
     .saving-form { display: flex; flex-direction: column; gap: 8px; }
     .inline-form { display: flex; align-items: center; gap: 8px; }
     .inline-form mat-form-field { flex: 1; min-width: 120px; }
-    .salary-checkbox { font-size: 0.875rem; color: var(--mat-sys-on-surface-variant); }
+    .salary-checkbox { color: var(--color-ink-muted); font-size: 0.8rem; }
     mat-icon[matCardAvatar] {
-      background: var(--mat-sys-primary-container);
-      color: var(--mat-sys-on-primary-container);
-      border-radius: 50%; width: 40px; height: 40px;
+      background: var(--color-brand-soft);
+      color: var(--color-brand-strong);
+      border-radius: 12px; width: 40px; height: 40px;
       display: flex; align-items: center; justify-content: center; font-size: 24px;
     }
     .member-row {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 0; border-bottom: 1px solid var(--mat-sys-outline-variant);
+      padding: 10px 0; border-bottom: 1px solid var(--color-border);
     }
     .member-row:last-child { border-bottom: none; }
-    .member-name { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .member-name { color: var(--color-ink); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .member-amounts { display: flex; gap: 16px; flex-shrink: 0; }
-    .amount-label { color: var(--mat-sys-on-surface-variant); font-size: 0.875rem; white-space: nowrap; }
+    .amount-label { color: var(--color-ink-muted); font-size: 0.78rem; white-space: nowrap; }
     .savings-amounts { display: flex; flex-wrap: wrap; gap: var(--space-md) var(--space-lg); margin-bottom: var(--space-sm); }
-    .pool-amount { color: var(--mat-sys-primary); }
+    .pool-amount { color: var(--color-brand-strong); }
     @media (max-width: 768px) {
       .savings-layout { grid-template-columns: 1fr; }
       .breakdown-card { grid-column: 1; }
@@ -167,6 +169,11 @@ export class SavingsOverviewComponent implements OnInit {
   sharedForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0.01), maxDecimalPlacesValidator()]], reducesFromSalary: [true] });
   private readonly dialog = inject(MatDialog);
   private readonly formDirs = viewChildren(FormGroupDirective);
+  private readonly selectedMonthChanges = new Subject<{ month: number; year: number }>();
+
+  constructor() {
+    this.subscribeToSelectedMonthChanges();
+  }
 
   ngOnInit(): void {
     this.load();
@@ -179,8 +186,7 @@ export class SavingsOverviewComponent implements OnInit {
   onMonthChange(event: { month: number; year: number }): void {
     this.month.set(event.month);
     this.year.set(event.year);
-    this.load();
-    this.householdStore.setMonth(event.month, event.year);
+    this.selectedMonthChanges.next(event);
   }
 
   addPersonal(): void {
@@ -237,5 +243,17 @@ export class SavingsOverviewComponent implements OnInit {
   private load(): void {
     this.store.loadMySavings(this.month(), this.year());
     this.store.loadHouseholdSavings(this.month(), this.year());
+  }
+
+  private subscribeToSelectedMonthChanges(): void {
+    this.selectedMonthChanges.pipe(
+      debounceTime(MONTH_SELECTION_DEBOUNCE_MILLISECONDS),
+      takeUntilDestroyed(),
+    ).subscribe(selectedMonth => this.loadSelectedMonthData(selectedMonth));
+  }
+
+  private loadSelectedMonthData(selectedMonth: { month: number; year: number }): void {
+    this.load();
+    this.householdStore.setMonth(selectedMonth.month, selectedMonth.year);
   }
 }

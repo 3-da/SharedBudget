@@ -3,19 +3,11 @@
 @use 'styles/mixins';
 @use 'styles/reset';
 
-// Self-hosted fonts — load most-used weights eagerly, defer the rest
 @import '@fontsource/inter/400.css';
 @import '@fontsource/inter/500.css';
 @import '@fontsource/inter/600.css';
 @import 'material-icons/iconfont/material-icons.css';
 
-// Deferred weights (300, 700) — loaded async after initial render
-@font-face {
-  font-family: 'Inter';
-  font-weight: 300;
-  font-display: swap;
-  src: url('@fontsource/inter/files/inter-latin-300-normal.woff2') format('woff2');
-}
 @font-face {
   font-family: 'Inter';
   font-weight: 700;
@@ -26,51 +18,168 @@
 html {
   height: 100%;
   @include mat.theme((
-    color: (
-      primary: mat.$cyan-palette,
-      tertiary: mat.$orange-palette,
-    ),
-    typography: (
-      brand-family: 'Inter, sans-serif',
-      plain-family: 'Inter, sans-serif',
-    ),
+    color: (primary: mat.$azure-palette, tertiary: mat.$green-palette),
+    typography: (brand-family: 'Inter, sans-serif', plain-family: 'Inter, sans-serif'),
     density: 0,
   ));
 
   &.dark-theme {
     @include mat.theme((
-      color: (
-        theme-type: dark,
-        primary: mat.$cyan-palette,
-        tertiary: mat.$orange-palette,
-      ),
-      typography: (
-        brand-family: 'Inter, sans-serif',
-        plain-family: 'Inter, sans-serif',
-      ),
+      color: (theme-type: dark, primary: mat.$azure-palette, tertiary: mat.$green-palette),
+      typography: (brand-family: 'Inter, sans-serif', plain-family: 'Inter, sans-serif'),
       density: 0,
     ));
   }
 }
 
 body {
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
-  margin: 0;
+  min-width: 320px;
   height: 100%;
-  transition: background-color 200ms, color 200ms;
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: 'Inter', sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+mat-card.mat-mdc-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-panel);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-ink);
+}
+
+.mat-mdc-card-header { padding: 22px 22px 0; }
+.mat-mdc-card-content { padding: 20px 22px 22px; }
+.mat-mdc-card-title {
+  color: var(--color-ink);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.mat-mdc-card-subtitle { color: var(--color-ink-muted); }
+.mat-mdc-card-actions { min-height: 56px; padding: 8px 14px 14px; }
+.mat-mdc-button-base { letter-spacing: -0.005em; }
+.mat-mdc-unelevated-button:not(:disabled) { background: var(--color-brand); color: white; }
+.mat-mdc-outlined-button:not(:disabled) { border-color: var(--color-border-strong); color: var(--color-ink); }
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-container-shape: 12px;
+  --mdc-outlined-text-field-outline-color: var(--color-border-strong);
+}
+.mat-mdc-chip.mat-mdc-standard-chip {
+  --mdc-chip-container-height: 28px;
+  --mdc-chip-label-text-size: 0.72rem;
+  --mdc-chip-label-text-weight: 600;
+  --mdc-chip-elevated-container-color: var(--color-panel-subtle);
+  --mdc-chip-label-text-color: var(--color-ink-muted);
+  letter-spacing: 0.02em;
+}
+.mat-mdc-tab-group,
+.mat-accordion { --mat-tab-header-divider-color: var(--color-border); }
+.mat-expansion-panel:not([class*='mat-elevation-z']) {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md) !important;
+  background: var(--color-panel);
+  box-shadow: var(--shadow-sm);
+}
+.mat-expansion-panel + .mat-expansion-panel { margin-top: 12px; }
+.mat-mdc-dialog-surface { border-radius: var(--radius-lg) !important; }
+.cdk-overlay-pane .mat-mdc-menu-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
 }
 
 .error-snackbar {
   --mdc-snackbar-container-color: var(--color-negative);
   --mdc-snackbar-supporting-text-color: white;
 }
-
 .success-snackbar {
   --mdc-snackbar-container-color: var(--color-positive);
   --mdc-snackbar-supporting-text-color: white;
 }
-
 .positive { color: var(--color-positive); }
 .negative { color: var(--color-negative); }
+
+.auth-container {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 40px 20px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(49, 92, 168, 0.15), transparent 34%),
+    radial-gradient(circle at 88% 90%, rgba(19, 121, 91, 0.12), transparent 30%),
+    var(--color-canvas) !important;
+}
+.auth-container::before {
+  position: fixed;
+  z-index: -1;
+  width: 440px;
+  height: 440px;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 15%, transparent);
+  border-radius: 50%;
+  content: '';
+  transform: translate(-58vw, -32vh);
+}
+.auth-card.mat-mdc-card {
+  width: min(100%, 470px) !important;
+  max-width: none !important;
+  border-color: color-mix(in srgb, var(--color-brand) 16%, var(--color-border));
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+}
+.auth-card .mat-mdc-card-header { padding: 30px 30px 4px; }
+.auth-card .mat-mdc-card-title {
+  font-size: clamp(1.65rem, 4vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+.auth-card .mat-mdc-card-subtitle { padding-top: 6px; font-size: 0.95rem; }
+.auth-card .mat-mdc-card-content { padding: 26px 30px 18px !important; }
+.auth-card .mat-mdc-card-actions { justify-content: flex-start !important; gap: 2px; padding: 0 22px 22px; }
+.auth-card .submit-btn { height: 50px !important; border-radius: 12px; font-weight: 650; }
+.budget-bar {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md) !important;
+  background: var(--color-panel) !important;
+  box-shadow: var(--shadow-sm);
+}
+.expense-grid,
+.approval-grid,
+.members-grid,
+.charts-grid { align-items: stretch; }
+
+@media (max-width: 600px) {
+  .auth-container { align-items: start; padding: 20px 12px; }
+  .auth-card .mat-mdc-card-header { padding: 24px 22px 4px; }
+  .auth-card .mat-mdc-card-content { padding: 22px 22px 14px !important; }
+  .auth-card .mat-mdc-card-actions { align-items: stretch; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

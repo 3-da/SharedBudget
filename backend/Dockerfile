@@ -40,4 +40,4 @@ USER node
 EXPOSE 3000
 
 # If prisma CLI is NOT installed in prod deps, this pins the downloaded CLI version to match your client.
-CMD ["sh", "-c", "npx prisma@7.3.0 migrate deploy --config ./prisma.config.production.mjs && node dist/src/main"]
+CMD ["sh", "-c", "npx prisma@7.3.0 migrate deploy --config ./prisma.config.production.mjs && if [ \"$SEED_DEMO_DATA\" = \"true\" ]; then node dist/scripts/seed-demo.js; fi && node dist/src/main"]

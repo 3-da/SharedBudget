@@ -10,7 +10,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   selector: 'app-settlement-summary',
   imports: [MatCardModule, MatButtonModule, MatIconModule, CurrencyEurPipe],
   template: `
-    <mat-card>
+    <mat-card class="settlement-card">
       <mat-card-header>
         <mat-icon matCardAvatar class="settlement-icon" aria-hidden="true">handshake</mat-icon>
         <mat-card-title>Settlement</mat-card-title>
@@ -44,9 +44,9 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   `,
   styles: [`
     .settlement-icon {
-      background: var(--mat-sys-tertiary-container);
-      color: var(--mat-sys-on-tertiary-container);
-      border-radius: 50%;
+      background: var(--color-positive-container);
+      color: var(--color-positive);
+      border-radius: 12px;
       width: 40px;
       height: 40px;
       display: flex;
@@ -58,21 +58,22 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
       align-items: flex-start;
       gap: 8px;
       padding: 8px 12px;
-      border-radius: 8px;
-      background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
-      color: var(--mat-sys-on-surface-variant);
+      border-radius: 12px;
+      background: var(--color-panel-subtle);
+      color: var(--color-ink-muted);
       font: var(--mat-sys-body-small);
       margin-bottom: 12px;
     }
     .settlement-info mat-icon { font-size: 18px; width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; }
-    .message { margin: var(--space-sm) 0; }
-    .amount { font: var(--mat-sys-headline-small); font-weight: 600; margin: var(--space-sm) 0; }
+    .settlement-card { border-color: color-mix(in srgb, var(--color-positive) 22%, var(--color-border)); }
+    .message { margin: 14px 0 5px; color: var(--color-ink-muted); }
+    .amount { margin: var(--space-sm) 0 16px; color: var(--color-ink); font-size: 1.8rem; font-weight: 700; letter-spacing: -0.045em; }
     .settled-badge {
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
       color: var(--color-positive);
-      font-weight: 500;
+      font-weight: 650;
     }
   `],
 })

@@ -16,6 +16,7 @@ import { PaymentBreakdownComponent } from '../../../shared/components/payment-br
   template: `
     <mat-card [class.paid]="isPaid()">
       <mat-card-header>
+        <span class="card-kicker">Shared expense</span>
         <mat-card-title>{{ expense().name }}</mat-card-title>
         <mat-card-subtitle>
           <mat-chip-set>
@@ -38,6 +39,7 @@ import { PaymentBreakdownComponent } from '../../../shared/components/payment-br
         </mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
+        <span class="amount-label">Household amount</span>
         <span class="amount">{{ expense().amount | currencyEur }}</span>
         @if (isPaid() && !expense().isFixed && paymentStatus()?.paidAmount != null) {
           <app-payment-breakdown [paidAmount]="paymentStatus()!.paidAmount!" [remainingAmount]="paymentStatus()!.remainingAmount" />
@@ -74,13 +76,19 @@ import { PaymentBreakdownComponent } from '../../../shared/components/payment-br
   `,
   styles: [`
     :host { display: flex; height: 100%; }
-    mat-card { display: flex; flex-direction: column; width: 100%; }
-    .amount { font-size: 20px; font-weight: 500; }
-    mat-card-actions { display: flex; margin-top: auto; }
-    .paid { opacity: 0.7; }
+    mat-card { display: flex; flex-direction: column; width: 100%; overflow: hidden; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
+    mat-card:hover { border-color: var(--color-border-strong); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    mat-card-header { position: relative; flex-direction: column; }
+    .card-kicker { margin-bottom: 7px; color: var(--color-positive); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    mat-card-subtitle { margin-top: 10px; }
+    mat-card-content { display: flex; flex-direction: column; padding-top: 16px; }
+    .amount-label { color: var(--color-ink-muted); font-size: 0.7rem; }
+    .amount { margin-top: 2px; color: var(--color-ink); font-size: 1.65rem; font-weight: 700; letter-spacing: -0.045em; }
+    mat-card-actions { display: flex; gap: 2px; margin-top: auto; border-top: 1px solid var(--color-border); }
+    .paid { opacity: 0.68; }
     .paid-chip { --mdc-chip-elevated-container-color: var(--chip-paid-bg); --mdc-chip-label-text-color: var(--chip-paid-text); }
-    .pending-chip { --mdc-chip-elevated-container-color: #ff9800; }
-    .skipped-chip { --mdc-chip-elevated-container-color: #ff9800; }
+    .pending-chip,
+    .skipped-chip { --mdc-chip-elevated-container-color: var(--color-warning-container); --mdc-chip-label-text-color: var(--color-warning); }
   `],
 })
 export class SharedExpenseCardComponent {

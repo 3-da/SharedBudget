@@ -10,7 +10,7 @@ A production-grade household budget management app where couples collaboratively
 
 ## Try It Now
 
-The fastest way to explore the app is with the pre-seeded demo accounts. Open two browser windows (one regular, one incognito) to simulate a real household:
+The fastest way to explore the app is with the pre-seeded demo accounts. The portfolio backend resets these shared accounts on deployment with twelve months of income and savings history, recurring expenses, settlements, and pending decisions. Open two browser windows (one regular, one incognito) to simulate a real household:
 
 ### Step 1: Log in as the household owner
 

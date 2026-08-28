@@ -75,14 +75,12 @@ import { roundCurrency } from '../../../shared/utils/round-currency';
       @if (store.overviewLoading()) {
         <app-loading-spinner />
       } @else if (store.overview(); as ov) {
-        <!-- Summary Cards -->
         <section class="section">
           <app-financial-summary [data]="ov" [viewMode]="store.viewMode()" />
         </section>
 
-        <!-- Members Financial Cards -->
         <section class="section">
-          <h2 class="section-title">Members</h2>
+          <div class="section-heading"><div><span>Household split</span><h2 class="section-title">Member finances</h2></div><p>See how income, expenses, and savings compare.</p></div>
           <div class="members-grid">
             @for (member of ov.income; track member.userId) {
               <app-member-finance-card
@@ -95,16 +93,14 @@ import { roundCurrency } from '../../../shared/utils/round-currency';
           </div>
         </section>
 
-        <!-- Charts -->
         <section class="section">
-          <h2 class="section-title">Overview</h2>
+          <div class="section-heading"><div><span>Patterns</span><h2 class="section-title">Financial overview</h2></div><p>A clear view of where your money goes.</p></div>
           <div class="charts-grid">
             <app-income-expense-chart [data]="ov" />
             <app-savings-chart [data]="ov" />
           </div>
         </section>
 
-        <!-- Settlement -->
         <section class="section">
           <app-settlement-summary
             [settlement]="ov.settlement"
@@ -113,7 +109,6 @@ import { roundCurrency } from '../../../shared/utils/round-currency';
         </section>
       }
 
-      <!-- Management (collapsible) -->
       <section class="section">
         <app-household-management />
       </section>
@@ -126,25 +121,34 @@ import { roundCurrency } from '../../../shared/utils/round-currency';
     @media (max-width: 600px) {
       .header-actions { gap: var(--space-sm); }
     }
-    .section { margin-bottom: var(--space-lg); }
+    .section { margin-bottom: 34px; }
+    .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+    .section-heading span { color: var(--color-brand); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+    .section-heading p { margin: 0; color: var(--color-ink-muted); font-size: 0.78rem; }
     .section-title {
-      font: var(--mat-sys-title-medium);
-      margin: 0 0 var(--space-md);
-      color: var(--mat-sys-on-surface);
+      margin: 4px 0 0;
+      color: var(--color-ink);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
     }
     .members-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: var(--space-md);
+      gap: 14px;
     }
     .charts-grid {
       display: grid;
       grid-template-columns: 3fr 2fr;
-      gap: var(--space-md);
+      gap: 14px;
       overflow: hidden;
     }
     @media (max-width: 1024px) {
       .charts-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .section { margin-bottom: 26px; }
+      .section-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
     }
     .has-pending {
       border-color: var(--mat-sys-error);

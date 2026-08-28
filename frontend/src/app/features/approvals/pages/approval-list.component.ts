@@ -15,7 +15,7 @@ import { AuthService } from '../../../core/auth/auth.service';
   selector: 'app-approval-list',
   imports: [MatTabsModule, ApprovalCardComponent, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
   template: `
-    <app-page-header title="Approvals" subtitle="Review shared expense proposals" />
+    <app-page-header title="Decisions" subtitle="Review and resolve changes to shared finances" />
 
     @if (store.loading()) {
       <app-loading-spinner />
@@ -48,7 +48,7 @@ import { AuthService } from '../../../core/auth/auth.service';
     }
   `,
   styles: [`
-    .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-md); padding: var(--space-md) 0; }
+    .approval-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; padding: 20px 0; }
     @media (max-width: 600px) {
       .approval-grid { grid-template-columns: 1fr; gap: var(--space-sm); padding: var(--space-sm) 0; }
     }

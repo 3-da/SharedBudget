@@ -12,7 +12,7 @@ import { HouseholdRole } from '../../../shared/models/enums';
   template: `
     <mat-card>
       <mat-card-header>
-        <mat-icon matCardAvatar aria-hidden="true">person</mat-icon>
+        <div matCardAvatar class="member-avatar" aria-hidden="true">{{ income().firstName[0] }}{{ income().lastName[0] }}</div>
         <mat-card-title>{{ income().firstName }} {{ income().lastName }}</mat-card-title>
         <mat-card-subtitle>{{ role() === 'OWNER' ? 'Owner' : 'Member' }}</mat-card-subtitle>
       </mat-card-header>
@@ -51,33 +51,24 @@ import { HouseholdRole } from '../../../shared/models/enums';
     </mat-card>
   `,
   styles: [`
-    mat-icon[matCardAvatar] {
-      background: var(--mat-sys-primary-container);
-      color: var(--mat-sys-on-primary-container);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-    }
+    mat-card { height: 100%; }
+    .member-avatar { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; background: var(--color-brand-soft); color: var(--color-brand-strong); font-size: 0.75rem; font-weight: 700; }
     .stat-row {
       display: flex;
       justify-content: space-between;
-      padding: 6px 0;
+      padding: 8px 0;
     }
     .budget-row {
-      border-top: 1px solid var(--mat-sys-outline-variant);
-      margin-top: 4px;
-      padding-top: 10px;
-      font-weight: 500;
+      border-top: 1px solid var(--color-border);
+      margin-top: 6px;
+      padding-top: 13px;
+      font-weight: 600;
     }
-    .stat-label { color: var(--mat-sys-on-surface-variant); }
-    .stat-value { font-weight: 500; }
+    .stat-label { color: var(--color-ink-muted); font-size: 0.78rem; }
+    .stat-value { color: var(--color-ink); font-size: 0.82rem; font-weight: 600; }
     .positive { color: var(--color-positive); }
     .negative { color: var(--color-negative); }
-    .warning { color: var(--mat-sys-tertiary); }
+    .warning { color: var(--color-warning); }
   `],
 })
 export class MemberFinanceCardComponent {

@@ -20,7 +20,7 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     SettlementCardComponent, PageHeaderComponent, LoadingSpinnerComponent,
   ],
   template: `
-    <app-page-header title="Dashboard" [subtitle]="monthLabel()">
+    <app-page-header title="Household snapshot" [subtitle]="monthLabel()">
       <div class="header-actions">
         @if (store.pendingApprovalsCount() > 0) {
           <button mat-stroked-button routerLink="/approvals" [matBadge]="store.pendingApprovalsCount()" matBadgeColor="warn">
@@ -46,9 +46,8 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     .dashboard-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: var(--space-md);
-      max-width: 1000px;
-      margin: 0 auto;
+      gap: 14px;
+      max-width: 1120px;
     }
     @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; gap: var(--space-sm); } }
   `],

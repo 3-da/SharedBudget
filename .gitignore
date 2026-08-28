@@ -49,3 +49,6 @@ docs/deep-dive
 
 # Claude Code local tooling
 .claude
+
+# Local code-graph artifacts
+graphify-out/

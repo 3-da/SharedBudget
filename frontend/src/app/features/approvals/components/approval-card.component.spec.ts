@@ -63,6 +63,16 @@ describe('ApprovalCardComponent', () => {
     expect(text).toContain('Smith');
   });
 
+  it('should display a human-readable savings withdrawal action', () => {
+    host.approval.set({ ...pendingApproval, action: 'WITHDRAW_SAVINGS' as any });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Savings withdrawal');
+    expect(text).toContain('Withdrawal');
+    expect(text).not.toContain('WITHDRAW_SAVINGS');
+  });
+
   it('should emit accept with approval id', () => {
     const buttons = fixture.nativeElement.querySelectorAll('mat-card-actions button');
     buttons[0].click();

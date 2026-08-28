@@ -11,7 +11,7 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
   imports: [MatCardModule, MatButtonModule, MatIconModule, CurrencyEurPipe],
   template: `
     <mat-card>
-      <mat-card-header><mat-card-title>Settlement</mat-card-title></mat-card-header>
+      <mat-card-header><div class="summary-icon settlement"><span aria-hidden="true">✓</span></div><mat-card-title>Settlement</mat-card-title><mat-card-subtitle>Keep the balance fair</mat-card-subtitle></mat-card-header>
       <mat-card-content>
         @if (settlement(); as s) {
           <p>{{ s.message }}</p>
@@ -33,7 +33,12 @@ import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
     </mat-card>
   `,
   styles: [`
-    .amount { font-size: 24px; font-weight: 600; margin: 12px 0; }
+    mat-card { height: 100%; }
+    mat-card-header { align-items: center; }
+    .summary-icon { display: grid; width: 38px; height: 38px; margin-right: 12px; place-items: center; border-radius: 11px; font-size: 1rem; font-weight: 700; }
+    .settlement { background: var(--color-warning-container); color: var(--color-warning); }
+    mat-card-content > p:first-child { color: var(--color-ink-muted); }
+    .amount { margin: 12px 0; color: var(--color-ink); font-size: 1.65rem; font-weight: 700; letter-spacing: -0.045em; }
     .settled { display: flex; align-items: center; gap: 8px; color: var(--color-positive); }
   `],
 })

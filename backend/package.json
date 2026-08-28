@@ -17,7 +17,8 @@
         "test:watch": "vitest",
         "test:cov": "vitest run --coverage",
         "test:e2e": "vitest run --config ./vitest.e2e.config.ts",
-        "prisma:studio": "npx prisma studio --config ./prisma.config.ts"
+        "prisma:studio": "npx prisma studio --config ./prisma.config.ts",
+        "seed:demo": "npm run build && node dist/scripts/seed-demo.js"
     },
     "dependencies": {
         "@nestjs/common": "^11.0.1",

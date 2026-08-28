@@ -57,8 +57,9 @@ import { CdkOverlayOrigin, CdkConnectedOverlay } from '@angular/cdk/overlay';
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      background: var(--mat-sys-surface-container);
-      border-radius: 20px;
+      border: 1px solid var(--color-border);
+      background: var(--color-panel);
+      border-radius: 12px;
       padding: 0 4px;
       height: 40px;
     }
@@ -70,15 +71,16 @@ import { CdkOverlayOrigin, CdkConnectedOverlay } from '@angular/cdk/overlay';
       background: none;
       cursor: pointer;
       font: var(--mat-sys-title-small);
-      color: var(--mat-sys-on-surface);
+      color: var(--color-ink);
       padding: 4px 8px;
       border-radius: 16px;
       transition: background 150ms;
     }
-    .month-label:hover { background: var(--mat-sys-surface-container-highest); }
+    .month-label:hover { background: var(--color-panel-subtle); }
     .dropdown-icon { font-size: 18px; width: 18px; height: 18px; }
     .month-overlay {
-      background: var(--mat-sys-surface-container-low);
+      border: 1px solid var(--color-border);
+      background: var(--color-panel);
       border-radius: 16px;
       padding: 16px;
       box-shadow: var(--mat-sys-level3);
@@ -95,7 +97,7 @@ import { CdkOverlayOrigin, CdkConnectedOverlay } from '@angular/cdk/overlay';
       justify-content: space-between;
       margin-bottom: 12px;
     }
-    .year-label { font: var(--mat-sys-title-medium); color: var(--mat-sys-on-surface); }
+    .year-label { color: var(--color-ink); font: var(--mat-sys-title-medium); }
     .month-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -108,16 +110,16 @@ import { CdkOverlayOrigin, CdkConnectedOverlay } from '@angular/cdk/overlay';
       padding: 8px 4px;
       border-radius: 18px;
       font: var(--mat-sys-label-large);
-      color: var(--mat-sys-on-surface);
+      color: var(--color-ink);
       transition: background 150ms;
     }
-    .month-cell:hover:not(.disabled) { background: var(--mat-sys-surface-container-highest); }
+    .month-cell:hover:not(.disabled) { background: var(--color-panel-subtle); }
     .month-cell.selected {
-      background: var(--mat-sys-primary);
-      color: var(--mat-sys-on-primary);
+      background: var(--color-brand);
+      color: white;
     }
     .month-cell.today {
-      outline: 2px solid var(--mat-sys-primary);
+      outline: 2px solid var(--color-brand);
       outline-offset: -2px;
     }
     .month-cell.disabled {

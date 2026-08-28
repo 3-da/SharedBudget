@@ -22,6 +22,15 @@ import { AuthService } from '../../../core/auth/auth.service';
   ],
   template: `
     <div class="auth-container">
+      <section class="auth-story" aria-label="SharedBudget introduction">
+        <div class="auth-brand"><span class="auth-brand-mark" aria-hidden="true">SB</span><strong>SharedBudget</strong></div>
+        <div class="auth-story-copy">
+          <span class="auth-kicker">Money, managed together</span>
+          <h1>Clarity for every shared decision.</h1>
+          <p>Track expenses, build savings, and agree on household spending without the awkward conversations.</p>
+        </div>
+        <div class="auth-trust-row"><span><mat-icon aria-hidden="true">shield</mat-icon> Private</span><span><mat-icon aria-hidden="true">sync</mat-icon> Collaborative</span><span><mat-icon aria-hidden="true">task_alt</mat-icon> Transparent</span></div>
+      </section>
       <mat-card class="auth-card">
         <mat-card-header>
           <mat-card-title>Welcome Back</mat-card-title>
@@ -61,11 +70,16 @@ import { AuthService } from '../../../core/auth/auth.service';
     </div>
   `,
   styles: [`
-    .auth-container {
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, var(--mat-sys-primary-container), var(--mat-sys-surface));
-      padding: var(--space-md);
-    }
+    .auth-container { grid-template-columns: minmax(320px, 520px) minmax(360px, 440px); gap: clamp(48px, 8vw, 120px); }
+    .auth-story { display: flex; min-height: 520px; flex-direction: column; justify-content: space-between; padding: 20px 0; }
+    .auth-brand { display: flex; align-items: center; gap: 11px; color: var(--color-ink); font-size: 0.95rem; }
+    .auth-brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 12px; background: var(--color-ink); color: white; font-size: 0.72rem; font-weight: 700; }
+    .auth-kicker { color: var(--color-brand); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .auth-story h1 { max-width: 520px; margin: 14px 0 18px; color: var(--color-ink); font-size: clamp(2.8rem, 5vw, 4.5rem); font-weight: 700; letter-spacing: -0.065em; line-height: 0.98; }
+    .auth-story p { max-width: 470px; margin: 0; color: var(--color-ink-muted); font-size: 1rem; line-height: 1.7; }
+    .auth-trust-row { display: flex; gap: 22px; color: var(--color-ink-muted); font-size: 0.72rem; font-weight: 600; }
+    .auth-trust-row span { display: flex; align-items: center; gap: 5px; }
+    .auth-trust-row mat-icon { width: 17px; height: 17px; color: var(--color-positive); font-size: 17px; }
     .auth-card { max-width: 420px; width: 100%; }
     .full-width { width: 100%; }
     .submit-btn { margin-top: var(--space-md); height: 48px; font-size: 1rem; }
@@ -81,6 +95,10 @@ import { AuthService } from '../../../core/auth/auth.service';
     .wake-up-text { display: flex; flex-direction: column; gap: 2px; font-size: 0.875rem; }
     .wake-up-text strong { font-size: 0.9rem; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    @media (max-width: 900px) {
+      .auth-container { grid-template-columns: 1fr; }
+      .auth-story { display: none; }
+    }
   `],
 })
 export class LoginComponent implements OnDestroy {
