@@ -21,7 +21,7 @@ async function goToSharedExpenseList(page: Page): Promise<void> {
 async function goToApprovalsList(page: Page): Promise<void> {
   await page.goto('/approvals');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('heading', { name: 'Approvals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Decisions' })).toBeVisible();
 }
 
 /** Helper: Propose a shared expense via API and return the approval response body. */

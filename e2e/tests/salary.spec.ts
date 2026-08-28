@@ -13,14 +13,14 @@ import { Page } from '@playwright/test';
 async function goToSalary(page: Page): Promise<void> {
   await page.goto('/salary');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('heading', { name: 'Salary' })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: 'Income' })).toBeVisible({ timeout: 10_000 });
 }
 
 /** Helper: Navigate to the dashboard and wait for it to load. */
 async function goToDashboard(page: Page): Promise<void> {
   await page.goto('/dashboard');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: 'Household snapshot' })).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Salary', () => {

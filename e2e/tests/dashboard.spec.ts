@@ -18,7 +18,7 @@ import { Page } from '@playwright/test';
 async function goToDashboard(page: Page): Promise<void> {
   await page.goto('/dashboard');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: 'Household snapshot' })).toBeVisible({ timeout: 10_000 });
 }
 
 /** Navigate to the household page and wait for it to load. */
