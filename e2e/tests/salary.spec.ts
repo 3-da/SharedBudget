@@ -29,8 +29,7 @@ test.describe('Salary', () => {
   test('salary page loads with form visible', async ({ alexPage }) => {
     await goToSalary(alexPage);
 
-    // My Salary card should be visible
-    await expect(alexPage.getByText('My Salary')).toBeVisible();
+    await expect(alexPage.getByText('Monthly salary')).toBeVisible();
 
     // Form fields should be present
     await expect(alexPage.getByLabel('Default Salary (EUR)')).toBeVisible();
