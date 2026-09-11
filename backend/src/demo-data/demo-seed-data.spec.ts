@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDemoMonthPeriods } from './demo-month-periods';
+import { buildDemoMonthPeriods, getCurrentDemoMonthPeriod } from './demo-month-periods';
 import { buildDemoSavingRows } from './demo-seed-data';
 
 describe('demo seed data', () => {
@@ -20,5 +20,9 @@ describe('demo seed data', () => {
         expect(demoSavingRows).toHaveLength(48);
         expect(demoSavingRows.filter((demoSavingRow) => demoSavingRow.isShared)).toHaveLength(24);
         expect(demoSavingRows.every((demoSavingRow) => demoSavingRow.amount > 0)).toBe(true);
+    });
+
+    it('reads the current demo month period straight off the reference date', () => {
+        expect(getCurrentDemoMonthPeriod(referenceDate)).toEqual({ month: 8, year: 2026 });
     });
 });
