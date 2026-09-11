@@ -14,6 +14,10 @@ export function buildDemoMonthPeriods(referenceDate: Date): DemoMonthPeriod[] {
     });
 }
 
+export function getCurrentDemoMonthPeriod(referenceDate: Date): DemoMonthPeriod {
+    return { month: referenceDate.getMonth() + 1, year: referenceDate.getFullYear() };
+}
+
 export function getDemoReferenceDate(configuredReferenceMonth?: string): Date {
     if (!configuredReferenceMonth) {
         return new Date();

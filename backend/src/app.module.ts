@@ -25,6 +25,7 @@ import { ExpensePaymentModule } from './expense-payment/expense-payment.module';
 import { RecurringOverrideModule } from './recurring-override/recurring-override.module';
 import { SavingModule } from './saving/saving.module';
 import { HealthModule } from './health/health.module';
+import { DemoDataModule } from './demo-data/demo-data.module';
 
 @Module({
     imports: [
@@ -87,6 +88,7 @@ import { HealthModule } from './health/health.module';
         RecurringOverrideModule,
         SavingModule,
         HealthModule,
+        DemoDataModule,
     ],
     controllers: [AppController],
     providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
