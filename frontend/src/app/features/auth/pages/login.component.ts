@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, signal, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, signal, OnDestroy, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -126,7 +126,8 @@ const PUBLIC_DEMO_LOGIN_CREDENTIALS: LoginRequest = {
     }
   `],
 })
-export class LoginComponent implements OnDestroy {
+export class LoginComponent implements OnDestroy, OnInit {
+  private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -142,6 +143,16 @@ export class LoginComponent implements OnDestroy {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]],
   });
+
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('demo') !== 'true') return;
+    if (this.authService.isAuthenticated()) {
+      void this.router.navigateByUrl('/household');
+      return;
+    }
+
+    this.loginToPublicDemo();
+  }
 
   ngOnDestroy(): void {
     if (this.wakeUpTimer) clearTimeout(this.wakeUpTimer);

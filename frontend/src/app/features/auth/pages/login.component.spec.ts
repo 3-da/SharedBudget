@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -15,6 +15,7 @@ describe('LoginComponent', () => {
   beforeEach(async () => {
     authService = {
       login: vi.fn(),
+      isAuthenticated: vi.fn().mockReturnValue(false),
       loadCurrentUser: vi.fn(),
     };
     snackBar = { open: vi.fn() };
@@ -53,6 +54,23 @@ describe('LoginComponent', () => {
       password: 'Demo1234!',
     });
     expect(authService['loadCurrentUser']).toHaveBeenCalled();
+  });
+
+
+  it.each([null, 'false', 'true'])('automatically enters the demo only for an explicit flag %s', (flag) => {
+    vi.spyOn(TestBed.inject(ActivatedRoute).snapshot.queryParamMap, 'get').mockReturnValue(flag);
+    const login = vi.spyOn(component, 'loginToPublicDemo').mockImplementation(() => undefined);
+    component.ngOnInit();
+    expect(login).toHaveBeenCalledTimes(flag === 'true' ? 1 : 0);
+  });
+
+  it('keeps the current account when a signed-in visitor opens the demo link', () => {
+    vi.spyOn(TestBed.inject(ActivatedRoute).snapshot.queryParamMap, 'get').mockReturnValue('true');
+    authService['isAuthenticated'].mockReturnValue(true);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    component.ngOnInit();
+    expect(navigate).toHaveBeenCalledWith('/household');
+    expect(authService['login']).not.toHaveBeenCalled();
   });
 
   describe('onSubmit', () => {
